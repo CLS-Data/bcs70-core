@@ -47,8 +47,18 @@ build_variable <- function(variable) {
   result[, c("bcsid", spec$id), drop = FALSE]
 }
 
-run_all <- function(variables_dir = "R/variables", output_dir = "output") {
+# `only_ids`, if non-empty, restricts the run to the variable(s) whose file
+# name (without .R) matches - e.g. to verify one newly added variable against
+# real data without needing every other variable's inputs to be present too.
+run_all <- function(variables_dir = "R/variables", output_dir = "output", only_ids = character(0)) {
   variable_files <- list.files(variables_dir, pattern = "\\.R$", full.names = TRUE)
+  if (length(only_ids) > 0) {
+    variable_files <- variable_files[tools::file_path_sans_ext(basename(variable_files)) %in% only_ids]
+    missing <- setdiff(only_ids, tools::file_path_sans_ext(basename(variable_files)))
+    if (length(missing) > 0) {
+      stop(sprintf("No R/variables/*.R found for: %s", paste(missing, collapse = ", ")))
+    }
+  }
   variables <- lapply(variable_files, load_variable)
   ids <- vapply(variables, function(v) v$spec$id, character(1))
   names(variables) <- ids
@@ -73,4 +83,6 @@ run_all <- function(variables_dir = "R/variables", output_dir = "output") {
   invisible(output)
 }
 
-run_all()
+# Usage: Rscript R/runner.R              -> run every variable
+#        Rscript R/runner.R id1 id2 ...   -> run only the named variable(s)
+run_all(only_ids = commandArgs(trailingOnly = TRUE))

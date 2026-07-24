@@ -102,6 +102,66 @@ the R packages listed under [Commands](#commands).
   (e.g. `variable/highest-qualification-age30`) so concurrent sessions can't
   collide on the same files.
 
+## Running the scripts against the real data
+
+This is the "real-data verification" step from the workflow above, done by a
+human with authorised access to the real BCS70 microdata - never by an
+agent, and never inside a checkout that also talks to GitHub with real data
+present.
+
+**Your real-data environment already has the layout this repo's `bcs70/`
+mirrors** (built via [CLS-Data/make-directories-bcs70 (shuffle-plus)](https://github.com/CLS-Data/make-directories-bcs70/tree/shuffle-plus)
+per the README) - same `<sweep>/`, `metadata/`, and `master_file_info_lookup.csv`
+layout, just with real content in the `.tab` files instead of header-only
+dummies. All the derivation code needs is that layout plus the `R/` folder
+from this repo sitting alongside it.
+
+1. **Keep code and real data in separate git contexts.** Clone this repo
+   somewhere that will never contain real data - that clone is safe to
+   `git pull` and push/PR from normally:
+
+       git clone <this-repo-url> bcs70-core-code
+       cd bcs70-core-code && git pull   # whenever you need the latest scripts
+
+2. **Copy just the `R/` folder into the real-data root** (the directory
+   whose `bcs70/` already holds the real `.tab` files) - do not clone or
+   `git init` this repo on top of the real data:
+
+       cp -r bcs70-core-code/R /path/to/real-data-root/R
+
+3. **Run it from the real-data root:**
+
+       cd /path/to/real-data-root
+       Rscript R/runner.R                    # every variable in R/variables/
+       Rscript R/runner.R highest_qualification_age30   # just one variable, by id
+
+   Use the single-variable form when verifying one newly requested variable
+   - it only requires that variable's declared `source_files`/`source_vars`
+   to exist, not every variable's. (This depends on the file being named
+   exactly `R/variables/<id>.R`, which the `new-variable` skill always does.)
+   Output lands at `output/derived_variables.csv`, entirely on the real-data
+   machine - it never needs to leave it.
+
+4. **Check the result without exposing raw values.** Confirm it ran without
+   error (a wrong/missing column shows up immediately as an R error from
+   `build_variable()`), then look at *aggregate* diagnostics only - `summary()`
+   for continuous output, `table()` for categorical/ordinal output, and the
+   count of `NA`s - and compare them against what the variable's data
+   dictionary (`value_labels_json`, missing-value codes) would lead you to
+   expect.
+
+5. **Report back a pass/fail and aggregate diagnostics only** - e.g. "ran
+   clean, 12,432 non-missing, distribution matches expected value labels" or
+   "column `a0193c` doesn't exist in the real file, only `a0193b`". Never
+   paste real row-level values, respondent-level output, or a raw data
+   export into the issue, a PR, or a Claude Code session - the aggregate
+   summary is enough for the `verify-variable` skill to update `spec$status`.
+6. **Never commit anything from the real-data root.** If real-data testing
+   surfaces a bug in the script itself, make the fix in `bcs70-core-code`
+   (step 1's clean clone) using the synthetic fixtures as normal, re-copy
+   `R/` across to confirm the fix works on real data, and open the PR from
+   the clean clone - not from the real-data root.
+
 ## `bcs70/` is read-only
 
 Nothing in this repo may create, modify, move, or delete any file under
