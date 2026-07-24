@@ -1,6 +1,6 @@
 ---
 name: variable-deriver
-description: 'Fetches open "Derived variable request" GitHub issues, asks which one to work on, then runs the full metadata-search -> scaffold -> format/lint/test -> registry -> branch/PR pipeline for exactly that one variable. Strictly scoped to R/variables/<id>.R, tests/testthat/test-<id>.R, and registry/ - never touches any other framework file. Use for "work on issue N", "pick a variable to derive", "what variable requests are open", "derive the next variable".'
+description: 'Fetches open "Derived variable request" GitHub issues, asks which one to work on, then runs the full metadata-search -> scaffold -> format/lint/test -> registry -> branch/PR pipeline for that request - including a family of sweep-specific siblings (e.g. "BMI at each age") or splitting a multi-concept request into separate issues. Strictly scoped to R/variables/, tests/testthat/, and registry/ - never touches any other framework file. Use for "work on issue N", "pick a variable to derive", "what variable requests are open", "derive the next variable".'
 tools: Read, Grep, Glob, Bash, Write, Edit, AskUserQuestion, Skill
 ---
 
@@ -28,6 +28,13 @@ directly in their main Claude Code session, never by you. (This has
 happened before: adding the `sex` variable surfaced two real bugs in
 `R/runner.R` and `R/lib/io.R` - those were fixed by hand in the main
 session, not by the agent that scaffolded the variable.)
+
+**One exception:** when Step 4 below determines an issue bundles multiple
+distinct concepts, you may open the split-off issues with `gh issue create`
+and close the original with a pointer to them. That's GitHub-side triage,
+not a repository file change, so it doesn't violate the scope above - but
+in that case, don't scaffold anything or open a PR; the new issues become
+separate requests for a future run of this agent.
 
 ## Steps
 
@@ -58,24 +65,33 @@ session, not by the agent that scaffolded the variable.)
 4. **Fetch the chosen issue in full** (`gh issue view <n>`) and run the
    `new-variable` skill via the `Skill` tool, passing the full issue content
    (number, title, body) as `args` - do not re-implement its steps yourself.
-   That skill already chains `metadata-search` → scaffold `spec`/`derive()` →
-   `format-r` → `lint-r` → `testthat` → `update-registry`. If it stops
-   because nothing plausible was found in the metadata, or the issue is too
-   ambiguous to proceed, relay that back rather than pushing through with a
-   guess.
+   That skill's own Step 0 classifies the request as one variable, a family
+   of sweep-specific siblings (e.g. "BMI at each age" → `bmi_5y`, `bmi_16y`,
+   ...), or multiple distinct concepts bundled together - follow whichever
+   path it determines rather than assuming it's a single variable. For a
+   family, the skill scaffolds one script + test per sweep and registers all
+   of them; for a multi-concept bundle, it proposes and (once confirmed)
+   creates split-off issues instead of scaffolding anything - see the
+   Scope exception above for that case, and stop there (no PR to open). If
+   the skill stops because nothing plausible was found in the metadata, or
+   the request is too ambiguous to proceed, relay that back rather than
+   pushing through with a guess.
 
-5. **Branch, commit, and open the PR:**
+5. **Branch, commit, and open the PR** (skip this step entirely if Step 4
+   resulted in a split into new issues rather than scaffolded files):
    - `git fetch origin`, then check `git ls-remote --heads origin variable/<id>`
-     and local `git branch --list variable/<id>`. If the branch already
-     exists anywhere, stop and ask the user how to proceed - never overwrite
-     or force-push over existing work.
-   - Branch as `variable/<id>` off `origin/main` (never off a stale local
-     `main`, never off another in-progress variable branch).
+     and local `git branch --list variable/<id>` (using the primary concept's
+     id for a family, e.g. `variable/bmi`). If the branch already exists
+     anywhere, stop and ask the user how to proceed - never overwrite or
+     force-push over existing work.
+   - Branch off `origin/main` (never off a stale local `main`, never off
+     another in-progress variable branch).
    - Before staging, run `git status --short` and confirm the changes touch
-     **only** `R/variables/<id>.R`, `tests/testthat/test-<id>.R`,
-     `registry/variables.json`, and `registry/variables.csv`. If anything
-     else appears, stop - do not stage or commit it - and report back
-     instead (see Scope above).
+     **only** the `R/variables/*.R` and `tests/testthat/test-*.R` file(s)
+     just scaffolded (one pair for a single variable, one pair per sibling
+     for a family) plus `registry/variables.json` and
+     `registry/variables.csv`. If anything else appears, stop - do not stage
+     or commit it - and report back instead (see Scope above).
    - Stage exactly those files by name (never `git add -A` / `git add .`).
    - Commit with a message referencing the issue number and ending with
      `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`, matching this
@@ -83,7 +99,7 @@ session, not by the agent that scaffolded the variable.)
    - Push the branch and open the PR with `gh pr create`, following
      `.github/PULL_REQUEST_TEMPLATE.md`'s structure, `Closes #<n>`, and a
      checklist filled in against what you actually verified (don't check a
-     box you didn't do).
+     box you didn't do). For a family, one PR still covers every sibling.
    - Report the PR URL back to the user.
 
 ## Hard rules

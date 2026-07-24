@@ -1,11 +1,36 @@
 ---
 name: new-variable
-description: Scaffold a new derived-variable R script (spec + logic + synthetic test) from a GitHub issue request, after an exhaustive metadata search, and refresh the variable registry.
+description: Scaffold a new derived-variable R script (spec + logic + synthetic test) from a GitHub issue request, after an exhaustive metadata search, and refresh the variable registry. Also handles requests that are really a family of sweep-specific siblings (e.g. "BMI at each age"), or that bundle multiple distinct concepts and need splitting into separate issues.
 ---
 
 # New variable
 
 Use this when the user hands you a GitHub issue (number, URL, or pasted text) requesting a new derived variable.
+
+## Step 0: classify the request
+
+Work out which of three shapes the issue actually is - see
+`CONTRIBUTING.md#family-variables-and-multi-concept-requests` for the full
+policy:
+
+- **One variable.** Continue to Step 1 below as normal.
+- **A family: the same concept repeated across sweeps** (e.g. "BMI at each
+  age"). This isn't one variable - it's several siblings, one per sweep that
+  actually has the needed source data. Run `metadata-search` first to
+  confirm which sweeps qualify, propose the resulting id list to the user
+  (`<concept>_<sweep>`, e.g. `bmi_5y`, `bmi_16y`) for confirmation, then
+  repeat Steps 1-7 below **once per sweep** before doing Step 8 (registry)
+  and Step 9 **once**, for the whole family together.
+- **Multiple distinct concepts bundled into one issue** (e.g.
+  "first_age_smoking" and "number_of_cigarettes_smoked" filed together).
+  Don't scaffold these together. Propose splitting into one issue per
+  concept; once the user confirms, create the new issues with
+  `gh issue create` (referencing the original for context), close the
+  original with a comment pointing at the new issues, and stop - each new
+  issue becomes its own request, worked independently afterward.
+- If it's genuinely unclear which of these applies (as it was for "BMI for
+  each age" - the phrase alone doesn't say whether that means one
+  cross-sweep field or one-per-sweep), ask the user rather than guessing.
 
 ## Steps
 
@@ -16,8 +41,8 @@ Use this when the user hands you a GitHub issue (number, URL, or pasted text) re
 5. Copy `templates/variable_test.R` to `tests/testthat/test-<id>.R`, filling in synthetic rows that cover: a typical valid value per source var, each documented missing/sentinel code, and a genuine `NA`.
 6. Invoke the `format-r` skill, then the `lint-r` skill, against the new files.
 7. Run `Rscript -e 'testthat::test_dir("tests/testthat")'` and confirm the new test passes.
-8. Invoke the `update-registry` skill so `registry/` picks up the new variable, and include that diff in the same change.
-9. Tell the user plainly: this script has only been checked against fabricated data - it still needs to be run against the real data outside this repo before `spec$status` can move past `"draft"`. Suggest opening a PR (using `.github/PULL_REQUEST_TEMPLATE.md`) that references the originating issue.
+8. Invoke the `update-registry` skill so `registry/` picks up the new variable(s), and include that diff in the same change.
+9. Tell the user plainly: this script has only been checked against fabricated data - it still needs to be run against the real data outside this repo before `spec$status` can move past `"draft"`. Suggest opening a PR (using `.github/PULL_REQUEST_TEMPLATE.md`) that references the originating issue - one PR per issue, even when Step 0 produced a whole family of sibling files.
 
 ## Hard rules
 

@@ -52,6 +52,38 @@ a branch already gives isolated in-progress work, a diff already gives a
 review surface, and merging to `main` already gives promotion, so a separate
 staging area would just duplicate what git provides.
 
+## Family variables and multi-concept requests
+
+"One variable, one script" doesn't mean every issue maps to exactly one
+`R/variables/<id>.R`. Two patterns come up that need different handling -
+distinguishing them is Step 0 of the `new-variable` skill:
+
+**Same concept, repeated across sweeps** - e.g. "BMI at each age," "highest
+qualification at every sweep." This is a *family* of sibling variables, not
+one variable. Scaffold one script + one test per sweep that actually has the
+needed source data (confirm which via `metadata-search` - don't assume every
+sweep qualifies), named `<concept>_<sweep>` with `<sweep>` matching the
+`bcs70/<sweep>/` folder exactly (e.g. `bmi_5y`, `bmi_16y`, `bmi_34y`). Every
+sibling's `spec$github_issue` points at the same originating issue, and all
+the siblings from one issue land in a single PR together - reviewing several
+near-identical, sweep-specific scripts side by side is easier than splitting
+one request across N separate PRs.
+
+**Genuinely distinct concepts bundled into one ask** - e.g.
+"first_age_smoking" and "number_of_cigarettes_smoked" filed together. These
+don't share a derivation, a value type, or a verification path, so they get
+split into one issue per concept instead of one bundled PR: propose the
+split back to whoever filed it, and once confirmed, open a new issue per
+concept (referencing the original for context) and close the original with
+a comment pointing at the replacements. Each new issue is then worked as its
+own, independent request.
+
+When it's genuinely unclear which pattern applies - as it was for "BMI for
+each age," where the phrase alone doesn't say whether that means one
+cross-sweep field or one-per-sweep - ask rather than guessing. That's
+expected behaviour from both the `new-variable` skill and the
+`variable-deriver` subagent, not something to route around.
+
 ## Using a Claude Code agent to contribute
 
 The skills that drive the workflow above live in `.claude/skills/` and are
@@ -99,12 +131,18 @@ duplicating it) and opens the PR itself.
 The difference from just running the skill yourself is scope: this
 subagent's own instructions restrict it to creating or changing only
 `R/variables/<id>.R`, `tests/testthat/test-<id>.R`, and `registry/`. If a
-request would require any other change - the way `sex` needed fixes to
-`R/runner.R` and `R/lib/io.R` - it's instructed to stop and report back
+request would require any other file to change - the way `sex` needed fixes
+to `R/runner.R` and `R/lib/io.R` - it's instructed to stop and report back
 rather than make that change itself; framework-level work stays something
 you do directly, not something a variable-deriving agent does on your
 behalf. Because it needs to ask which issue to work on, run it in the
 foreground (so you can answer that question) rather than backgrounding it.
+
+The one exception to "only those three paths": when [Step 0](#family-variables-and-multi-concept-requests)
+finds an issue bundling multiple distinct concepts, the agent is allowed to
+open the split-off issues with `gh issue create` and close the original -
+that's GitHub-side triage, not a repository file change, so it doesn't
+violate the scope restriction above.
 
 **Hard rules to hold any agent to, no matter who's driving it:**
 
