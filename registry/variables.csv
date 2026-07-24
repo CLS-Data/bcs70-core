@@ -1,1 +1,2 @@
 "id","category","label","github_issue","status","source_files","source_vars","file"
+"sex","demographic","Sex of cohort member, most recent non-missing self-report across sweeps",2,"draft","bcs7072a; f699c; sn3723; bcs7016x; bcs21yearsample; bcs96x; bcs2000; bcs_2004_followup; bcs_2008_followup; bcs70_2012_flatfile; bcs_age46_main; bcs11_age51_main; bcs70_response_1970-2021","a0255; f003; sex10; sex86; sex; b960337; bd7sex; bd8sex; B9CMSEX; B10CMSEX; b11sex","R/variables/sex.R"

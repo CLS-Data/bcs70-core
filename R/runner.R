@@ -19,25 +19,51 @@ load_variable <- function(path) {
   env
 }
 
-# Loads the declared source files for one variable, joins them on bcsid,
-# and hands the variable's derive() function only the columns it declared.
+# Loads the declared source files for one variable, narrows each one to just
+# bcsid + the columns this variable declared (before merging, so files with
+# hundreds of unrelated columns can't collide with each other), then joins
+# them on bcsid and hands the result to the variable's derive() function.
+#
+# If the same raw variable name is declared across more than one source file
+# (e.g. several sweeps each have their own column literally called "sex"),
+# only THOSE colliding columns are renamed to "<file_name>.<var>" so they
+# stay distinguishable after the join - everything else keeps its bare name,
+# so the common single-file case is unaffected.
 build_variable <- function(variable) {
   spec <- variable$spec
   needed_files <- unique(spec$source_files)
-  raw <- lapply(needed_files, load_tab) # nolint: object_usage_linter. load_tab comes from source("R/lib/io.R") above
 
-  merged <- Reduce(function(x, y) merge(x, y, by = "bcsid", all = TRUE), raw)
+  # nolint start: object_usage_linter. load_tab comes from source("R/lib/io.R") above
+  per_file <- lapply(needed_files, function(f) {
+    raw <- load_tab(f)
+    vars_here <- intersect(spec$source_vars, names(raw))
+    raw[, c("bcsid", vars_here), drop = FALSE]
+  })
+  # nolint end
+  names(per_file) <- needed_files
 
-  available_vars <- intersect(spec$source_vars, names(merged))
-  missing_vars <- setdiff(spec$source_vars, names(merged))
+  found_vars <- unique(unlist(lapply(per_file, function(d) setdiff(names(d), "bcsid"))))
+  missing_vars <- setdiff(spec$source_vars, found_vars)
   if (length(missing_vars) > 0) {
     stop(sprintf(
-      "%s declares source_vars not found in %s: %s",
+      "%s declares source_vars not found in any of %s: %s",
       spec$id, paste(needed_files, collapse = ", "), paste(missing_vars, collapse = ", ")
     ))
   }
 
-  input <- merged[, c("bcsid", available_vars), drop = FALSE]
+  all_var_names <- unlist(lapply(per_file, function(d) setdiff(names(d), "bcsid")))
+  colliding_names <- unique(all_var_names[duplicated(all_var_names)])
+
+  per_file <- Map(function(d, file_name) {
+    cols <- setdiff(names(d), "bcsid")
+    to_rename <- intersect(cols, colliding_names)
+    if (length(to_rename) > 0) {
+      names(d)[match(to_rename, names(d))] <- paste0(file_name, ".", to_rename)
+    }
+    d
+  }, per_file, names(per_file))
+
+  input <- Reduce(function(x, y) merge(x, y, by = "bcsid", all = TRUE), per_file)
   result <- variable$derive(input)
 
   if (!is.data.frame(result) || !all(c("bcsid", spec$id) %in% names(result))) {

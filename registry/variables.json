@@ -1,6 +1,20 @@
 {
   "categories": {
-    "demographic": [],
+    "demographic": [
+      {
+        "id": "sex",
+        "label": "Sex of cohort member, most recent non-missing self-report across sweeps",
+        "category": "demographic",
+        "github_issue": 2,
+        "status": "draft",
+        "author": "Mack Nixon (via Claude Code, new-variable skill)",
+        "created": "2026-07-24",
+        "source_files": ["bcs7072a", "f699c", "sn3723", "bcs7016x", "bcs21yearsample", "bcs96x", "bcs2000", "bcs_2004_followup", "bcs_2008_followup", "bcs70_2012_flatfile", "bcs_age46_main", "bcs11_age51_main", "bcs70_response_1970-2021"],
+        "source_vars": ["a0255", "f003", "sex10", "sex86", "sex", "b960337", "bd7sex", "bd8sex", "B9CMSEX", "B10CMSEX", "b11sex"],
+        "notes": "Issue #2: 'Capture the sex of a participant. Take the most recent non null value.' One cohort-member-own-sex variable was picked per sweep (excluding partner/child/other-household-member sex variables, which exist in most sweep files alongside it) via the metadata-search skill: 0y=a0255 (bcs7072a), 5y=f003 (f699c), 10y=sex10 (sn3723), 16y=sex86 (bcs7016x), 21y=sex (bcs21yearsample), 26y=b960337 (bcs96x, self-report - bcs96x also has a 'sex' var but it's 'Sex from Address File', an admin source, not a self-report, so it was not used), 29y=sex (bcs2000, 'CM gender [derived]'), 34y=bd7sex (bcs_2004_followup, already reconciled against the address database), 38y=bd8sex (bcs_2008_followup, labelled '(Derived) ... (final)'), 42y=B9CMSEX (bcs70_2012_flatfile), 46y=B10CMSEX (bcs_age46_main, study 8547 - not 8611, which is the age-46 accelerometry sub-study), 51y=b11sex (bcs11_age51_main). The xwave response file's own 'sex' ('Birth sex of cohort member', bcs70_response_1970-2021) is used only as a last-resort fallback, for anyone missing at every sweep-specific occasion - it wasn't given priority over sweep values because the request asks for the most RECENT self-report, and this file isn't tied to a single occasion. 5y note for reviewer: bcs70_1975_developmental_history/VAR5503 and f699a/d003 are two other 5y candidates not used here (arbitrary choice among near-duplicates) - worth a second opinion. Every source variable is coded 1=Male, 2=Female with sweep-specific negative and/or positive sentinel codes for missing/not-known/refused (these differ per sweep - see each dictionary's value_labels_json); derive() whitelists only 1/2 as valid and treats every other code as missing, so no sentinel scheme needs to be enumerated here.",
+        "file": "R/variables/sex.R"
+      }
+    ],
     "socio_economic": [],
     "health": [],
     "education": [],
