@@ -1,0 +1,55 @@
+name: Derived variable request
+description: Request a new derived variable to be harmonised across BCS70 sweeps.
+title: "[variable] "
+labels: ["variable-request"]
+body:
+  - type: input
+    id: variable-name
+    attributes:
+      label: Proposed variable name
+      description: Short snake_case identifier - this becomes the output column name (e.g. R/variables/<name>.R).
+      placeholder: e.g. highest_qualification_age30
+    validations:
+      required: true
+  - type: input
+    id: sweeps
+    attributes:
+      label: Sweep(s) involved
+      description: Which sweep(s)/ages does this draw from? e.g. 26y, 29y
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Used to group the variable in the registry (registry/variables.json). See CONTRIBUTING.md#variable-categories for what each covers.
+      options:
+        - Demographic
+        - Socio-economic
+        - Health
+        - Education
+        - Employment
+        - Family & relationships
+        - Housing
+        - Behavioural / lifestyle
+        - Cognitive / ability
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What should this variable capture?
+      description: Describe the concept/outcome this variable should represent, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: source-vars
+    attributes:
+      label: Known or candidate source variables (optional)
+      description: If you already know which raw variables/files feed this, list them. See bcs70/master_file_info_lookup.csv and the relevant data_dictionaries/*.csv.
+  - type: textarea
+    id: logic-notes
+    attributes:
+      label: Coding / edge-case notes (optional)
+      description: Any known missing-value handling, edge cases, or precedent from prior CLS-published derived variables.

@@ -4,6 +4,8 @@ This repository provides **R scripts** that harmonise the multiple sweeps of the
 
 This work is being done with human-in-the-loop AI development. Zero study data is exposed to any LLM. The AI workflow only has access to publicly available metadata and dummy files for each dataset, with absolutely no real data content.
 
-The output will be modular R scripts that can be run on the actual data. The actual folder and file structure can be recreated by following this repository:
+The output is modular R scripts (one per derived variable, under `R/variables/`) that can be run on the actual data via `R/runner.R`. The actual folder and file structure can be recreated by following this repository:
 
 - [CLS-Data/make-directories-bcs70 (shuffle-plus)](https://github.com/CLS-Data/make-directories-bcs70/tree/shuffle-plus)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to request and add a derived variable.

@@ -1,2 +1,6 @@
 .Rproj.user/
 .DS_Store
+
+# runner output can contain real derived values when run against the real
+# data mount - it must never be committed to this repo
+output/
