@@ -82,6 +82,30 @@ the R packages listed under [Commands](#commands).
    back and tell your agent the result - it will use the `verify-variable`
    skill to update `spec$status` and the registry accordingly.
 
+### The `variable-deriver` subagent
+
+Steps 1-4 above can also be delegated wholesale to a dedicated subagent,
+`.claude/agents/variable-deriver.md`, rather than driving them yourself in
+your main session. Ask for it directly, e.g.:
+
+> Use the variable-deriver agent
+
+It fetches every open "Derived variable request" issue (`gh issue list
+--label variable-request`), asks which one to work on, then runs the same
+metadata-search → scaffold → format/lint/test → registry pipeline as the
+`new-variable` skill (it invokes that skill directly rather than
+duplicating it) and opens the PR itself.
+
+The difference from just running the skill yourself is scope: this
+subagent's own instructions restrict it to creating or changing only
+`R/variables/<id>.R`, `tests/testthat/test-<id>.R`, and `registry/`. If a
+request would require any other change - the way `sex` needed fixes to
+`R/runner.R` and `R/lib/io.R` - it's instructed to stop and report back
+rather than make that change itself; framework-level work stays something
+you do directly, not something a variable-deriving agent does on your
+behalf. Because it needs to ask which issue to work on, run it in the
+foreground (so you can answer that question) rather than backgrounding it.
+
 **Hard rules to hold any agent to, no matter who's driving it:**
 
 - **Never point a Claude Code session at anything other than this repo's

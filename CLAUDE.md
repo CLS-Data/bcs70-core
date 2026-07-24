@@ -46,6 +46,9 @@ registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
 
 .github/                          issue template (incl. category), PR template, and r-ci.yml (format/lint/test + bcs70 guard + registry check)
+
+.claude/agents/variable-deriver.md   subagent: fetches open variable-request issues, asks which to work on, runs new-variable through to an
+                                      opened PR - scoped to R/variables/, tests/testthat/, and registry/ only (see CONTRIBUTING.md)
 ```
 
 Key points about this structure:
