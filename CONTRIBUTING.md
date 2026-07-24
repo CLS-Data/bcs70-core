@@ -160,7 +160,7 @@ the specs it's derived from.
 
 ```r
 # Format all R code
-Rscript -e 'styler::style_dir("R"); styler::style_dir("tests")'
+Rscript -e 'styler::cache_deactivate(); styler::style_dir("R"); styler::style_dir("tests")'
 
 # Lint all R code
 Rscript -e 'print(c(lintr::lint_dir("R"), lintr::lint_dir("tests")))'
@@ -183,3 +183,8 @@ gitignored - whatever `R/runner.R` writes there (including when run against
 the dummy data in this repo) must never be committed. `registry/` is the
 opposite: it's generated but must be committed, since it's the front end's
 read path into this repo.
+
+`styler::cache_deactivate()` is called before every format check because its
+on-disk cache can fail with a permission error in sandboxed/restricted
+environments (seen in a locked-down Claude Code session) - it's purely a
+performance optimization, so turning it off costs nothing but a bit of speed.

@@ -85,7 +85,7 @@ Before writing `source_files`/`source_vars` for any new variable, run an exhaust
 Requires the R packages `styler`, `lintr`, `testthat`, `jsonlite`:
 
 ```r
-Rscript -e 'styler::style_dir("R"); styler::style_dir("tests")'   # format
+Rscript -e 'styler::cache_deactivate(); styler::style_dir("R"); styler::style_dir("tests")'   # format
 Rscript -e 'print(c(lintr::lint_dir("R"), lintr::lint_dir("tests")))'  # lint
 Rscript -e 'testthat::test_dir("tests/testthat")'                  # test (synthetic fixtures only)
 Rscript R/runner.R                                                  # run all variables end to end

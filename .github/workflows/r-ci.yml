@@ -41,6 +41,7 @@ jobs:
         shell: Rscript {0}
       - name: Check formatting (styler)
         run: |
+          styler::cache_deactivate()
           changed <- styler::style_dir("R", dry = "fail")
           changed2 <- styler::style_dir("tests", dry = "fail")
         shell: Rscript {0}
