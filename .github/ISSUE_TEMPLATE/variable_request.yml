@@ -3,6 +3,17 @@ description: Request a new derived variable to be harmonised across BCS70 sweeps
 title: "[variable] "
 labels: ["variable-request"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        **One issue = one concept.** If this is the *same measured concept*
+        repeated across sweeps (e.g. "BMI at each age"), that's fine -
+        describe it once below; a script gets created per relevant sweep
+        automatically, all tracked against this one issue. If your request
+        actually covers more than one *distinct* concept (e.g. "age started
+        smoking" and "number of cigarettes smoked"), please file a separate
+        issue for each - they need independent review and independent
+        real-data verification.
   - type: input
     id: variable-name
     attributes:
