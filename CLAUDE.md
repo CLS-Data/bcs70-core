@@ -52,6 +52,7 @@ Key points about this structure:
 - **Sweeps are age-based** (`0y`, `5y`, `10y`, ... `51y`), not year-based — a sweep can be composed of *multiple UKDS study numbers*. For example `16y` spans study numbers 3535, 5225, 6095, 8288, and 8618, because different instruments/derived-variable sets from that sweep were deposited separately over time. `xwave` holds cross-sweep files (partnership/activity histories, response/deaths) that don't belong to a single age point.
 - `master_file_info_lookup.csv` is the authoritative cross-sweep index — start here when you need to locate which file/study covers a given sweep or topic, rather than crawling directories manually.
 - Each study number's `file_information` CSV additionally lists non-tabular deposit contents (e.g. `read<N>`, `UKDA_Study_<N>_Information`, zipped dictionary bundles) that aren't reflected in `master_file_info_lookup.csv`.
+- The identifier column is usually `bcsid`, but a couple of files (`bcs70_2012_flatfile`, `bcs_age46_main`) use `BCSID` instead - `R/lib/io.R`'s `load_tab()` normalises this to lowercase at load time, so nothing downstream needs to special-case it.
 
 ### Data dictionary CSV format
 
@@ -74,7 +75,7 @@ This is the source of truth for recoding logic (value labels, missing-value sent
 Every `R/variables/<id>.R` (see `templates/variable.R`) defines exactly two objects, sourced into their own environment by the runner — so every script can reuse the same names without colliding:
 
 - `spec`: a plain list — `id` (snake_case, becomes the output column name), `label`, `category` (one of the fixed values in `CONTRIBUTING.md#variable-categories` — validated by `scripts/build_registry.R`), `github_issue`, `status` (`draft` → `ready_for_real_data_test` → `verified`), `author`, `created`, `source_files` (file_name(s) from `master_file_info_lookup.csv`), `source_vars` (raw variable names needed), `notes`.
-- `derive(data)`: a pure function. `data` is a data.frame with exactly `bcsid` + the declared `source_vars`; it must return a data.frame with `bcsid` + a column named `spec$id`. No disk I/O of any kind inside this file.
+- `derive(data)`: a pure function. `data` is a data.frame with `bcsid` + one column per declared `source_vars` entry, named bare (e.g. `data$a0002`) **unless the same raw variable name is declared across more than one `source_files` entry** (e.g. several sweeps each have their own column literally called `sex`) - in that case only the colliding columns are disambiguated as `data[["<file_name>.<var>"]]` (e.g. `data[["bcs21yearsample.sex"]]`, `data[["bcs2000.sex"]]`); non-colliding columns are unaffected. `derive()` must return a data.frame with `bcsid` + a column named `spec$id`. No disk I/O of any kind inside this file.
 
 The file must be named `R/variables/<id>.R` exactly matching `spec$id` — this isn't just convention, `Rscript R/runner.R <id>` (used to verify a single variable against real data) filters on the file name.
 

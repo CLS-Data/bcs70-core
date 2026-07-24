@@ -19,6 +19,11 @@ get_lookup <- function() {
 
 # Resolve and read a .tab file by its file_name, as it appears in
 # master_file_info_lookup.csv (e.g. "bcs7016x", "bcs_age46_main").
+#
+# Some deposited files (e.g. bcs70_2012_flatfile, bcs_age46_main) use
+# "BCSID" rather than "bcsid" for the identifier column - normalised to
+# lowercase here so every other file in this codebase (runner.R, variable
+# scripts, tests) can always assume a single, consistent "bcsid" name.
 load_tab <- function(file_name) {
   lookup <- get_lookup()
   row <- lookup[lookup$file_name == file_name & lookup$file_type == "tab", ]
@@ -29,5 +34,16 @@ load_tab <- function(file_name) {
     ))
   }
   path <- file.path("bcs70", row$sweep[1], row$path[1])
-  read.delim(path, stringsAsFactors = FALSE, check.names = FALSE)
+  data <- read.delim(path, stringsAsFactors = FALSE, check.names = FALSE)
+
+  id_col <- which(tolower(names(data)) == "bcsid")
+  if (length(id_col) != 1) {
+    stop(sprintf(
+      "%s: expected exactly one bcsid-like identifier column, found %d",
+      file_name, length(id_col)
+    ))
+  }
+  names(data)[id_col] <- "bcsid"
+
+  data
 }

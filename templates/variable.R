@@ -27,7 +27,11 @@ spec <- list(
 )
 
 derive <- function(data) {
-  # `data` is a data.frame with columns: bcsid, <spec$source_vars...>
+  # `data` is a data.frame with columns: bcsid, <spec$source_vars...>, named
+  # bare (e.g. data$a0001) UNLESS the same raw name is declared across more
+  # than one source_files entry (e.g. several sweeps each have their own
+  # column literally called "sex") - then only those colliding columns are
+  # disambiguated as data[["<file_name>.<var>"]]; see CLAUDE.md for details.
   # Return a data.frame with columns: bcsid, <spec$id>
   stop("Not implemented - replace with real derivation logic")
 }
