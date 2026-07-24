@@ -1,0 +1,18 @@
+file_name,description
+read8547,UK Data Archive ReadMe File for Study 8547
+UKDA_Study_8547_Information,UK Data Archive Citation File for Study 8547
+bcs70_age_46_derived_variables_user_guide,1970 British Cohort Study - Age 46 Derived Variables User Guide
+bcs70_age_46_survey_user_guide,1970 British Cohort Study - Age 46 Survey User Guide
+bcs_2016_variable_lookup_table,1971 British Cohort Study - Variable Lookup Table
+bcs_age46_dietary_questionnaire,On-line Dietary Questionnaire Data File
+bcs_age46_employment,Employment History Data File
+bcs_age46_housing,Housing History Data File
+bcs_age46_long_acting_medication,Long-acting Medication Data File
+bcs_age46_main,"Core Interview, Self-completion and Nurse Administered Measurements"
+Data File,bcs_age46_medication
+BNF Codes for Medication Data File,bcs_age46_nutrients
+Nutrient Data File,bcs_age46_persongrid
+Household Grid Data File,bcs_age46_qualifications
+Qualifications History Data File,bcs_age46_relationships
+Relationships Data File,bcs_age46_unfolding
+Unfolding Brackets Data File,ukda_data_dictionaries

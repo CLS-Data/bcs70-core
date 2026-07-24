@@ -1,0 +1,204 @@
+study_number,sweep,file_name,description,file_type,path,source_table_path
+2666,0y,2666userguide,User Guide for Birth Cohort 1970 and 22 Month Surveys,pdf,metadata/2666/pdfs/2666userguide.pdf,0y/metadata/2666/file_information/2666_file_information_table.csv
+2666,0y,bcs1derived,Derived Variables for the Birth Sweep Data,tab,bcs1derived.tab,0y/metadata/2666/file_information/2666_file_information_table.csv
+2666,0y,bcs7072a,Birth Data,tab,bcs7072a.tab,0y/metadata/2666/file_information/2666_file_information_table.csv
+2666,0y,bcs7072b,22-month Sub-sample,tab,bcs7072b.tab,0y/metadata/2666/file_information/2666_file_information_table.csv
+2666,0y,bcs70_derived_variables_at_birth_sweep,Derived Variables at Birth Sweep,pdf,metadata/2666/pdfs/bcs70_derived_variables_at_birth_sweep.pdf,0y/metadata/2666/file_information/2666_file_information_table.csv
+2666,0y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/2666/pdfs/bcs70_revised_region_variables.pdf,0y/metadata/2666/file_information/2666_file_information_table.csv
+2666,0y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/2666/pdfs/cls_confidentiality_and_data_security_review.pdf,0y/metadata/2666/file_information/2666_file_information_table.csv
+3723,10y,a3723uab,User Guide (Part 1),pdf,metadata/3723/pdfs/a3723uab.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,a3723ubb,User Guide (Part 2),pdf,metadata/3723/pdfs/a3723ubb.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,a3723ucb,User Guide (Part 3),pdf,metadata/3723/pdfs/a3723ucb.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,a3723udb,User Guide (Part 4),pdf,metadata/3723/pdfs/a3723udb.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,a3723ueb,User Guide (Part 5),pdf,metadata/3723/pdfs/a3723ueb.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,a3723ufb,User Guide (Part 6),pdf,metadata/3723/pdfs/a3723ufb.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,bcs3derived,Derived Variables at 1980 Sweep (Ten-Year Follow-up) Data File,tab,bcs3derived.tab,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,bcs70_1980_audiometry,Audiogram Variables 1980 Ten-Year Follow-up Data File,tab,bcs70_1980_audiometry.tab,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,bcs70_age10_audiograms_guide,Ten-year Follow-Up Audiogram Results,pdf,metadata/3723/pdfs/bcs70_age10_audiograms_guide.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,bcs70_derived_variables_at_1980_sweep,Derived Variables at 1980 Sweep (Ten-Year Follow-up),pdf,metadata/3723/pdfs/bcs70_derived_variables_at_1980_sweep.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/3723/pdfs/bcs70_revised_region_variables.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/3723/pdfs/cls_confidentiality_and_data_security_review.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 Identifiers,pdf,metadata/3723/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,10y/metadata/3723/file_information/3723_file_information_table.csv
+3723,10y,sn3723,Main BCS70 1980 Ten-Year Follow-up Data File,tab,sn3723.tab,10y/metadata/3723/file_information/3723_file_information_table.csv
+7064,10y,annotated_special_test_booklet_and_special_teacher_questionnaire,Annotated Special Test Booklet and Special Teacher Questionnaire,pdf,metadata/7064/pdfs/annotated_special_test_booklet_and_special_teacher_questionnaire.pdf,10y/metadata/7064/file_information/7064_file_information_table.csv
+7064,10y,bcs3_special_needs,BCS70 10-year Special Needs data,tab,bcs3_special_needs.tab,10y/metadata/7064/file_information/7064_file_information_table.csv
+7064,10y,bcs70_10-year_special_needs_tests_guide_to_the_dataset,BCS70 10-year Special Needs Tests Guide to the Dataset,pdf,metadata/7064/pdfs/bcs70_10-year_special_needs_tests_guide_to_the_dataset.pdf,10y/metadata/7064/file_information/7064_file_information_table.csv
+7064,10y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/3723/pdfs/cls_confidentiality_and_data_security_review.pdf,10y/metadata/7064/file_information/7064_file_information_table.csv
+7064,10y,educational_questionnaire,Educational Questionnaire,pdf,metadata/7064/pdfs/educational_questionnaire.pdf,10y/metadata/7064/file_information/7064_file_information_table.csv
+7064,10y,instruction_booklet_for_special_educational_tests,Instruction Booklet for Special Educational Tests,pdf,metadata/7064/pdfs/instruction_booklet_for_special_educational_tests.pdf,10y/metadata/7064/file_information/7064_file_information_table.csv
+7064,10y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/3723/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,10y/metadata/7064/file_information/7064_file_information_table.csv
+3535,16y,a3535uab,User Guide Part 1 - Introduction/Manuals/Questionnaires B-H,pdf,metadata/3535/pdfs/a3535uab.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,a3535ubb,User Guide Part 2 - Annotated Questionnaires J-T,pdf,metadata/3535/pdfs/a3535ubb.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,a3535ucb,User Guide Part 3 - Appendices,pdf,metadata/3535/pdfs/a3535ucb.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,a3535udb,User Guide Part 4 - CLS Data Note 1: Longitudinal Linkage in BCS70,pdf,metadata/3535/pdfs/a3535udb.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs4derived,BCS70 16 Year Follow-up Derived Variables Data,tab,bcs4derived.tab,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs7016x,BCS70 16 Year Follow-up Main Numeric Data,tab,bcs7016x.tab,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs70_16-year_document_d_questionnaire,BCS70 16-year Document D Questionnaire,pdf,metadata/3535/pdfs/bcs70_16-year_document_d_questionnaire.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs70_age16_school_type,Age 16 School Type Variable Data File,tab,bcs70_age16_school_type.tab,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs70_age_16_school_type_variable_user_guide,Age 16 School Type Derived Variable User Guide,pdf,metadata/3535/pdfs/bcs70_age_16_school_type_variable_user_guide.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs70_derived_variables_at_1986_sweep_2nded_2017,Derived Variables at 1986 Sweep (16 Year Follow-up),pdf,metadata/3535/pdfs/bcs70_derived_variables_at_1986_sweep_2nded_2017.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/3535/pdfs/bcs70_revised_region_variables.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/3535/pdfs/cls_confidentiality_and_data_security_review.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,jiig-cal_occupational_interests,JIIG-CAL Occupational Interests Data,tab,jiig-cal_occupational_interests.tab,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,jiig-cal_occupational_interests_dataset_user_guide,JIIG-CAL Occupational Interests Dataset User Guide,pdf,metadata/3535/pdfs/jiig-cal_occupational_interests_dataset_user_guide.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,ncds_and_bcs70_populationsandsamplesovertime,Changes in the NCDS and BCS70 populations and samples over time,pdf,metadata/3535/pdfs/ncds_and_bcs70_populationsandsamplesovertime.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+3535,16y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/3535/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,16y/metadata/3535/file_information/3535_file_information_table.csv
+5225,16y,bcs70_data_note_1_enhancements_to_head_teacher_questionnaire_data,BCS70 Data Note 1: Enhancements to Head Teacher Questionnaire Data,pdf,metadata/5225/pdfs/bcs70_data_note_1_enhancements_to_head_teacher_questionnaire_data.pdf,16y/metadata/5225/file_information/5225_file_information_table.csv
+5225,16y,bcs70_htq,BCS70 Head Teacher Questionnaire data,tab,bcs70_htq.tab,16y/metadata/5225/file_information/5225_file_information_table.csv
+5225,16y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/3535/pdfs/cls_confidentiality_and_data_security_review.pdf,16y/metadata/5225/file_information/5225_file_information_table.csv
+5225,16y,cls_data_note1_bcs_longitudinal_linkage,CLS Data Note 1: BCS70 Longitudinal Linkage,pdf,metadata/5225/pdfs/cls_data_note1_bcs_longitudinal_linkage.pdf,16y/metadata/5225/file_information/5225_file_information_table.csv
+5225,16y,guide_to_bcs70_16-year_head_teacher_questionnaire,Guide to BCS70 Sixteen-year Head Teacher Questionnaire,pdf,metadata/5225/pdfs/guide_to_bcs70_16-year_head_teacher_questionnaire.pdf,16y/metadata/5225/file_information/5225_file_information_table.csv
+5225,16y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/3535/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,16y/metadata/5225/file_information/5225_file_information_table.csv
+6095,16y,bcs70_16-year_arithmetic_data,BCS70 Arithmetic Test (Age 16) Data File,tab,bcs70_16-year_arithmetic_data.tab,16y/metadata/6095/file_information/6095_file_information_table.csv
+6095,16y,bcs70_16-year_arithmetic_test_guide_to_the_dataset,Guide to the dataset,pdf,metadata/6095/pdfs/bcs70_16-year_arithmetic_test_guide_to_the_dataset.pdf,16y/metadata/6095/file_information/6095_file_information_table.csv
+6095,16y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/3535/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,16y/metadata/6095/file_information/6095_file_information_table.csv
+8288,16y,bcs1986_reading_matrices,BCS 1970 Reading and Matrices Tests 1986 Data File,tab,bcs1986_reading_matrices.tab,16y/metadata/8288/file_information/8288_file_information_table.csv
+8288,16y,bcs70_1986_reading_and_matrices_tests_data_note,User Guide,pdf,metadata/8288/pdfs/bcs70_1986_reading_and_matrices_tests_data_note.pdf,16y/metadata/8288/file_information/8288_file_information_table.csv
+8618,16y,bcs70_age_16_dietary_diaries_user_guide,"BCS70 Sixteen-Year Follow-Up Dietary Diaries User Guide, 2020",pdf,metadata/8618/pdfs/bcs70_age_16_dietary_diaries_user_guide.pdf,16y/metadata/8618/file_information/8618_file_information_table.csv
+8618,16y,bcs86_dietfdgp,BCS70 Sixteen-Year Follow-Up Diet Food Group Data,tab,bcs86_dietfdgp.tab,16y/metadata/8618/file_information/8618_file_information_table.csv
+8618,16y,bcs86_dietnut,BCS70 Sixteen-Year Follow-Up Diet Nutrient Categories Data,tab,bcs86_dietnut.tab,16y/metadata/8618/file_information/8618_file_information_table.csv
+4715,21y,4715userguide,User Guide,pdf,metadata/4715/pdfs/4715userguide.pdf,21y/metadata/4715/file_information/4715_file_information_table.csv
+4715,21y,bcs21yearsample,BCS70 21-year sample survey data,tab,bcs21yearsample.tab,21y/metadata/4715/file_information/4715_file_information_table.csv
+4715,21y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/4715/pdfs/cls_confidentiality_and_data_security_review.pdf,21y/metadata/4715/file_information/4715_file_information_table.csv
+4715,21y,ncds_and_bcs70populationsandsamplesovertime,NCDS and BCS70 Populations and Samples Over Time,pdf,metadata/4715/pdfs/ncds_and_bcs70populationsandsamplesovertime.pdf,21y/metadata/4715/file_information/4715_file_information_table.csv
+4715,21y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/4715/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,21y/metadata/4715/file_information/4715_file_information_table.csv
+3833,26y,b3833uab,User Guide,pdf,metadata/3833/pdfs/b3833uab.pdf,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,bcs5derived,Derived Variables at 1996 Sweep (26-Year Follow-up) Data,tab,bcs5derived.tab,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,bcs70_derived_variables_at_1996_sweep,Derived Variables at 1996 Sweep (26-Year Follow-up),pdf,metadata/3833/pdfs/bcs70_derived_variables_at_1996_sweep.pdf,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/3833/pdfs/bcs70_revised_region_variables.pdf,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,bcs96x,BCS70 26-year Follow Up Data,tab,bcs96x.tab,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/3833/pdfs/cls_confidentiality_and_data_security_review.pdf,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,ncds_and_bcs70populationsandsamplesovertime,NCDS and BCS70 Populations and Samples Over Time,pdf,metadata/3833/pdfs/ncds_and_bcs70populationsandsamplesovertime.pdf,26y/metadata/3833/file_information/3833_file_information_table.csv
+3833,26y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/3833/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,26y/metadata/3833/file_information/3833_file_information_table.csv
+5558,29y,bcs2000,BCS70 1999-2000 Data,tab,bcs2000.tab,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,bcs6derived,BCS70 1999-2000 Derived Variables Data,tab,bcs6derived.tab,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,bcs70_derived_variables_at_1999-2000_sweep,Derived Variables at 1999-2000 Sweep (29-Year Follow-up),pdf,metadata/5558/pdfs/bcs70_derived_variables_at_1999-2000_sweep.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/5558/pdfs/bcs70_revised_region_variables.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/5558/pdfs/cls_confidentiality_and_data_security_review.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,ncds_and_bcs70_response,NCDS and BCS70 Response,pdf,metadata/5558/pdfs/ncds_and_bcs70_response.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/5558/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_1_design_and_conduct_of_the_1999-2000_surveys,User Guide Vol.1: Design and Conduct of the 1999-2000 Surveys,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_1_design_and_conduct_of_the_1999-2000_surveys.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_2_capi_documentation,User Guide Vol.2: CAPI Documentation,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_2_capi_documentation.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_3_capi_documentation_appendices,User Guide Vol.3: CAPI Documentation Appendices,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_3_capi_documentation_appendices.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_4_technical_report,User Guide Vol.4: Technical Report,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_4_technical_report.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_5_pregnancy_histories,User Guide Vol.5: Pregnancy Histories,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_5_pregnancy_histories.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_6_household_grid_variables,User Guide Vol.6: Household Grid Variables,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_6_household_grid_variables.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5558,29y,user_guide_1999-2000_vol_7_bcs_longitudinal_linkage,User Guide Vol.7: BCS70 Longitudinal Linkage,pdf,metadata/5558/pdfs/user_guide_1999-2000_vol_7_bcs_longitudinal_linkage.pdf,29y/metadata/5558/file_information/5558_file_information_table.csv
+5585,34y,bcs70_2004_guide_to_child_assessments,"BCS70, Age 34: Guide to Child Assessment",pdf,metadata/5585/pdfs/bcs70_2004_guide_to_child_assessments.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_2004_guide_to_child_paper_questionnaires,"BCS70, Age 34: Guide to Child Paper Questionnaires",pdf,metadata/5585/pdfs/bcs70_2004_guide_to_child_paper_questionnaires.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_2004_pc_self_completion_0-11_mths,"BCS70, Age 34: Questionnaire - Children Aged 0-11 Months",pdf,metadata/5585/pdfs/bcs70_2004_pc_self_completion_0-11_mths.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_2004_pc_self_completion_1-2_yrs,"BCS70, Age 34: Questionnaire - Children Aged 1-2 Years",pdf,metadata/5585/pdfs/bcs70_2004_pc_self_completion_1-2_yrs.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_2004_pc_self_completion_3-5_yrs,"BCS70, Age 34: Questionnaire - Children Aged 3-5 Years",pdf,metadata/5585/pdfs/bcs70_2004_pc_self_completion_3-5_yrs.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_2004_pc_self_completion_6-16_yrs,"BCS70, Age 34: Questionnaire - Children Aged 6-16 Years",pdf,metadata/5585/pdfs/bcs70_2004_pc_self_completion_6-16_yrs.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_2004_yp_self_completion,"BCS70, Age 34: Questionnaire - Young People 10-16 Years",pdf,metadata/5585/pdfs/bcs70_2004_yp_self_completion.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_age_34_dyslexia_user_guide,"BCS70, Age 34: Dyslexia Data User Guide",pdf,metadata/5585/pdfs/bcs70_age_34_dyslexia_user_guide.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_age_34_user_guide_2020_update,"BCS70, Age 34: A Guide to the Dataset: BCS 2004-2005 Follow-up",pdf,metadata/5585/pdfs/bcs70_age_34_user_guide_2020_update.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_derived_variables_at_2004-2005_sweep,"BCS70, Age 34: Derived Variables at 2004-2005 Sweep (34 Year Follow-up)",pdf,metadata/5585/pdfs/bcs70_derived_variables_at_2004-2005_sweep.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs70_revised_region_variables,"BCS70, Age 34: Revised Region Variables",pdf,metadata/5585/pdfs/bcs70_revised_region_variables.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs7derived,Derived Variables at 2004-2005 Sweep (34 Year Follow-up) Data,tab,bcs7derived.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_adult_assessment_basic_skills,Cohort Member Basic Skills Assessment Data,tab,bcs_2004_adult_assessment_basic_skills.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_child_assessment_bas,Child Assessment (British Ability Scale) Data,tab,bcs_2004_child_assessment_bas.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_follow-up_capi_questionnaire,"BCS70, Age 34: Cohort Member Questionnaire Documentation",pdf,metadata/5585/pdfs/bcs_2004_follow-up_capi_questionnaire.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_followup,Cohort Member Interview Data,tab,bcs_2004_followup.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_parent_and_child,Parent and Child Interview Data,tab,bcs_2004_parent_and_child.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_parent_and_child_capi_questionnaire,"BCS70, Age 34: Parent and Child Questionnaire Documentation",pdf,metadata/5585/pdfs/bcs_2004_parent_and_child_capi_questionnaire.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_pc_0to11mths,Parent Self-completion on Children 0-11 Months Data,tab,bcs_2004_pc_0to11mths.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_pc_1to2yr11mths,Parent Self-completion on Children 1-2 Years 11 Months Data,tab,bcs_2004_pc_1to2yr11mths.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_pc_3to5yr11mths,Parent Self-completion on Children 3-5 Years 11 Months Data,tab,bcs_2004_pc_3to5yr11mths.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_pc_6to16yr,Self-completion on Children 6-16 Years 11 Months Data,tab,bcs_2004_pc_6to16yr.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_2004_pc_yp_10to16,Young Person Self-completion 10-16 Years 11 Months Data,tab,bcs_2004_pc_yp_10to16.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_age34_dast,Dyslexia Assessment Data,tab,bcs_age34_dast.tab,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,bcs_longitudinal_linkage,"BCS70, Age 34: Longitudinal Linkage: Rationalising Case Identifiers",pdf,metadata/5585/pdfs/bcs_longitudinal_linkage.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,cls_confidentiality_and_data_security_review,"BCS70, Age 34: CLS Confidentiality and Data Security Review",pdf,metadata/5585/pdfs/cls_confidentiality_and_data_security_review.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+5585,34y,realignment_of_bcs70_identifiers_documentation,"BCS70, Age 34: Realignment of BCS70 identifiers",pdf,metadata/5585/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,34y/metadata/5585/file_information/5585_file_information_table.csv
+6557,38y,bcs70_2008-2009_user_guide,BCS70 2008/09 User Guide,pdf,metadata/6557/pdfs/bcs70_2008-2009_user_guide.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs70_2008_9_technical_report,BCS70 2008/09 Technical Report,pdf,metadata/6557/pdfs/bcs70_2008_9_technical_report.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs70_2008_9_technical_report_appendices,BCS70 2008/09 Technical Report Appendices,pdf,metadata/6557/pdfs/bcs70_2008_9_technical_report_appendices.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs70_derived_variables_at_2008-2009_sweep,Derived Variables at 2008-2009 Sweep (38-Year Follow-up),pdf,metadata/6557/pdfs/bcs70_derived_variables_at_2008-2009_sweep.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/6557/pdfs/bcs70_revised_region_variables.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs8derived,BCS70 38-Year Follow-up Derived Variables Data File,tab,bcs8derived.tab,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs_2008_follow-up_cati_questionnaire,BCS 2008 Follow-up CATI Questionnaire,pdf,metadata/6557/pdfs/bcs_2008_follow-up_cati_questionnaire.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs_2008_followup,BCS70 38-Year Follow-up Data File,tab,bcs_2008_followup.tab,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,bcs_longitudinal_linkage,BCS Longitudinal Linkage,pdf,metadata/6557/pdfs/bcs_longitudinal_linkage.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/6557/pdfs/cls_confidentiality_and_data_security_review.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,ncds_and_bcs70_response,NCDS and BCS70 Response,pdf,metadata/6557/pdfs/ncds_and_bcs70_response.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,notes_on_edits_to_bcs2008_follow_up_data,Notes on Edits to BCS2008 Follow-up Data,pdf,metadata/6557/pdfs/notes_on_edits_to_bcs2008_follow_up_data.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+6557,38y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/6557/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,38y/metadata/6557/file_information/6557_file_information_table.csv
+2690,42m,2690userguide,User Guide Birth and 42 Month Surveys,pdf,metadata/2690/pdfs/2690userguide.pdf,42m/metadata/2690/file_information/2690_file_information_table.csv
+2690,42m,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/2690/pdfs/cls_confidentiality_and_data_security_review.pdf,42m/metadata/2690/file_information/2690_file_information_table.csv
+2690,42m,f690,Birth and 42 Month Data,tab,f690.tab,42m/metadata/2690/file_information/2690_file_information_table.csv
+7473,42y,bcs70_2012_absent_older_child,Absent Children Data File,tab,bcs70_2012_absent_older_child.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_child_died,Children Who Have Died Data File,tab,bcs70_2012_child_died.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_derived,Derived Variables Data File,tab,bcs70_2012_derived.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_employment,Employment History Data File,tab,bcs70_2012_employment.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_flatfile,Main Data File,tab,bcs70_2012_flatfile.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_follow_up_derived_variables,Derived Variables,pdf,metadata/7473/pdfs/bcs70_2012_follow_up_derived_variables.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_follow_up_guide_to_the_datasets,User Guide,pdf,metadata/7473/pdfs/bcs70_2012_follow_up_guide_to_the_datasets.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_follow_up_questionnaire_documentation,Questionnaire (CAPI),pdf,metadata/7473/pdfs/bcs70_2012_follow_up_questionnaire_documentation.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_follow_up_self_completion_questionnaire,Questionnaire (Self Completion),pdf,metadata/7473/pdfs/bcs70_2012_follow_up_self_completion_questionnaire.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_housing,Housing History Data File,tab,bcs70_2012_housing.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_persongrid,Household Grid Data File,tab,bcs70_2012_persongrid.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_qualifications,Qualifications History Data File,tab,bcs70_2012_qualifications.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_region_variables,Region Variables,pdf,metadata/7473/pdfs/bcs70_2012_region_variables.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_relationships,Relationships Data File,tab,bcs70_2012_relationships.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_technical_report,Technical Report,pdf,metadata/7473/pdfs/bcs70_2012_technical_report.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_unfolding,Unfolding Brackets Data File,tab,bcs70_2012_unfolding.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_unsucessful_pregnancies,Unsuccessful Pregnancies Data File,tab,bcs70_2012_unsucessful_pregnancies.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_variable_lookup_table,Variable Lookup Table,pdf,metadata/7473/pdfs/bcs70_2012_variable_lookup_table.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_2012_variable_lookup_table,Variable Lookup Table Spreadsheet,pdf,metadata/7473/pdfs/bcs70_2012_variable_lookup_table.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_age16_school_type,Age 16 School Type Variable Data File,tab,bcs70_age16_school_type.tab,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,bcs70_age_16_school_type_variable_user_guide,Age 16 School Type Derived Variable User Guide,pdf,metadata/7473/pdfs/bcs70_age_16_school_type_variable_user_guide.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+7473,42y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/7473/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,42y/metadata/7473/file_information/7473_file_information_table.csv
+8547,46y,bcs70_age_46_derived_variables_user_guide,1970 British Cohort Study - Age 46 Derived Variables User Guide,pdf,metadata/8547/pdfs/bcs70_age_46_derived_variables_user_guide.pdf,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs70_age_46_survey_user_guide,1970 British Cohort Study - Age 46 Survey User Guide,pdf,metadata/8547/pdfs/bcs70_age_46_survey_user_guide.pdf,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_dietary_questionnaire,On-line Dietary Questionnaire Data File,tab,bcs_age46_dietary_questionnaire.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_employment,Employment History Data File,tab,bcs_age46_employment.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_housing,Housing History Data File,tab,bcs_age46_housing.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_long_acting_medication,Long-acting Medication Data File,tab,bcs_age46_long_acting_medication.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_main,"Core Interview, Self-completion and Nurse Administered Measurements",tab,bcs_age46_main.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8611,46y,8611_bcs_age46_accelerometry_user_guide,BCS Age 46 Accelerometry User Guide,pdf,metadata/8611/pdfs/8611_bcs_age46_accelerometry_user_guide.pdf,46y/metadata/8611/file_information/8611_file_information_table.csv
+8611,46y,bcs_age46_activpal_avg,BCS Age 46 Accelerometry ActivPal Average Data File,tab,bcs_age46_activpal_avg.tab,46y/metadata/8611/file_information/8611_file_information_table.csv
+8611,46y,bcs_age46_activpal_days,BCS Age 46 Accelerometry ActivPal Days Data File,tab,bcs_age46_activpal_days.tab,46y/metadata/8611/file_information/8611_file_information_table.csv
+9347,51y,bcs11_age51_benefits_longf,State Benefits Long Format Data File,tab,bcs11_age51_benefits_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_covidbens_longf,Covid-19 State Benefits Long Format Data File,tab,bcs11_age51_covidbens_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_covidvax_longf,Vaccinations for Covid-19 Long Format Data File,tab,bcs11_age51_covidvax_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_debt_longf,Debts Owed Long Format Data File,tab,bcs11_age51_debt_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_econshock_longf,Respondent Economic Shocks since Covid-19 Outbreak Long,tab,bcs11_age51_econshock_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_employment_longf,Economic Activity Histories Long Format Data File,tab,bcs11_age51_employment_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_housing_longf,Housing Histories Long Format Data File,tab,bcs11_age51_housing_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_main,Main Survey Data File,tab,bcs11_age51_main.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_persongrid_longf,Person Grid Long Format Data File,tab,bcs11_age51_persongrid_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_qualifications_longf,Respondent Qualifications Long Format Data File,tab,bcs11_age51_qualifications_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_qualificationsp_longf,Partner Qualifications Long Format Data File,tab,bcs11_age51_qualificationsp_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_regincome_longf,Sources of Regular Household Income Long Format Data File,tab,bcs11_age51_regincome_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_relationships_longf,Relationship Histories Looped Long Format Data File,tab,bcs11_age51_relationships_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_savings_longf,Sources of Savings and Investments Long Format Data File,tab,bcs11_age51_savings_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_unfolding,Approximate Value for Income or Payments Data File,tab,bcs11_age51_unfolding.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs70_sweep11_age51_paper_questionnaire,BSC70 Sweep 11 Age 51 Paper Questionnaire,pdf,metadata/9347/pdfs/bcs70_sweep11_age51_paper_questionnaire.pdf,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs70_sweep11_age51_questionnaire,BSC70 Sweep 11 Age 51 Main Stage Interview Questionnaire,pdf,metadata/9347/pdfs/bcs70_sweep11_age51_questionnaire.pdf,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs70_sweep11_age51_technical_report,BSC70 Sweep 11 Age 51 Technical Report,pdf,metadata/9347/pdfs/bcs70_sweep11_age51_technical_report.pdf,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs70_sweep11_age51_technical_report_appendices,BSC70 Sweep 11 Age 51 Technical Report Appendix,pdf,metadata/9347/pdfs/bcs70_sweep11_age51_technical_report_appendices.pdf,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs70_sweep11_age51_user_guide_v1_1,BSC70 Sweep 11 Age 51 User Guide (Version 1),pdf,metadata/9347/pdfs/bcs70_sweep11_age51_user_guide_v1_1.pdf,51y/metadata/9347/file_information/9347_file_information_table.csv
+2699,5y,2699userguide1,User guide - 1970 Birth Survey,pdf,metadata/2699/pdfs/2699userguide1.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,2699userguide2,User guide - Five-year Follow-up Survey,pdf,metadata/2699/pdfs/2699userguide2.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,bcs2derived,Derived Variables at 1975 Sweep Data,tab,bcs2derived.tab,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,bcs70_1975_developmental_history,Developmental Histories Data,tab,bcs70_1975_developmental_history.tab,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,bcs70_5-year_developmental_histories_guide_to_the_dataset,Guide to the Developmental Histories Data,pdf,metadata/2699/pdfs/bcs70_5-year_developmental_histories_guide_to_the_dataset.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,bcs70_derived_variables_at_1975_sweep,Derived Variables at 1975 Sweep (Five-Year Follow-Up),pdf,metadata/2699/pdfs/bcs70_derived_variables_at_1975_sweep.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,bcs70_revised_region_variables,Revised Region Variables,pdf,metadata/2699/pdfs/bcs70_revised_region_variables.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review,pdf,metadata/2699/pdfs/cls_confidentiality_and_data_security_review.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,developmental_history_coding_frame,Coding Frame to Development Histories Data,pdf,metadata/2699/pdfs/developmental_history_coding_frame.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,developmental_history_schedule,Developmental Histories Schedule,pdf,metadata/2699/pdfs/developmental_history_schedule.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,f699a,Part A - Maternal Self-completion Questionnaire Data,tab,f699a.tab,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,f699b,Part B - Home Interview Questionnaire Data,tab,f699b.tab,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,f699c,Part C - Test Booklet Data,tab,f699c.tab,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,ncds_and_bcs70populationsandsamplesovertime,NCDS and BCS70 Populations and Samples Over Time,pdf,metadata/2699/pdfs/ncds_and_bcs70populationsandsamplesovertime.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+2699,5y,realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers,pdf,metadata/2699/pdfs/realignment_of_bcs70_identifiers_documentation.pdf,5y/metadata/2699/file_information/2699_file_information_table.csv
+5641,xwave,bcs70_response_1970-2021,BCS Response Data File,tab,bcs70_response_1970-2021.tab,xwave/metadata/5641/file_information/5641_file_information_table.csv
+5641,xwave,bcs70_response_and_deaths_user_guide_v6,User Guide to the Response and Deaths Datasets,pdf,metadata/5641/pdfs/bcs70_response_and_deaths_user_guide_v6.pdf,xwave/metadata/5641/file_information/5641_file_information_table.csv
+5641,xwave,ncds_and_bcs70_response,Changes in the NCDS and BCS70 Populations and Samples Over Time,pdf,metadata/5641/pdfs/ncds_and_bcs70_response.pdf,xwave/metadata/5641/file_information/5641_file_information_table.csv
+6941,xwave,bcs70_age16-51_partner_histories_long,BCS70 Partner histories 1996-2016 Data File,tab,bcs70_age16-51_partner_histories_long.tab,xwave/metadata/6941/file_information/6941_file_information_table.csv
+6941,xwave,bcs70_age16-51_partnership_histories_long,BCS70 Partnership histories 1996-2024 Data File,tab,bcs70_age16-51_partnership_histories_long.tab,xwave/metadata/6941/file_information/6941_file_information_table.csv
+6941,xwave,bcs70_partnership_histories_user_guide_v5,User Guide,pdf,metadata/6941/pdfs/bcs70_partnership_histories_user_guide_v5.pdf,xwave/metadata/6941/file_information/6941_file_information_table.csv
+6943,xwave,bcs70_activity_histories_user_guide_v5,User Guide,pdf,metadata/6943/pdfs/bcs70_activity_histories_user_guide_v5.pdf,xwave/metadata/6943/file_information/6943_file_information_table.csv
+6943,xwave,bcs70_age16-51_activity_histories_long,BCS70 Activity Histories 1986-202024 Data File,tab,bcs70_age16-51_activity_histories_long.tab,xwave/metadata/6943/file_information/6943_file_information_table.csv

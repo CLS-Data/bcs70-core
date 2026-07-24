@@ -1,0 +1,27 @@
+file_name,description
+read9347,UK Data Archive ReadMe File for Study 9347
+bcs11_age51_benefits_longf,State Benefits Long Format Data File
+bcs11_age51_covidbens_longf,Covid-19 State Benefits Long Format Data File
+bcs11_age51_covidvax_longf,Vaccinations for Covid-19 Long Format Data File
+bcs11_age51_debt_longf,Debts Owed Long Format Data File
+bcs11_age51_econshock_longf,Respondent Economic Shocks since Covid-19 Outbreak Long
+Format Data File,bcs11_age51_econshockp_longf
+Partner Economic Shocks since Covid-19 Outbreak Long Format,Data File
+bcs11_age51_employment_longf,Economic Activity Histories Long Format Data File
+bcs11_age51_housing_longf,Housing Histories Long Format Data File
+bcs11_age51_main,Main Survey Data File
+bcs11_age51_persongrid_longf,Person Grid Long Format Data File
+bcs11_age51_qualifications_longf,Respondent Qualifications Long Format Data File
+bcs11_age51_qualificationsp_longf,Partner Qualifications Long Format Data File
+bcs11_age51_regincome_longf,Sources of Regular Household Income Long Format Data File
+bcs11_age51_relationships_longf,Relationship Histories Looped Long Format Data File
+bcs11_age51_savings_longf,Sources of Savings and Investments Long Format Data File
+bcs11_age51_unfolding,Approximate Value for Income or Payments Data File
+bcs11_age51_variable_lookup_table,BSC70 Sweep 11 Age 51 Variable Lookup Table
+bcs70_sweep11_age51_paper_questionnaire,BSC70 Sweep 11 Age 51 Paper Questionnaire
+bcs70_sweep11_age51_questionnaire,BSC70 Sweep 11 Age 51 Main Stage Interview Questionnaire
+bcs70_sweep11_age51_technical_report_appendices,BSC70 Sweep 11 Age 51 Technical Report Appendix
+bcs70_sweep11_age51_technical_report,BSC70 Sweep 11 Age 51 Technical Report
+bcs70_sweep11_age51_user_guide_v1_1,BSC70 Sweep 11 Age 51 User Guide (Version 1)
+ukda_data_dictionaries,UK Data Archive Data Dictionaries
+UKDA_Study_9347_Information,UK Data Archive Citation File for Study 9347

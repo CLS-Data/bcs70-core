@@ -1,0 +1,28 @@
+file_name,description
+read2699,UKDA Information for Study 2699
+2699userguide1,User guide - 1970 Birth Survey
+2699userguide2,User guide - Five-year Follow-up Survey
+bcs2derived,Derived Variables at 1975 Sweep Data
+ukda_data_dictionaries.zip,ukda_data_dictionaries.zip
+bcs70_derived_variables_at_1975_sweep,Derived Variables at 1975 Sweep (Five-Year Follow-Up)
+bcs70_revised_region_variables,Revised Region Variables
+cls_confidentiality_and_data_security_review,CLS Confidentiality and Data Security Review
+f699a,Part A - Maternal Self-completion Questionnaire Data
+f699b,Part B - Home Interview Questionnaire Data
+f699c,Part C - Test Booklet Data
+bcs70_1975_developmental_history,Developmental Histories Data
+bcs70_5-year_developmental_histories_guide_to_the_dataset,Guide to the Developmental Histories Data
+developmental_history_coding_frame,Coding Frame to Development Histories Data
+developmental_history_schedule,Developmental Histories Schedule
+ncds_and_bcs70populationsandsamplesovertime,NCDS and BCS70 Populations and Samples Over Time
+realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers
+syntax_to_re-label_values_for_f099,SPSS syntax to correct variable f099 values
+output_checking_binary_variables_derived_from_f099,RTF version of SPSS output file checking binary variables derived from f099
+output_checking_binary_variables_derived_from_f099,SPSS 16.0 output file checking binary variables derived from f099
+syntax_to_re-label_f110,SPSS syntax to correct variable f110 values
+syntax_to_derive_binary_variables_from_f110,SPSS syntax to derive binary variables from f110
+syntax_to_derive_binary_variables_from_f099,SPSS syntax to derive binary variables from f099
+syntax_to_display_mean_and_stdev_of_f120_to_f122,SPSS syntax to display mean and stdev of variables f120 to f122
+output_checking_binary_variables_derived_from_f110,SPSS 16.0 output file checking binary variables derived from f110
+output_checking_binary_variables_derived_from_f110,RTF version of SPSS output file checking binary variables derived from f110
+UKDA_Study_2699_Information,Study information and citation

@@ -1,0 +1,26 @@
+file_name,description
+read7473,UKDA Information for Study 7473
+bcs70_2012_absent_older_child,Absent Children Data File
+bcs70_2012_child_died,Children Who Have Died Data File
+bcs70_2012_derived,Derived Variables Data File
+bcs70_2012_employment,Employment History Data File
+bcs70_2012_flatfile,Main Data File
+bcs70_2012_follow_up_derived_variables,Derived Variables
+bcs70_2012_follow_up_guide_to_the_datasets,User Guide
+bcs70_2012_follow_up_questionnaire_documentation,Questionnaire (CAPI)
+bcs70_2012_follow_up_self_completion_questionnaire,Questionnaire (Self Completion)
+bcs70_2012_housing,Housing History Data File
+bcs70_2012_persongrid,Household Grid Data File
+bcs70_2012_qualifications,Qualifications History Data File
+bcs70_2012_relationships,Relationships Data File
+bcs70_2012_technical_report,Technical Report
+bcs70_2012_unfolding,Unfolding Brackets Data File
+bcs70_2012_unsucessful_pregnancies,Unsuccessful Pregnancies Data File
+bcs70_age16_school_type,Age 16 School Type Variable Data File
+bcs70_age_16_school_type_variable_user_guide,Age 16 School Type Derived Variable User Guide
+bcs70_2012_region_variables,Region Variables
+bcs70_2012_variable_lookup_table,Variable Lookup Table
+bcs70_2012_variable_lookup_table,Variable Lookup Table Spreadsheet
+realignment_of_bcs70_identifiers_documentation,Realignment of BCS70 identifiers
+UKDA_Study_7473_Information,Study information and citation
+ukda_data_dictionaries,UK Data Archive Data Dictionaries

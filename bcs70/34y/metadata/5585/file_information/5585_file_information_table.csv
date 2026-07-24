@@ -1,0 +1,32 @@
+file_name,description
+read5585,UK Data Archive Information for Study 5585
+UKDA_Study_5585_Information,UK Data Archive Citation File for Study 5585
+bcs_2004_adult_assessment_basic_skills,Cohort Member Basic Skills Assessment Data
+bcs_2004_adult_assessment_basic_skills_ukda_data_dictionary,UKDA Data Dictionary
+bcs_2004_child_assessment_bas,Child Assessment (British Ability Scale) Data
+bcs_2004_followup,Cohort Member Interview Data
+bcs_2004_parent_and_child,Parent and Child Interview Data
+bcs_2004_pc_0to11mths,Parent Self-completion on Children 0-11 Months Data
+bcs_2004_pc_1to2yr11mths,Parent Self-completion on Children 1-2 Years 11 Months Data
+bcs_2004_pc_3to5yr11mths,Parent Self-completion on Children 3-5 Years 11 Months Data
+bcs_2004_pc_6to16yr,Self-completion on Children 6-16 Years 11 Months Data
+bcs_2004_pc_yp_10to16,Young Person Self-completion 10-16 Years 11 Months Data
+bcs_age34_dast,Dyslexia Assessment Data
+bcs7derived,Derived Variables at 2004-2005 Sweep (34 Year Follow-up) Data
+bcs_2004_parent_and_child_capi_questionnaire,"BCS70, Age 34: Parent and Child Questionnaire Documentation"
+bcs70_2004_guide_to_child_assessments,"BCS70, Age 34: Guide to Child Assessment"
+bcs_2004_follow-up_capi_questionnaire,"BCS70, Age 34: Cohort Member Questionnaire Documentation"
+bcs70_2004_guide_to_child_paper_questionnaires,"BCS70, Age 34: Guide to Child Paper Questionnaires"
+bcs70_2004_pc_self_completion_0-11_mths,"BCS70, Age 34: Questionnaire - Children Aged 0-11 Months"
+bcs70_2004_pc_self_completion_1-2_yrs,"BCS70, Age 34: Questionnaire - Children Aged 1-2 Years"
+bcs70_2004_pc_self_completion_3-5_yrs,"BCS70, Age 34: Questionnaire - Children Aged 3-5 Years"
+bcs70_2004_pc_self_completion_6-16_yrs,"BCS70, Age 34: Questionnaire - Children Aged 6-16 Years"
+bcs70_age_34_user_guide_2020_update,"BCS70, Age 34: A Guide to the Dataset: BCS 2004-2005 Follow-up"
+bcs70_age_34_dyslexia_user_guide,"BCS70, Age 34: Dyslexia Data User Guide"
+bcs70_2004_yp_self_completion,"BCS70, Age 34: Questionnaire - Young People 10-16 Years"
+bcs70_derived_variables_at_2004-2005_sweep,"BCS70, Age 34: Derived Variables at 2004-2005 Sweep (34 Year Follow-up)"
+bcs70_revised_region_variables,"BCS70, Age 34: Revised Region Variables"
+bcs_longitudinal_linkage,"BCS70, Age 34: Longitudinal Linkage: Rationalising Case Identifiers"
+cls_confidentiality_and_data_security_review,"BCS70, Age 34: CLS Confidentiality and Data Security Review"
+realignment_of_bcs70_identifiers_documentation,"BCS70, Age 34: Realignment of BCS70 identifiers"
+ukda_data_dictionaries,UK Data Archive Data Dictionary
