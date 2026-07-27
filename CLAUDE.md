@@ -56,6 +56,7 @@ Key points about this structure:
 - `master_file_info_lookup.csv` is the authoritative cross-sweep index — start here when you need to locate which file/study covers a given sweep or topic, rather than crawling directories manually.
 - Each study number's `file_information` CSV additionally lists non-tabular deposit contents (e.g. `read<N>`, `UKDA_Study_<N>_Information`, zipped dictionary bundles) that aren't reflected in `master_file_info_lookup.csv`.
 - The identifier column is usually `bcsid`, but a couple of files (`bcs70_2012_flatfile`, `bcs_age46_main`) use `BCSID` instead - `R/lib/io.R`'s `load_tab()` normalises this to lowercase at load time, so nothing downstream needs to special-case it.
+- Identifier *values* are cleaned at the same point, by `clean_bcsid()` in `R/lib/io.R`. Some deposits (`sn3723` and `bcs21yearsample` are the known cases) contain rows whose `bcsid` doesn't follow the study's `B`-prefixed pattern. Case and surrounding whitespace are normalised first (both preserve identity); rows that still don't conform are **dropped with a warning naming the file and the counts**, because `runner.R` outer-joins on `bcsid` and an unlinkable id would otherwise survive as a phantom output row that looks like a real case observed at a single sweep. Duplicate ids are warned about but never dropped. Variable scripts therefore never need to defend against a malformed `bcsid` themselves - and note that any real-data run may legitimately report a lower N than the raw file.
 
 ### Data dictionary CSV format
 
