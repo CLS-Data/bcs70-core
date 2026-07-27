@@ -51,23 +51,63 @@ clean_bcsid <- function(data, file_name, pattern = bcsid_pattern) {
   rownames(data) <- NULL
 
   # Duplicates are a separate failure mode - they multiply rows through the
-  # same join rather than adding them - so they are reported but never
-  # dropped, since choosing which copy to keep is not a decision this
-  # loader can make.
+  # join rather than adding unlinkable ones - and they cannot be settled
+  # here, because whether two rows conflict depends on which columns the
+  # variable actually uses. They are reported at load time for visibility
+  # and resolved per-variable by resolve_duplicate_ids() below.
   duplicated_ids <- unique(data$bcsid[duplicated(data$bcsid)])
   if (length(duplicated_ids) > 0) {
+    message(sprintf(
+      "%s: %d bcsid value(s) appear on more than one row; resolved per-variable after column narrowing.",
+      file_name, length(duplicated_ids)
+    ))
+  }
+
+  data
+}
+
+# Resolve duplicate identifiers for one variable, applied by runner.R after
+# each source file has been narrowed to bcsid + the columns that variable
+# declared. Narrowing first is the whole point: two rows sharing a bcsid may
+# differ only in columns this variable never reads, in which case they carry
+# the same information and collapse harmlessly. The same duplicate pair can
+# therefore collapse for one variable and conflict for another, which is
+# correct rather than inconsistent.
+#
+# Rows agreeing across every retained column collapse to one. An id whose
+# rows genuinely disagree cannot be resolved without knowing which record is
+# authoritative - nothing in the deposit says - so the case is dropped with a
+# warning rather than resolved by guesswork or by file order.
+resolve_duplicate_ids <- function(data, file_name) {
+  if (anyDuplicated(data$bcsid) == 0) {
+    return(data)
+  }
+
+  before <- nrow(data)
+  data <- unique(data)
+  collapsed <- before - nrow(data)
+
+  conflicting <- unique(data$bcsid[duplicated(data$bcsid)])
+  if (length(conflicting) > 0) {
     warning(
       sprintf(
         paste(
-          "%s: %d bcsid value(s) appear on more than one row.",
-          "Rows are left as-is; joins downstream will multiply these cases."
+          "%s: dropped %d case(s) whose duplicate rows disagree on the columns used here.",
+          "Collapsed %d redundant duplicate row(s)."
         ),
-        file_name, length(duplicated_ids)
+        file_name, length(conflicting), collapsed
       ),
       call. = FALSE
     )
+    data <- data[!data$bcsid %in% conflicting, , drop = FALSE]
+  } else if (collapsed > 0) {
+    message(sprintf(
+      "%s: collapsed %d redundant duplicate row(s); no conflicts.",
+      file_name, collapsed
+    ))
   }
 
+  rownames(data) <- NULL
   data
 }
 
