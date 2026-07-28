@@ -5,6 +5,12 @@ description: Record the outcome once a variable script has been run against the 
 
 # Verify variable
 
+If the real-data run surfaced anything about the deposits themselves -
+unexpected identifier behaviour, sentinel codes not documented in the
+dictionary, a category that never appears - flag it for `DATA_KNOWLEDGE.md`
+in your report. That ledger is how such findings survive past a single PR.
+Leave the edit to the user; it is hand-maintained.
+
 Use this after a maintainer reports back real-data test results for a variable that was previously merged with `spec$status = "draft"` or `"ready_for_real_data_test"`. This repo never contains real data, so this status change is always driven by a human reporting an external result (see `CONTRIBUTING.md#running-the-scripts-against-the-real-data` for how they produce it) - never set `status = "verified"` from synthetic-test results alone.
 
 ## Steps

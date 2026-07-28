@@ -244,6 +244,26 @@ file's raw source, and both `R/runner.R` and `scripts/build_registry.R` can
 discover every variable purely by listing `R/variables/*/*/*.R` - the spec is
 the only source of truth; nothing about a variable is maintained twice.
 
+## The data knowledge ledger
+
+[`DATA_KNOWLEDGE.md`](DATA_KNOWLEDGE.md) records what the data dictionaries
+don't: duplicate identifiers in particular files, raw variable names that
+mean different things in different sweeps, deposited "derived" variables
+whose categories are unusable, sweeps that lack a concept entirely.
+
+It is **maintained by hand, by people who can see the real data.** Agents
+read it — the `variable-deriver` agent and the `new-variable`,
+`metadata-search` and `verify-variable` skills all point at it — but never
+write to it. An agent that turns up something worth recording reports it so
+a human can add the entry, because establishing these facts generally
+requires a real-data run that no agent in this repo can perform.
+
+Add an entry whenever a real-data verification surfaces something that would
+have changed how a variable was written. The format is at the top of the
+file; the important discipline is separating **confirmed** from
+**suspected** — a wrong entry is worse than a missing one, because it will
+be trusted without being re-checked.
+
 ## Where variable scripts live
 
 Every variable script sits at exactly one depth:

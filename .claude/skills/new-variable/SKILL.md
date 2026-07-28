@@ -7,6 +7,20 @@ description: Scaffold a new derived-variable R script (spec + logic + synthetic 
 
 Use this when the user hands you a GitHub issue (number, URL, or pasted text) requesting a new derived variable.
 
+## Before you start: read the data knowledge ledger
+
+Read `DATA_KNOWLEDGE.md` at the repo root before anything else. It records
+known quirks in the deposits that no data dictionary mentions - duplicate
+identifiers, raw variable names that mean different things in different
+sweeps, deposited "derived" variables whose categories are unusable, sweeps
+that don't carry a concept at all. An entry there **overrides** your default
+reading of a dictionary.
+
+Re-read the entries relevant to your sweeps and files again at Step 4 below,
+before writing `derive()`. Never edit this file yourself - if your work
+surfaces something that belongs in it, say so in your summary so a human
+can add it.
+
 ## Step 0: classify the request
 
 Work out which of three shapes the issue actually is - see

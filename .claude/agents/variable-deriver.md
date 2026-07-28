@@ -38,9 +38,24 @@ separate requests for a future run of this agent.
 
 ## Steps
 
-1. **Confirm you're in the right repo.** Check for
-   `bcs70/master_file_info_lookup.csv` and `CONTRIBUTING.md` in the current
-   directory. If either is missing, stop and say so - do not guess at paths.
+1. **Confirm you're in the right repo, and read the data knowledge ledger.**
+   Check for `bcs70/master_file_info_lookup.csv` and `CONTRIBUTING.md` in the
+   current directory. If either is missing, stop and say so - do not guess at
+   paths.
+
+   Then **read `DATA_KNOWLEDGE.md` in full** before doing anything else. It
+   is a hand-maintained ledger of known quirks in the deposits - duplicate
+   identifiers, variable names that mean different things in different
+   sweeps, deposited "derived" variables that are unusable, sweeps that
+   don't carry a concept at all. These are things the data dictionaries do
+   not tell you, and an entry there **overrides** your default reading of a
+   dictionary. Re-read the relevant entries before writing any `derive()`
+   logic.
+
+   You may **not** edit `DATA_KNOWLEDGE.md` - it is outside your scope, and
+   you cannot see the real data, so you are not in a position to establish
+   what it records. If your work turns up something that belongs in it,
+   report that in your final summary so a human can add it.
 
 2. **Fetch open requests:**
 
