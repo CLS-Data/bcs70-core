@@ -14,13 +14,12 @@ sys.source(
   envir = env
 )
 
-# Helper: build a fixture carrying all four declared source_vars, so every
+# Helper: build a fixture carrying all three declared source_vars, so every
 # test exercises derive() with the same column set the runner would hand it.
-fixture <- function(gh5 = NA, b9 = NA, b10 = NA, b11 = NA) {
-  n <- max(length(gh5), length(b9), length(b10), length(b11))
+fixture <- function(b9 = NA, b10 = NA, b11 = NA) {
+  n <- max(length(b9), length(b10), length(b11))
   data.frame(
     bcsid = paste0("B", seq_len(n)),
-    gh5 = rep(gh5, length.out = n),
     B9AGESTR = rep(b9, length.out = n),
     B10AGESTR = rep(b10, length.out = n),
     b11agestr = rep(b11, length.out = n),
@@ -29,7 +28,7 @@ fixture <- function(gh5 = NA, b9 = NA, b10 = NA, b11 = NA) {
 }
 
 test_that("first_age_smoke returns the expected shape", {
-  synthetic <- fixture(gh5 = c(7, 13, -2))
+  synthetic <- fixture(b9 = c(17, -9, NA))
 
   result <- env$derive(synthetic)
 
@@ -37,25 +36,6 @@ test_that("first_age_smoke returns the expected shape", {
   expect_true(all(c("bcsid", env$spec$id) %in% names(result)))
   expect_equal(nrow(result), nrow(synthetic))
   expect_equal(result$bcsid, synthetic$bcsid)
-})
-
-test_that("16y gh5 bands 1-11 map to ages 5-15", {
-  # gh5 is banded, not an age: 1 "5 yrs or less" ... 11 "15 yrs".
-  synthetic <- fixture(gh5 = 1:11)
-
-  result <- env$derive(synthetic)
-
-  expect_equal(result$first_age_smoke, as.numeric(5:15))
-})
-
-test_that("16y gh5 non-age codes and sentinels become NA", {
-  # 12 "Can't remember" and 13 "Never smoked" carry no age; -4 "Not asked",
-  # -2 "Not stated", -1 "No questionnaire" are the documented sentinels.
-  synthetic <- fixture(gh5 = c(12, 13, -4, -2, -1, 0, 14, NA))
-
-  result <- env$derive(synthetic)
-
-  expect_true(all(is.na(result$first_age_smoke)))
 })
 
 test_that("42y/46y/51y ages in years pass through unchanged", {
@@ -90,29 +70,37 @@ test_that("implausible ages outside the 5-60 window become NA", {
 test_that("the earliest reported age across sweeps wins", {
   synthetic <- data.frame(
     bcsid = paste0("C", 1:4),
-    # C1: 16y band 9 (13 yrs) beats the later regular-smoking reports.
-    # C2: 16y missing, so the earliest adult report (18) is used.
+    # C1: 42y reports the earliest onset of the two answers given.
+    # C2: 51y recalls an earlier onset than the two earlier sweeps.
     # C3: only 51y reports an age.
     # C4: sentinels everywhere except one usable 46y answer.
-    gh5 = c(9, -2, NA, 12),
     B9AGESTR = c(17, 21, NA, -9),
-    B10AGESTR = c(18, 18, NA, 25),
+    B10AGESTR = c(18, 20, NA, 25),
     b11agestr = c(NA, 19, 32, -3),
     check.names = FALSE
   )
 
   result <- env$derive(synthetic)
 
-  expect_equal(result$first_age_smoke, c(13, 18, 32, 25))
+  expect_equal(result$first_age_smoke, c(17, 19, 32, 25))
+})
+
+test_that("16y gh5 is not consulted even when present in the frame", {
+  # gh5 measures age first *tried* smoking, a different concept, and was
+  # deliberately dropped from source_vars. A stray column must not revive it.
+  synthetic <- fixture(b9 = c(20, NA))
+  synthetic$gh5 <- c(9, 9) # band 9 = "13 yrs" under the old mapping
+
+  result <- env$derive(synthetic)
+
+  expect_equal(result$first_age_smoke, c(20, NA_real_))
 })
 
 test_that("never-smokers and wholly missing cases return NA", {
   # The request asks for NA when the cohort member never smoked. A
-  # never-smoker is routed past AGESTR (-1 Not applicable) and answers gh5
-  # as 13 "Never smoked", so no sweep supplies an age.
+  # never-smoker is routed past AGESTR, arriving as -1 "Not applicable".
   synthetic <- data.frame(
     bcsid = c("D1", "D2"),
-    gh5 = c(13, NA),
     B9AGESTR = c(-1, NA),
     B10AGESTR = c(-1, NA),
     b11agestr = c(-1, NA),
@@ -128,7 +116,7 @@ test_that("never-smokers and wholly missing cases return NA", {
 test_that("first_age_smoke is numeric even when nothing is derivable", {
   # pmin() over all-NA input must not collapse to logical NA or Inf - the
   # runner writes this column alongside real ages from other rows.
-  result <- env$derive(fixture(gh5 = c(NA, NA)))
+  result <- env$derive(fixture(b9 = c(NA, NA)))
 
   expect_true(is.numeric(result$first_age_smoke))
   expect_false(any(is.infinite(result$first_age_smoke)))
