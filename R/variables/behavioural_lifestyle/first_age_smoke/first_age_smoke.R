@@ -18,7 +18,7 @@ spec <- list(
   label = "Age in years the cohort member first started smoking regularly (earliest reported across sweeps)",
   category = "behavioural_lifestyle",
   github_issue = 13,
-  status = "ready_for_real_data_test",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, new-variable skill)",
   created = "2026-07-28",
   source_files = c(
@@ -94,10 +94,18 @@ spec <- list(
     "14 / 16. That distribution sits almost entirely inside gh5's 5-15 band",
     "range and is far too young for age started smoking REGULARLY, which is",
     "the empirical confirmation that including gh5 let the 16y first-try",
-    "answer dominate the adult answers. Dropping gh5 changed the derivation,",
-    "so that result does not carry over - status is ready_for_real_data_test",
-    "pending a re-run, and the age distribution is expected to shift",
-    "markedly older."
+    "answer dominate the adult answers.",
+    "",
+    "2026-07-28, commit 366d3c10 - VERIFIED. This three-sweep derivation was",
+    "re-run against the real data and passed every harness check. n = 5315,",
+    "51.55% missing, mean 16.64, sd 4.59, quartiles 14 / 16 / 18. The age",
+    "distribution shifted markedly older than the four-sweep run exactly as",
+    "predicted (median 14 -> 16, mean +2.27 years), confirming the gh5",
+    "diagnosis rather than merely assuming it. The lower n is expected and",
+    "not a loss of coverage: dropping bcs7016x removes the 16y file from the",
+    "runner's outer join, so both the numerator and the joined row count",
+    "fall. Everyone still counted is someone who reported an age of starting",
+    "REGULARLY, which is what this variable claims to measure."
   )
 )
 

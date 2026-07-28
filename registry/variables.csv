@@ -1,2 +1,2 @@
 "id","category","family","label","github_issue","status","source_files","source_vars","file"
-"first_age_smoke","behavioural_lifestyle","first_age_smoke","Age in years the cohort member first started smoking regularly (earliest reported across sweeps)",13,"ready_for_real_data_test","bcs70_2012_flatfile; bcs_age46_main; bcs11_age51_main","B9AGESTR; B10AGESTR; b11agestr","R/variables/behavioural_lifestyle/first_age_smoke/first_age_smoke.R"
+"first_age_smoke","behavioural_lifestyle","first_age_smoke","Age in years the cohort member first started smoking regularly (earliest reported across sweeps)",13,"verified","bcs70_2012_flatfile; bcs_age46_main; bcs11_age51_main","B9AGESTR; B10AGESTR; b11agestr","R/variables/behavioural_lifestyle/first_age_smoke/first_age_smoke.R"
