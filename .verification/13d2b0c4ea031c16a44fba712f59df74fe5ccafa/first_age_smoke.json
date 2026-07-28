@@ -1,0 +1,54 @@
+{
+  "schema_version": 5,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/first_age_smoke",
+  "commit": "13d2b0c4ea031c16a44fba712f59df74fe5ccafa",
+  "scope": "variable",
+  "variables": [
+    "first_age_smoke"
+  ],
+  "status": "success",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-07-28T15:58:45Z",
+  "duration_seconds": 20,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "no_nan_or_infinite": "pass",
+    "no_residual_sentinels": "pass",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  },
+  "summary": {
+    "first_age_smoke": {
+      "kind": "numeric",
+      "n": 7115,
+      "missing_pct": 49.65,
+      "mean": 14.37,
+      "sd": 4.56,
+      "p25": 12.0,
+      "p50": 14.0,
+      "p75": 16.0,
+      "hist": [
+        55,
+        175,
+        400,
+        1665,
+        1835,
+        1475,
+        685,
+        450,
+        110,
+        270
+      ]
+    }
+  }
+}
