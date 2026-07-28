@@ -8,8 +8,10 @@
 # the verify-variable skill for recording that outcome once it comes back.
 # ==========================================================================
 
+# Tests stay flat here regardless of how deeply the script is nested; only
+# this path reflects the script's category/family directories.
 env <- new.env()
-sys.source("../../R/variables/<id>.R", envir = env)
+sys.source("../../R/variables/<category>/<family>/<id>.R", envir = env)
 
 test_that("<id> derives correctly on synthetic data", {
   synthetic <- data.frame(

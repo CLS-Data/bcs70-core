@@ -1,6 +1,10 @@
 # ==========================================================================
 # Derived variable: <id>
 # --------------------------------------------------------------------------
+# Save this as R/variables/<category>/<family>/<id>.R - see
+# R/variables/README.md. <category> must equal spec$category below, and
+# <id> must equal spec$id; both are checked at build time.
+#
 # This file is self-contained and is the single source of truth for this
 # variable - a future front end will display this file's raw source as
 # "how this variable was made". R/runner.R discovers and runs it

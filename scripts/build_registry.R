@@ -1,19 +1,22 @@
 #!/usr/bin/env Rscript
 # Regenerates the machine-readable variable registry (registry/variables.json
-# and registry/variables.csv) by scanning every R/variables/*.R spec.
+# and registry/variables.csv) by scanning every variable script under
+# R/variables/<category>/<family>/<id>.R.
 #
 # This is the single source of truth a front end (or CI) should read for the
 # list of derived variables, grouped by category. Never hand-edit anything
-# under registry/ - it is fully derived from R/variables/*.R; if its content
+# under registry/ - it is fully derived from those specs; if its content
 # looks wrong, fix the source spec and re-run this script.
+#
+# Placement is validated as well as content: a script whose directory
+# disagrees with its spec$category, or whose file name disagrees with
+# spec$id, fails the build rather than being quietly misfiled.
 #
 # Usage: Rscript scripts/build_registry.R
 
-allowed_categories <- c(
-  "demographic", "socio_economic", "health", "education",
-  "employment", "family_relationships", "housing",
-  "behavioural_lifestyle", "cognitive_ability", "other"
-)
+source("R/lib/discovery.R")
+
+allowed_categories <- variable_categories
 
 load_entry <- function(path) {
   env <- new.env()
@@ -28,10 +31,15 @@ load_entry <- function(path) {
       path, paste(allowed_categories, collapse = ", "), paste(deparse(spec$category), collapse = "")
     ))
   }
+  # Fails if the file's directory disagrees with the spec it declares, or if
+  # the file name disagrees with spec$id.
+  # nolint next: object_usage_linter. comes from source("R/lib/discovery.R") above
+  location <- check_variable_placement(path, spec)
   list(
     id = spec$id,
     label = spec$label,
     category = spec$category,
+    family = location$family,
     github_issue = spec$github_issue,
     status = spec$status,
     author = spec$author,
@@ -43,7 +51,7 @@ load_entry <- function(path) {
   )
 }
 
-variable_files <- sort(list.files("R/variables", pattern = "\\.R$", full.names = TRUE))
+variable_files <- find_variable_files("R/variables")
 entries <- lapply(variable_files, load_entry)
 
 ids <- vapply(entries, function(e) e$id, character(1))
@@ -69,6 +77,7 @@ csv_rows <- lapply(entries, function(e) {
   data.frame(
     id = e$id,
     category = e$category,
+    family = e$family,
     label = e$label,
     github_issue = ifelse(is.null(e$github_issue) || is.na(e$github_issue), NA, e$github_issue),
     status = e$status,
@@ -80,8 +89,9 @@ csv_rows <- lapply(entries, function(e) {
 })
 csv_out <- if (length(csv_rows) == 0) {
   data.frame(
-    id = character(), category = character(), label = character(), github_issue = character(),
-    status = character(), source_files = character(), source_vars = character(), file = character()
+    id = character(), category = character(), family = character(), label = character(),
+    github_issue = character(), status = character(), source_files = character(),
+    source_vars = character(), file = character()
   )
 } else {
   do.call(rbind, csv_rows)
