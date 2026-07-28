@@ -1,0 +1,30 @@
+{
+  "schema_version": 4,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/housing-tenure",
+  "commit": "a884f648d9f7dc897541748c1520f64eb88fbb9b",
+  "scope": "variable",
+  "variables": [
+    "housing_tenure_46y"
+  ],
+  "status": "success",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-07-27T15:21:45Z",
+  "duration_seconds": 4,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "no_nan_or_infinite": "pass",
+    "no_residual_sentinels": "pass",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  }
+}

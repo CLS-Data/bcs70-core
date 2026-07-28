@@ -33,11 +33,15 @@ build_variable <- function(variable) {
   spec <- variable$spec
   needed_files <- unique(spec$source_files)
 
+  # Narrow to bcsid + this variable's columns BEFORE resolving duplicate
+  # identifiers, so that rows differing only in columns this variable never
+  # reads are recognised as carrying the same information. See
+  # resolve_duplicate_ids() in R/lib/io.R.
   # nolint start: object_usage_linter. load_tab comes from source("R/lib/io.R") above
   per_file <- lapply(needed_files, function(f) {
     raw <- load_tab(f)
     vars_here <- intersect(spec$source_vars, names(raw))
-    raw[, c("bcsid", vars_here), drop = FALSE]
+    resolve_duplicate_ids(raw[, c("bcsid", vars_here), drop = FALSE], f)
   })
   # nolint end
   names(per_file) <- needed_files
