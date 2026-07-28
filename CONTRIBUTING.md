@@ -20,7 +20,7 @@ work here is split across two environments:
 2. **Search.** Before writing any logic, exhaustively search all sweeps for
    candidate source variables/files - not just the sweep(s) named in the
    issue. The `metadata-search` skill runs this via `scripts/search_metadata.R`.
-3. **Develop.** On a branch, scaffold and fill in `R/variables/<id>.R` (spec +
+3. **Develop.** On a branch, scaffold and fill in `R/variables/<category>/<family>/<id>.R` (spec +
    `derive()` logic) and `tests/testthat/test-<id>.R` (synthetic-data tests),
    following `templates/variable.R` / `templates/variable_test.R`. The
    `new-variable` Claude Code skill automates steps 2-3 from the issue, and
@@ -55,7 +55,7 @@ staging area would just duplicate what git provides.
 ## Family variables and multi-concept requests
 
 "One variable, one script" doesn't mean every issue maps to exactly one
-`R/variables/<id>.R`. Two patterns come up that need different handling -
+`R/variables/<category>/<family>/<id>.R`. Two patterns come up that need different handling -
 distinguishing them is Step 0 of the `new-variable` skill:
 
 **Same concept, repeated across sweeps** - e.g. "BMI at each age," "highest
@@ -130,7 +130,7 @@ duplicating it) and opens the PR itself.
 
 The difference from just running the skill yourself is scope: this
 subagent's own instructions restrict it to creating or changing only
-`R/variables/<id>.R`, `tests/testthat/test-<id>.R`, and `registry/`. If a
+`R/variables/<category>/<family>/<id>.R`, `tests/testthat/test-<id>.R`, and `registry/`. If a
 request would require any other file to change - the way `sex` needed fixes
 to `R/runner.R` and `R/lib/io.R` - it's instructed to stop and report back
 rather than make that change itself; framework-level work stays something
@@ -200,7 +200,7 @@ from this repo sitting alongside it.
    Use the single-variable form when verifying one newly requested variable
    - it only requires that variable's declared `source_files`/`source_vars`
    to exist, not every variable's. (This depends on the file being named
-   exactly `R/variables/<id>.R`, which the `new-variable` skill always does.)
+   exactly `R/variables/<category>/<family>/<id>.R`, which the `new-variable` skill always does.)
    Output lands at `output/derived_variables.csv`, entirely on the real-data
    machine - it never needs to leave it.
 
@@ -235,14 +235,59 @@ work around.
 
 ## Why one file per variable
 
-Each `R/variables/<id>.R` is fully self-contained: a `spec` list (id, label,
+Each variable script is fully self-contained: a `spec` list (id, label,
 category, originating issue, source files/vars, status, notes) plus a
 `derive()` function that takes a data frame of only its declared source
 variables and returns `bcsid` + the new column. This is deliberate: a future
 front end can show "how this variable was made" by displaying that one
 file's raw source, and both `R/runner.R` and `scripts/build_registry.R` can
-discover every variable purely by listing `R/variables/*.R` - the spec is
+discover every variable purely by listing `R/variables/*/*/*.R` - the spec is
 the only source of truth; nothing about a variable is maintained twice.
+
+## Where variable scripts live
+
+Every variable script sits at exactly one depth:
+
+```
+R/variables/<category>/<family>/<id>.R
+```
+
+```
+R/variables/
+  housing/
+    housing_tenure/
+      housing_tenure_5y.R
+      housing_tenure_16y.R
+  health/
+    bmi/
+      bmi_10y.R
+  demographic/
+    sex/
+      sex.R            <- a lone variable is still nested
+```
+
+- **`<category>`** is one of the fixed values in the next section, and must
+  equal the script's own `spec$category`.
+- **`<family>`** groups variables measuring the same concept - usually the
+  longitudinal siblings produced by one request. It is **always** present,
+  even when a request yields a single variable. A one-off placed directly in
+  its category would have to move the moment it gained a sibling, breaking
+  every path that referenced it; one consistent depth means
+  `R/variables/*/*/*.R` always describes the whole set.
+- **`<id>`** equals `spec$id`, and becomes the output column name.
+
+`R/lib/discovery.R` is the single definition of this layout, shared by
+`R/runner.R` and `scripts/build_registry.R`. Both fail loudly rather than
+skipping a file, so these are build errors and not merely conventions: a
+script at the wrong depth, an unrecognised category directory, a
+`spec$category` that disagrees with the directory, or a `spec$id` that
+disagrees with the file name. That last one matters most, because
+`Rscript R/runner.R <id>` selects on the file name - a mismatch would make
+the variable silently unrunnable rather than visibly broken.
+
+Tests do **not** mirror this structure. They stay flat at
+`tests/testthat/test-<id>.R`, still paired 1:1 with their script; only the
+`sys.source()` path inside each test reflects the nesting.
 
 ## Variable categories
 
@@ -270,7 +315,7 @@ spec:
 never hand-edited. They're grouped by category and give a front end (or
 anyone browsing the repo) a single place to list every variable, its status,
 its originating issue, and the exact file with its source code - without
-parsing every `R/variables/*.R` file itself. Regenerate them with:
+parsing every variable script itself. Regenerate them with:
 
     Rscript scripts/build_registry.R
 
@@ -296,7 +341,7 @@ Rscript R/runner.R
 # Search all sweeps' metadata for candidate source variables/files
 Rscript scripts/search_metadata.R "keyword one" "keyword two"
 
-# Regenerate the variable registry from R/variables/*.R
+# Regenerate the variable registry from R/variables/*/*/*.R
 Rscript scripts/build_registry.R
 ```
 

@@ -5,6 +5,7 @@
 # READ-ONLY with respect to bcs70/: this script (and everything it calls)
 # must never write to, move, or delete anything under bcs70/.
 
+source("R/lib/discovery.R")
 source("R/lib/io.R")
 source("R/lib/utils.R")
 
@@ -81,14 +82,36 @@ build_variable <- function(variable) {
 # name (without .R) matches - e.g. to verify one newly added variable against
 # real data without needing every other variable's inputs to be present too.
 run_all <- function(variables_dir = "R/variables", output_dir = "output", only_ids = character(0)) {
-  variable_files <- list.files(variables_dir, pattern = "\\.R$", full.names = TRUE)
+  # nolint start: object_usage_linter. these come from source("R/lib/discovery.R") above
+  variable_files <- find_variable_files(variables_dir)
+
+  # Validate placement for every script before filtering, so a misplaced or
+  # mislabelled file is reported even when this run targets a single id.
+  for (path in variable_files) {
+    env <- new.env()
+    sys.source(path, envir = env)
+    check_variable_placement(path, env$spec, variables_dir)
+  }
+  # nolint end
+
   if (length(only_ids) > 0) {
     variable_files <- variable_files[tools::file_path_sans_ext(basename(variable_files)) %in% only_ids]
     missing <- setdiff(only_ids, tools::file_path_sans_ext(basename(variable_files)))
     if (length(missing) > 0) {
-      stop(sprintf("No R/variables/*.R found for: %s", paste(missing, collapse = ", ")))
+      stop(sprintf(
+        "No variable script found for: %s. Expected %s/<category>/<family>/<id>.R",
+        paste(missing, collapse = ", "), variables_dir
+      ))
     }
   }
+
+  if (length(variable_files) == 0) {
+    stop(sprintf(
+      "No variable scripts found under %s/. Expected %s/<category>/<family>/<id>.R",
+      variables_dir, variables_dir
+    ))
+  }
+
   variables <- lapply(variable_files, load_variable)
   ids <- vapply(variables, function(v) v$spec$id, character(1))
   names(variables) <- ids

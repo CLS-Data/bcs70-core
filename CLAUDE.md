@@ -28,19 +28,27 @@ bcs70/
                                   file_type, path (relative to sweep dir), source_table_path
 
 R/
-  variables/<id>.R                one file per derived variable: a `spec` list + `derive(data)` function
+  variables/README.md             the layout rules below, stated where variable authors will look
+  variables/<category>/<family>/<id>.R
+                                  one file per derived variable: a `spec` list + `derive(data)` function.
+                                  <category> is one of the fixed categories and must equal spec$category;
+                                  <family> groups the same concept's variables (e.g. housing_tenure/),
+                                  always present even for a lone variable; <id> must equal spec$id
+  lib/discovery.R                 single definition of that layout - finds variable scripts and validates
+                                  their placement; shared by runner.R and scripts/build_registry.R
   lib/io.R                        read-only helpers (load_tab()) that resolve files via master_file_info_lookup.csv
   lib/utils.R                     small shared recoding helpers, reused across variable scripts
-  runner.R                        discovers R/variables/*.R, joins each one's declared source data, writes output/
+  runner.R                        discovers R/variables/*/*/*.R, joins each one's declared source data, writes output/
 
 templates/
   variable.R, variable_test.R     starting point for a new variable + its test (see the new-variable skill)
 
-tests/testthat/test-<id>.R        synthetic-data unit tests, one file per variable, paired 1:1 with R/variables/<id>.R
+tests/testthat/test-<id>.R        synthetic-data unit tests, one file per variable, paired 1:1 with each variable
+                                  script. Tests stay FLAT here however deeply the script itself is nested.
 
 scripts/
   search_metadata.R                cross-sweep keyword search over dictionaries/lookup/file_information (read-only)
-  build_registry.R                 regenerates registry/ from every R/variables/*.R spec
+  build_registry.R                 regenerates registry/ from every variable spec; also validates placement
 
 registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
@@ -76,12 +84,16 @@ This is the source of truth for recoding logic (value labels, missing-value sent
 
 ## Variable script contract
 
-Every `R/variables/<id>.R` (see `templates/variable.R`) defines exactly two objects, sourced into their own environment by the runner — so every script can reuse the same names without colliding:
+Every variable script (see `templates/variable.R`) defines exactly two objects, sourced into their own environment by the runner — so every script can reuse the same names without colliding:
 
 - `spec`: a plain list — `id` (snake_case, becomes the output column name), `label`, `category` (one of the fixed values in `CONTRIBUTING.md#variable-categories` — validated by `scripts/build_registry.R`), `github_issue`, `status` (`draft` → `ready_for_real_data_test` → `verified`), `author`, `created`, `source_files` (file_name(s) from `master_file_info_lookup.csv`), `source_vars` (raw variable names needed), `notes`.
 - `derive(data)`: a pure function. `data` is a data.frame with `bcsid` + one column per declared `source_vars` entry, named bare (e.g. `data$a0002`) **unless the same raw variable name is declared across more than one `source_files` entry** (e.g. several sweeps each have their own column literally called `sex`) - in that case only the colliding columns are disambiguated as `data[["<file_name>.<var>"]]` (e.g. `data[["bcs21yearsample.sex"]]`, `data[["bcs2000.sex"]]`); non-colliding columns are unaffected. `derive()` must return a data.frame with `bcsid` + a column named `spec$id`. No disk I/O of any kind inside this file.
 
-The file must be named `R/variables/<id>.R` exactly matching `spec$id` — this isn't just convention, `Rscript R/runner.R <id>` (used to verify a single variable against real data) filters on the file name.
+The file must live at `R/variables/<category>/<family>/<id>.R` — see `R/variables/README.md`. None of the three levels is decorative, and `R/lib/discovery.R` fails the build rather than skipping a file that gets them wrong:
+
+- `<category>` must equal `spec$category` (one of the fixed values below). A mismatch would misgroup the variable in `registry/` while it lived somewhere else on disk.
+- `<family>` groups variables measuring the same concept — usually the longitudinal siblings of one request (`housing_tenure/`, `bmi/`). It is always present, even for a lone variable, so that every script sits at one consistent depth and a one-off can gain siblings later without moving.
+- `<id>` must equal `spec$id`. `Rscript R/runner.R <id>` (used to verify a single variable against real data) filters on the file name, so a mismatch silently makes the variable unrunnable.
 
 `status` only ever becomes `"verified"` after a human reports back a real-data test result from outside this repo (via the `verify-variable` skill) — never from synthetic tests alone, since no real data exists here to verify against.
 
