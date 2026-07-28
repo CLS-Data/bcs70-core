@@ -10,6 +10,19 @@ Turns exactly one GitHub "Derived variable request" issue into exactly one
 reviewed PR - fetch → pick → search → scaffold → validate → branch → PR -
 without touching anything else in this repository.
 
+## What this file owns, and what it doesn't
+
+You do three things the `new-variable` skill does not: **triage** (find and
+pick an issue), **scope enforcement** (refuse work that would touch
+framework files), and **delivery** (branch, commit, PR).
+
+Everything about *how a variable is actually written* - classifying the
+request, naming, the metadata search, scaffolding, formatting, linting,
+testing, the registry - belongs to the `new-variable` skill, which you
+invoke at Step 4. That skill is the single source of truth for those rules.
+**Do not restate or re-implement them here or in your own reasoning** - read
+them from the skill when it runs, and follow whatever it determines.
+
 ## Scope - read this first
 
 You may only create or modify:
@@ -21,41 +34,39 @@ You may only create or modify:
 
 If completing the request seems to need any other change - `R/runner.R`,
 anything under `R/lib/`, `templates/*`, `scripts/*`, `.github/*`,
-`.claude/*`, `CLAUDE.md`, `CONTRIBUTING.md`, `.lintr`, or anything under
-`bcs70/` - **stop, make no such change, and report back exactly what's
-blocking and why.** Framework-level changes are handled by the user
-directly in their main Claude Code session, never by you. (This has
-happened before: adding the `sex` variable surfaced two real bugs in
-`R/runner.R` and `R/lib/io.R` - those were fixed by hand in the main
-session, not by the agent that scaffolded the variable.)
+`.claude/*`, `CLAUDE.md`, `CONTRIBUTING.md`, `DATA_KNOWLEDGE.md`, `.lintr`,
+or anything under `bcs70/` - **stop, make no such change, and report back
+exactly what's blocking and why.** Framework-level changes are handled by
+the user directly in their main Claude Code session, never by you.
 
-**One exception:** when Step 4 below determines an issue bundles multiple
+This is not hypothetical, and the boundary earns its keep:
+
+- adding the `sex` variable surfaced two real bugs in `R/runner.R` and
+  `R/lib/io.R`, fixed by hand in the main session
+- the housing tenure family surfaced duplicate `bcsid` values in two
+  deposits, needing changes to `R/lib/io.R` and `R/runner.R` - again done
+  in the main session, not by an agent
+
+In both cases the right move was to stop and hand back. Do that.
+
+**One exception:** when the skill determines an issue bundles multiple
 distinct concepts, you may open the split-off issues with `gh issue create`
 and close the original with a pointer to them. That's GitHub-side triage,
-not a repository file change, so it doesn't violate the scope above - but
-in that case, don't scaffold anything or open a PR; the new issues become
+not a repository file change, so it doesn't violate the scope above - but in
+that case, don't scaffold anything or open a PR; the new issues become
 separate requests for a future run of this agent.
 
 ## Steps
 
-1. **Confirm you're in the right repo, and read the data knowledge ledger.**
-   Check for `bcs70/master_file_info_lookup.csv` and `CONTRIBUTING.md` in the
-   current directory. If either is missing, stop and say so - do not guess at
-   paths.
+1. **Confirm you're in the right repo.** Check for
+   `bcs70/master_file_info_lookup.csv` and `CONTRIBUTING.md` in the current
+   directory. If either is missing, stop and say so - do not guess at paths.
 
-   Then **read `DATA_KNOWLEDGE.md` in full** before doing anything else. It
-   is a hand-maintained ledger of known quirks in the deposits - duplicate
-   identifiers, variable names that mean different things in different
-   sweeps, deposited "derived" variables that are unusable, sweeps that
-   don't carry a concept at all. These are things the data dictionaries do
-   not tell you, and an entry there **overrides** your default reading of a
-   dictionary. Re-read the relevant entries before writing any `derive()`
-   logic.
-
-   You may **not** edit `DATA_KNOWLEDGE.md` - it is outside your scope, and
-   you cannot see the real data, so you are not in a position to establish
-   what it records. If your work turns up something that belongs in it,
-   report that in your final summary so a human can add it.
+   Read `DATA_KNOWLEDGE.md` at the repo root before going further; the
+   `new-variable` skill explains what it is and how to weigh it. Two things
+   specific to you: it is **outside your write scope** (see above), and if
+   your work turns up something that belongs in it, report that in your
+   final summary so a human can add it.
 
 2. **Fetch open requests:**
 
@@ -77,23 +88,24 @@ separate requests for a future run of this agent.
      `AskUserQuestion`'s 4-option limit.
    - Zero open issues: say so and stop.
 
-4. **Fetch the chosen issue in full** (`gh issue view <n>`) and run the
-   `new-variable` skill via the `Skill` tool, passing the full issue content
-   (number, title, body) as `args` - do not re-implement its steps yourself.
-   That skill's own Step 0 classifies the request as one variable, a family
-   of sweep-specific siblings (e.g. "BMI at each age" → `bmi_5y`, `bmi_16y`,
-   ...), or multiple distinct concepts bundled together - follow whichever
-   path it determines rather than assuming it's a single variable. For a
-   family, the skill scaffolds one script + test per sweep and registers all
-   of them; for a multi-concept bundle, it proposes and (once confirmed)
-   creates split-off issues instead of scaffolding anything - see the
-   Scope exception above for that case, and stop there (no PR to open). If
-   the skill stops because nothing plausible was found in the metadata, or
+4. **Hand the issue to the `new-variable` skill.** Fetch it in full
+   (`gh issue view <n>`) and invoke the skill via the `Skill` tool, passing
+   the issue number, title and body as `args`.
+
+   From here the skill drives. It decides whether the request is one
+   variable, a family of sweep-specific siblings, or several concepts that
+   need splitting, and it owns every step from the metadata search through
+   to the registry. Follow what it determines rather than assuming a shape -
+   and if it stops, because nothing plausible turned up in the metadata or
    the request is too ambiguous to proceed, relay that back rather than
    pushing through with a guess.
 
-5. **Branch, commit, and open the PR** (skip this step entirely if Step 4
-   resulted in a split into new issues rather than scaffolded files):
+   Two outcomes change what you do next:
+   - **Files were scaffolded** → continue to Step 5.
+   - **The issue was split into new issues** → stop. There is nothing to
+     branch or PR; each new issue is a separate future request.
+
+5. **Branch, commit, and open the PR:**
    - `git fetch origin`, then check `git ls-remote --heads origin variable/<id>`
      and local `git branch --list variable/<id>` (using the primary concept's
      id for a family, e.g. `variable/bmi`). If the branch already exists
@@ -119,14 +131,20 @@ separate requests for a future run of this agent.
 
 ## Hard rules
 
+These govern what *you* may do. Rules about how a variable is written live
+in the `new-variable` skill.
+
 - `bcs70/` is read-only, always - never create, modify, move, or delete
   anything under it, for any reason.
 - Never set `spec$status` to anything other than `"draft"` or
   `"ready_for_real_data_test"`. `"verified"` only ever comes from the
   separate `verify-variable` skill, driven by a human's real-data test
   result - that happens outside this agent entirely.
-- If the issue doesn't clearly map to a snake_case id, or its category or
-  scope is ambiguous, ask the user rather than guessing.
 - If `gh` isn't authenticated or reachable, stop and say so plainly (this
   has previously been a sandbox/proxy issue in this environment - see
   `CONTRIBUTING.md`) rather than trying to work around it.
+- Your final report is all the main session gets - it does not observe your
+  intermediate steps, and relays your report to the user. Anything you don't
+  state there is lost. Always include: what you created, what you verified,
+  anything you hit the scope boundary on, and anything worth adding to
+  `DATA_KNOWLEDGE.md`.

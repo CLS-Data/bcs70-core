@@ -131,12 +131,32 @@ duplicating it) and opens the PR itself.
 The difference from just running the skill yourself is scope: this
 subagent's own instructions restrict it to creating or changing only
 `R/variables/<category>/<family>/<id>.R`, `tests/testthat/test-<id>.R`, and `registry/`. If a
-request would require any other file to change - the way `sex` needed fixes
-to `R/runner.R` and `R/lib/io.R` - it's instructed to stop and report back
-rather than make that change itself; framework-level work stays something
-you do directly, not something a variable-deriving agent does on your
-behalf. Because it needs to ask which issue to work on, run it in the
+request would require any other file to change, it's instructed to stop and
+report back rather than make that change itself; framework-level work stays
+something you do directly, not something a variable-deriving agent does on
+your behalf. Because it needs to ask which issue to work on, run it in the
 foreground (so you can answer that question) rather than backgrounding it.
+
+That boundary is not hypothetical. It has been hit twice: `sex` surfaced two
+bugs in `R/runner.R` and `R/lib/io.R`, and the housing tenure family
+surfaced duplicate `bcsid` values in two deposits, again needing changes to
+`R/lib/io.R` and `R/runner.R`. Both were fixed by hand in a main session.
+
+**Which route to pick.** The agent and the skill run the *same* procedure -
+the agent calls the skill rather than reimplementing it, so there is only
+one definition of how a variable gets written. Choose on scope, not on
+capability:
+
+| | Use the agent | Use the skill directly |
+|---|---|---|
+| Issue triage (list open requests, pick one) | done for you | you point at the issue |
+| Branch, commit, PR | done for you | you drive it |
+| Work might need framework changes | it will stop and hand back | you can make them |
+| Context | fresh, tool-restricted | your main session |
+
+So: reach for the agent when the request looks like ordinary variable work
+and you want the guard rails. Reach for the skill when you already suspect
+the job will spill past `R/variables/` - as both examples above did.
 
 The one exception to "only those three paths": when [Step 0](#family-variables-and-multi-concept-requests)
 finds an issue bundling multiple distinct concepts, the agent is allowed to
