@@ -29,17 +29,20 @@ The AI never sees any real study data. Not once, not partially. It works only fr
 | **Issue** | A request, written on GitHub. "I'd like a variable for housing tenure." |
 | **Script** | A file of R code that produces one variable. |
 | **Sweep** | One round of the study — the survey at age 5, age 10, and so on. |
+| **Family** | The same measurement repeated across several sweeps — e.g. housing tenure at ages 5, 10, 16, 21… One request usually produces a whole family. |
 | **Skill** | A written checklist the AI follows. Think of it as a recipe card. |
 | **Agent** | A helper that follows a recipe *and* is fenced into a small area of the project. It cannot touch anything else. |
 | **Branch** | A private copy of the project where work happens before anyone else sees it. |
 | **Pull request (PR)** | A request to merge that private copy into the main project, so people can review it first. |
 | **CI** | Automatic checks that run on every pull request. |
 
-## The full journey of one variable
+## The full journey of a request
+
+One request does **not** mean one variable. Most requests ask for a measurement "at each age", and that produces one script per sweep — see [One request, many sweeps](#one-request-many-sweeps) below. The journey is the same either way.
 
 ```mermaid
 flowchart TD
-    A["1 · You file an issue<br/>describing the variable you want"]
+    A["1 · You file an issue<br/>describing the measurement you want"]
     B["2 · The AI searches the study documentation<br/>across every sweep"]
     C["3 · The AI writes the R script<br/>and a test for it"]
     D["4 · Automatic checks run<br/>formatting · style · tests"]
@@ -53,6 +56,33 @@ flowchart TD
 ```
 
 Steps 2, 3 and 4 are the AI's. **Steps 1, 5, 6 and 7 are yours.** Step 6 is the important one: until a human has run the script against real data, the variable is marked `draft` and is not trusted.
+
+## One request, many sweeps
+
+Most useful measurements exist at several ages, and you'll usually want all of them. So a single request like *"housing tenure at each age"* is not one variable — it's a **family**, with one script per sweep that actually carries the data. They are written together and reviewed together, in **one pull request**.
+
+```mermaid
+flowchart TD
+    I["One issue:<br/>'Housing tenure at each age'"]
+    S{"Which sweeps actually<br/>have this information?"}
+    Y["11 sweeps qualify"]
+    N["2 sweeps dropped — they record the<br/>type of home, not who owns it"]
+    W["11 scripts written,<br/>one per sweep, each with its own test"]
+    P["ONE pull request<br/>containing all of them"]
+    I --> S
+    S -->|"has it"| Y
+    S -->|"doesn't"| N
+    Y --> W --> P
+```
+
+That's a real example. Issue #8 asked for housing tenure at each age and produced eleven scripts in one pull request; issue #5 asked for BMI and produced nine.
+
+Two things worth knowing about how this is handled:
+
+- **The AI checks which sweeps genuinely have the data** rather than assuming all of them do. For housing tenure, two sweeps were dropped because they only record the *type* of dwelling (house, flat, rooms) and never ask who owns it. Substituting that would have been wrong, so those sweeps simply have no variable.
+- **Reviewing them together is deliberate.** Eleven near-identical, sweep-specific scripts side by side make an inconsistency obvious. Split across eleven pull requests, it wouldn't be.
+
+If a request bundles genuinely *different* measurements — say smoking age and cigarettes per day in one issue — that's handled the opposite way. They don't share a derivation or a review, so the AI proposes splitting them into separate issues rather than writing them together.
 
 ## Two ways to drive it
 
