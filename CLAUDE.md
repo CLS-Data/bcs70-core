@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-This repository harmonises the multiple sweeps (waves) of the [1970 British Cohort Study (BCS70)](https://cls.ucl.ac.uk/cls-studies/1970-british-cohort-study/) into a single tidy dataset. The output is **one modular R script per derived variable** under `R/variables/`, discovered and run by `R/runner.R`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full issue → PR → CI → external real-data verification workflow, and use the `metadata-search`, `new-variable`, `format-r`, `lint-r`, `update-registry`, and `verify-variable` Claude Code skills rather than improvising equivalents.
+This repository harmonises the multiple sweeps (waves) of the [1970 British Cohort Study (BCS70)](https://cls.ucl.ac.uk/cls-studies/1970-british-cohort-study/) into a single tidy dataset. The output is **one modular R script per derived variable** under `R/variables/`, discovered and run by `R/runner.R`. Read [DATA_KNOWLEDGE.md](DATA_KNOWLEDGE.md) before deriving anything — a hand-maintained ledger of known quirks in the deposits (duplicate identifiers, raw names that mean different things in different sweeps, unusable deposited "derived" variables, sweeps that lack a concept entirely). Entries there override your default reading of a data dictionary, and it is never edited by an agent. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full issue → PR → CI → external real-data verification workflow, and use the `metadata-search`, `new-variable`, `format-r`, `lint-r`, `update-registry`, and `verify-variable` Claude Code skills rather than improvising equivalents.
 
 **Critical constraint: zero real study data is ever exposed to an LLM.** Every `.tab` file under `bcs70/` is a dummy — header row only, no data rows (real files would be UK Data Service-licensed, multi-GB microdata). Never assume a `.tab` file has rows; treat its header as a variable-name manifest only. All value-level information (labels, coding, missing-value schemes) lives in the CSV data dictionaries instead. When writing harmonisation code, write it generically against the documented variable/column names — do not try to "test" it against these dummy files as if they were sample data, and never fabricate plausible-looking row values into them.
 
@@ -52,6 +52,10 @@ scripts/
 
 registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
+
+DATA_KNOWLEDGE.md                 hand-maintained ledger of known data quirks that no dictionary records
+                                  (duplicate ids, cross-sweep name collisions, unusable derived variables,
+                                  missing concepts). Read before deriving; agents never edit it.
 
 .github/                          issue template (incl. category), PR template, and r-ci.yml (format/lint/test + bcs70 guard + registry check)
 

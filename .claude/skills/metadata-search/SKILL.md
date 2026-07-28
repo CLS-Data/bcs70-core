@@ -7,6 +7,13 @@ description: Exhaustively search every sweep's data dictionaries, file descripti
 
 Use this before scaffolding any new derived variable - the `new-variable` skill calls this first - and any time you need candidate source variables/files, not just in the sweep(s) named in a request. BCS70 derived variables frequently draw on more than one sweep (e.g. childhood social class might live in `5y`, `10y`, and `16y`), so never stop at the first sweep that seems relevant.
 
+Before you start, check `DATA_KNOWLEDGE.md` at the repo root for entries
+covering the concept, sweeps or files you're about to search. It records
+things the dictionaries don't - notably which sweeps genuinely lack a
+concept (so an empty result there is expected, not a search failure), and
+raw variable names that collide across sweeps while measuring different
+things.
+
 ## Steps
 
 1. Pull 3-6 keyword variants from the issue/request: the exact concept name, synonyms, and related survey-instrument terms (e.g. for "childhood social class" also try "occupation", "socio-economic", "registrar general", "social class").
