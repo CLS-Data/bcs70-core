@@ -40,35 +40,6 @@ because it will be trusted.
 
 ## Identifiers
 
-### Duplicate `bcsid` values in `sn3723` and `bcs21yearsample`
-
-**Scope:** files `sn3723` (10y), `bcs21yearsample` (21y)
-**Status:** confirmed
-**Found:** 2026-07-27, real-data verification of the housing tenure family
-
-The same `bcsid` appears on more than one row in both files. Every other
-deposit checked so far has unique identifiers.
-
-This was caught by the verification harness, not by anything in this repo:
-`identifier_unique` failed for `housing_tenure_10y` (`sn3723`),
-`housing_tenure_21y` (`bcs21yearsample`) and the integration run, while
-every other check passed on all 11 variables. Nothing in the repo validated
-identifier values at the time — `load_tab()` normalised only the identifier
-*column name*.
-
-**Impact:** `R/runner.R` joins variables with `merge(..., all = TRUE)`, so a
-duplicated id multiplies rows through the join. Left unhandled, the combined
-output gains rows that are indistinguishable from genuine cases.
-
-**Handling:** `resolve_duplicate_ids()` in `R/lib/io.R`, applied by
-`runner.R` *after* narrowing each file to the columns a variable declared.
-Rows agreeing across every retained column collapse to one; an id whose rows
-genuinely disagree is dropped with a warning, since nothing in the deposit
-says which record is authoritative. Because the check runs post-narrowing,
-the same duplicate pair may collapse harmlessly for one variable and
-conflict for another — that is correct, not inconsistent. Verified: all 12
-reports passed afterwards.
-
 ### `bcsid` values not matching the `B`-prefixed pattern
 
 **Scope:** files `sn3723` (10y), `bcs21yearsample` (21y)
@@ -164,100 +135,9 @@ everything else fall through to `NA`, rather than deny-listing known
 sentinels. `na_if_negative()` in `R/lib/utils.R` exists but its default code
 list is a convenience, not a corpus-wide truth.
 
-### Some deposited "derived" variables are unusable as-is
-
-**Scope:** file `bcs21yearsample` (21y), variable `home21`
-**Status:** confirmed
-**Found:** 2026-07-27
-
-`home21` "Tenure at 21" looks like a ready-made harmonised tenure variable,
-but its first category is labelled `"Owned/rented"` — owner-occupation and
-renting collapsed into one code.
-
-**Impact:** cannot be mapped onto any scheme that distinguishes owning from
-renting. The raw questions (`vc113` + `vc114`) had to be used instead.
-**Handling:** none — check a deposited derived variable's actual value
-labels before preferring it over the raw items. By contrast `BD10TENURE`
-(46y) and `bd11tenure` (51y) *are* clean and are preferred over their raw
-counterparts.
-
-### A "No" that isn't a No
-
-**Scope:** file `bcs7016x` (16y), variable `of3.3`
-**Status:** confirmed
-**Found:** 2026-07-27
-
-`of3.3` "Is accommodation rented local auth-coun?" has value labels
-`1 "Yes"` and `2 "No Response"` — the negative case is labelled as a
-non-answer, not as "No".
-
-**Impact:** a value of `2` cannot be read as "not local-authority rented"
-without guessing. The variable was rejected as a back-fill source for that
-reason.
-
-### Proxy-reported counterparts exist at some sweeps but not all
-
-**Scope:** sweeps 29y, 34y, 38y, 42y, 46y
-**Status:** confirmed
-**Found:** 2026-07-27
-
-Several sweeps deposit both a self-reported item and a proxy-reported one
-answered on the cohort member's behalf (`tenure`/`tenure2` at 29y,
-`b7ten`/`b7ten2` at 34y, `B9TEN`/`B9PTE` at 42y). **38y does not** — an
-exhaustive search of `bcs_2008_followup` found only `b8ten2` and `b8rentom`.
-
-**Impact:** don't assume a proxy fallback is available at every sweep.
-**Handling:** the established convention is self-report preferred, proxy
-used only where the self-report is missing.
-
-### Value-label sets differ between a variable and its own proxy
-
-**Scope:** files `bcs70_2012_flatfile` (42y), `bcs11_age51_main` (51y)
-**Status:** confirmed
-**Found:** 2026-07-27
-
-`B9TEN`'s labels skip code `6` ("Squatting") while its proxy `B9PTE`
-includes it. At 51y neither `bd11tenure` nor `b11ten` documents a code `6`,
-though 34y–46y all do.
-
-**Impact:** a recode written from one variable's labels may silently drop a
-category present in its sibling.
-**Handling:** where the sweeps are meant to be uniform, accept the union of
-documented codes and note it — the housing tenure scripts accept `6` at
-every sweep for this reason.
-
 ---
 
 ## Coverage gaps
-
-### Not every sweep carries every concept
-
-**Scope:** sweeps 0y, 42m
-**Status:** confirmed
-**Found:** 2026-07-27
-
-Neither 0y nor 42m has a housing tenure item. Both have dwelling **type**
-(`b0008` "IN WHAT DWELLING WAS THE CHILD LIVING", `c0024` "Family dwelling
-type" — whole house / flat / rooms / caravan), which is a different concept
-and must not be used as a stand-in.
-
-**Impact:** a "variable at each age" request rarely means all 13 sweeps.
-Establish which sweeps genuinely carry the item before proposing an id list.
-
-### The subject of measurement changes mid-study
-
-**Scope:** sweeps 0y–16y vs 21y onwards
-**Status:** confirmed
-**Found:** 2026-07-27
-
-Up to and including 16y, household questions are answered by the cohort
-member's **parent** and describe the parental household. From 21y they
-describe the cohort member's own household.
-
-**Impact:** a childhood and an adult sibling of the "same" variable are not
-one continuous series. Say so in `spec$label` and `spec$notes` — the housing
-tenure family does this — and don't let a request for "X at each age" hide
-the change of subject.
 
 ---
 
