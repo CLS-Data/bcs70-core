@@ -1,0 +1,134 @@
+# ==========================================================================
+# Derived variable: first_age_smoke
+# --------------------------------------------------------------------------
+# This file is self-contained and is the single source of truth for this
+# variable - a future front end will display this file's raw source as
+# "how this variable was made". R/runner.R discovers and runs it
+# automatically; don't source or call it manually anywhere else.
+#
+# Rules for this file:
+#   - Never read from disk (no read.csv/read.delim/file paths). All input
+#     arrives via the `data` argument to derive().
+#   - Never write to disk. Return the derived column; the runner writes it.
+#   - Never reference bcs70/ directly - it must stay read-only.
+# ==========================================================================
+
+spec <- list(
+  id = "first_age_smoke",
+  label = "Age in years the cohort member first started smoking regularly (earliest reported across sweeps)",
+  category = "behavioural_lifestyle",
+  github_issue = 13,
+  status = "verified",
+  author = "Mack Nixon (via Claude Code, new-variable skill)",
+  created = "2026-07-28",
+  source_files = c(
+    "bcs70_2012_flatfile", # 42y
+    "bcs_age46_main", # 46y
+    "bcs11_age51_main" # 51y
+  ),
+  source_vars = c("B9AGESTR", "B10AGESTR", "b11agestr"),
+  notes = paste(
+    "Issue #13: 'first age the participant start smoking', NA if they have",
+    "never smoked. This is a single lifetime value rather than a per-sweep",
+    "family, so one script covers every sweep that carries an age-of-onset",
+    "item and takes the EARLIEST age reported across them.",
+    "",
+    "CONCEPT (settled by the maintainer, 2026-07-28): this variable measures",
+    "age started smoking REGULARLY, so only the three adult sweeps that ask",
+    "that question contribute:",
+    "  42y bcs70_2012_flatfile B9AGESTR 'Age started smoking regularly'",
+    "  46y bcs_age46_main      B10AGESTR 'Age started smoking regularly'",
+    "  51y bcs11_age51_main    b11agestr 'Age started smoking regularly'",
+    "Because the same lifetime event is asked at three ages and answers can",
+    "disagree, the earliest reported age is taken.",
+    "",
+    "Sweep coverage (from an exhaustive cross-sweep metadata search). 10y,",
+    "21y, 26y, 29y, 34y and 38y carry smoking status/quantity items (e.g.",
+    "29y 'exsmoker', 34y 'b7exsmer', 38y 'bd8smoke') but no age of onset, so",
+    "they cannot contribute. 0y and 5y smoking items are about the PARENTS,",
+    "not the cohort member, and are excluded.",
+    "",
+    "EXCLUDED - 16y bcs7016x gh5 'Age in years when first tried smoking'. It",
+    "is the only other item asking the cohort member an onset age, but it",
+    "measures a different concept: first *tried*, not started *regularly*.",
+    "An earlier revision of this script included it and took the minimum",
+    "across all four sweeps, which made a 16y first-try answer beat the",
+    "adult regular-smoking answer for most ever-smokers; that reading was",
+    "rejected. If a 'first tried smoking' concept is wanted, it belongs in a",
+    "separate variable, where gh5's own quirks matter: it is BANDED, not an",
+    "age in years (1 '5 yrs or less' ... 11 '15 yrs', so age = code + 4,",
+    "left-censored at 5), and codes 12 \"Can't remember\" and 13 'Never",
+    "smoked' sit inside the valid-looking positive range.",
+    "",
+    "42y/46y/51y AGESTR are open numeric ages with no documented valid-value",
+    "labels, only missing codes (-9 Refused, -8 Don't know / Not known, -1",
+    "Not applicable; 51y adds -3 'Not asked at case fieldwork stage' and -2",
+    "'Not asked due to scripting/routing error'). Rather than deny-listing",
+    "those - they differ per sweep, and DATA_KNOWLEDGE.md warns undocumented",
+    "sentinels also occur - anything outside a plausible 5-60 year window is",
+    "treated as missing, which covers every documented negative code.",
+    "",
+    "Never-smokers: the request asks for NA, so no separate code is used -",
+    "a never-smoker simply has no age at any sweep and falls through to NA.",
+    "That means NA here is not self-describing: it conflates 'never smoked',",
+    "'never smoked regularly', not asked, and not observed at any of these",
+    "three sweeps. The ever-smoked indicators that would separate those",
+    "(B9EXSMER, B10EXSMER, b11exsmer, and the B9/B10/b11 SMOKIG status",
+    "items) are deliberately NOT declared, because they cannot change the",
+    "derived value - AGESTR is routed off them, so a never-smoker already",
+    "arrives as -1 'Not applicable'. A separate ever_smoked variable would",
+    "be the place to expose that distinction.",
+    "",
+    "Considered and rejected: 16y og2.3 'What age teen start smoking?' is",
+    "the MOTHER's proxy report of the cohort member's onset age, from the",
+    "same og2 household-smoking block that also asks about her husband and",
+    "herself. It is excluded because it is a proxy report rather than the",
+    "cohort member's own, and its dictionary entry documents no valid value",
+    "labels at all - only the missing codes - so whether it holds years or",
+    "bands cannot be established from the metadata. 29y 'agequit' and 34y",
+    "'b7agequt' are age LAST smoked regularly, not age started.",
+    "",
+    "REAL-DATA HISTORY. 2026-07-28, commit 13d2b0c4: the earlier four-sweep",
+    "revision (16y gh5 plus the three adult sweeps) passed every harness",
+    "check, n = 7115, 49.65% missing, mean 14.37, sd 4.56, quartiles 12 /",
+    "14 / 16. That distribution sits almost entirely inside gh5's 5-15 band",
+    "range and is far too young for age started smoking REGULARLY, which is",
+    "the empirical confirmation that including gh5 let the 16y first-try",
+    "answer dominate the adult answers.",
+    "",
+    "2026-07-28, commit 366d3c10 - VERIFIED. This three-sweep derivation was",
+    "re-run against the real data and passed every harness check. n = 5315,",
+    "51.55% missing, mean 16.64, sd 4.59, quartiles 14 / 16 / 18. The age",
+    "distribution shifted markedly older than the four-sweep run exactly as",
+    "predicted (median 14 -> 16, mean +2.27 years), confirming the gh5",
+    "diagnosis rather than merely assuming it. The lower n is expected and",
+    "not a loss of coverage: dropping bcs7016x removes the 16y file from the",
+    "runner's outer join, so both the numerator and the joined row count",
+    "fall. Everyone still counted is someone who reported an age of starting",
+    "REGULARLY, which is what this variable claims to measure."
+  )
+)
+
+derive <- function(data) {
+  # 42y/46y/51y report an age in years directly. Allow-list a plausible
+  # window instead of deny-listing sentinels: the documented missing codes
+  # differ per sweep and undocumented ones may also be present.
+  plausible_age <- function(x) {
+    x <- suppressWarnings(as.numeric(x))
+    ifelse(!is.na(x) & x >= 5 & x <= 60, x, NA_real_)
+  }
+
+  # Earliest onset reported at any sweep. pmin(..., na.rm = TRUE) returns NA
+  # only when every sweep is missing, which is also the never-smoked case.
+  first_age_smoke <- pmin(
+    plausible_age(data$B9AGESTR),
+    plausible_age(data$B10AGESTR),
+    plausible_age(data$b11agestr),
+    na.rm = TRUE
+  )
+
+  data.frame(
+    bcsid = data$bcsid,
+    first_age_smoke = as.numeric(first_age_smoke)
+  )
+}
