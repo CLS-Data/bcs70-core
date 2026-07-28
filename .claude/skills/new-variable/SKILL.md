@@ -7,6 +7,22 @@ description: Scaffold a new derived-variable R script (spec + logic + synthetic 
 
 Use this when the user hands you a GitHub issue (number, URL, or pasted text) requesting a new derived variable.
 
+## How this gets run
+
+Two ways, and they share this one procedure so it cannot drift:
+
+- **Directly in the main session** (`/new-variable`, or the user pasting an
+  issue). You do everything here, including Step 9's PR suggestion. Use this
+  route when the work may need framework changes - the main session can make
+  them; the agent cannot.
+- **Via the `variable-deriver` agent**, which handles issue triage before
+  calling you and branch/commit/PR afterwards. When invoked that way, stop
+  after Step 8 and hand back - the agent opens the PR.
+
+This file is the single source of truth for **how a variable is written**:
+classification, naming, searching, scaffolding, validating, registering.
+The agent deliberately does not restate any of it.
+
 ## Before you start: read the data knowledge ledger
 
 Read `DATA_KNOWLEDGE.md` at the repo root before anything else. It records
@@ -57,7 +73,11 @@ policy:
 6. Invoke the `format-r` skill, then the `lint-r` skill, against the new files.
 7. Run `Rscript -e 'testthat::test_dir("tests/testthat")'` and confirm the new test passes.
 8. Invoke the `update-registry` skill so `registry/` picks up the new variable(s), and include that diff in the same change.
-9. Tell the user plainly: this script has only been checked against fabricated data - it still needs to be run against the real data outside this repo before `spec$status` can move past `"draft"`. Suggest opening a PR (using `.github/PULL_REQUEST_TEMPLATE.md`) that references the originating issue - one PR per issue, even when Step 0 produced a whole family of sibling files.
+9. Report plainly: this script has only been checked against fabricated data - it still needs to be run against the real data outside this repo before `spec$status` can move past `"draft"`. Also flag anything you hit that belongs in `DATA_KNOWLEDGE.md`, for a human to add.
+
+   Then, depending on how you were invoked (see "How this gets run" above):
+   - **Directly:** suggest opening a PR (using `.github/PULL_REQUEST_TEMPLATE.md`) that references the originating issue - one PR per issue, even when Step 0 produced a whole family of sibling files.
+   - **Via the `variable-deriver` agent:** stop here and hand back. The agent branches, commits and opens the PR; don't do it yourself, and don't suggest it as if the user must.
 
 ## Hard rules
 
