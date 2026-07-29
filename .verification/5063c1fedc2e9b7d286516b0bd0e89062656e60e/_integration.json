@@ -1,0 +1,331 @@
+{
+  "schema_version": 5,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/region",
+  "commit": "5063c1fedc2e9b7d286516b0bd0e89062656e60e",
+  "scope": "integration",
+  "variables": [
+    "first_age_smoke",
+    "highest_qualification",
+    "region_0y",
+    "region_10y",
+    "region_16y",
+    "region_21y",
+    "region_26y",
+    "region_29y",
+    "region_34y",
+    "region_38y",
+    "region_42y",
+    "region_46y",
+    "region_51y",
+    "region_5y"
+  ],
+  "status": "failure",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-07-29T15:53:51Z",
+  "duration_seconds": 24,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "lookup_complete": "pass",
+    "lookup_unambiguous": "fail",
+    "no_nan_or_infinite": "pass",
+    "no_residual_sentinels": "pass",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  },
+  "summary": {
+    "first_age_smoke": {
+      "kind": "numeric",
+      "n": 5315,
+      "missing_pct": 71.5,
+      "mean": 16.64,
+      "sd": 4.59,
+      "p25": 14.0,
+      "p50": 16.0,
+      "p75": 18.0
+    },
+    "highest_qualification": {
+      "kind": "categorical",
+      "n": 13830,
+      "missing_pct": 25.81,
+      "levels": 6,
+      "codes": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "counts": [
+        1210,
+        1090,
+        3780,
+        2090,
+        3425,
+        2240
+      ],
+      "levels_suppressed": 0
+    },
+    "region_0y": {
+      "kind": "categorical",
+      "n": 17195,
+      "missing_pct": 7.78,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        5020,
+        2170,
+        1745,
+        1615,
+        1485,
+        1050,
+        1035,
+        1025,
+        880,
+        630,
+        540
+      ],
+      "levels_suppressed": 0
+    },
+    "region_10y": {
+      "kind": "categorical",
+      "n": 14785,
+      "missing_pct": 20.69,
+      "levels": 10,
+      "codes": null,
+      "counts": [
+        4075,
+        1865,
+        1545,
+        1465,
+        1455,
+        1090,
+        1040,
+        910,
+        825,
+        510
+      ],
+      "levels_suppressed": 0
+    },
+    "region_16y": {
+      "kind": "categorical",
+      "n": 11415,
+      "missing_pct": 38.77,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1485,
+        1445,
+        1155,
+        1150,
+        1130,
+        1045,
+        920,
+        880,
+        850,
+        710,
+        655
+      ],
+      "levels_suppressed": 0
+    },
+    "region_21y": {
+      "kind": "categorical",
+      "n": 1645,
+      "missing_pct": 91.18,
+      "levels": 10,
+      "codes": null,
+      "counts": [
+        335,
+        225,
+        195,
+        185,
+        180,
+        135,
+        115,
+        100,
+        90,
+        85
+      ],
+      "levels_suppressed": 0
+    },
+    "region_26y": {
+      "kind": "categorical",
+      "n": 8420,
+      "missing_pct": 54.85,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1175,
+        1020,
+        925,
+        885,
+        790,
+        770,
+        750,
+        700,
+        580,
+        420,
+        400
+      ],
+      "levels_suppressed": 1
+    },
+    "region_29y": {
+      "kind": "categorical",
+      "n": 11260,
+      "missing_pct": 39.61,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1505,
+        1395,
+        1210,
+        1125,
+        1080,
+        1050,
+        1040,
+        915,
+        775,
+        625,
+        535
+      ],
+      "levels_suppressed": 0
+    },
+    "region_34y": {
+      "kind": "categorical",
+      "n": 9660,
+      "missing_pct": 48.2,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1405,
+        1120,
+        985,
+        950,
+        910,
+        900,
+        895,
+        830,
+        720,
+        510,
+        440
+      ],
+      "levels_suppressed": 0
+    },
+    "region_38y": {
+      "kind": "categorical",
+      "n": 8875,
+      "missing_pct": 52.41,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1345,
+        1040,
+        935,
+        825,
+        815,
+        810,
+        805,
+        805,
+        645,
+        455,
+        390
+      ],
+      "levels_suppressed": 1
+    },
+    "region_42y": {
+      "kind": "categorical",
+      "n": 9835,
+      "missing_pct": 47.24,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1525,
+        1195,
+        985,
+        945,
+        935,
+        910,
+        810,
+        805,
+        750,
+        530,
+        445
+      ],
+      "levels_suppressed": 0
+    },
+    "region_46y": {
+      "kind": "categorical",
+      "n": 8580,
+      "missing_pct": 53.98,
+      "levels": 12,
+      "codes": null,
+      "counts": [
+        1325,
+        1035,
+        920,
+        810,
+        805,
+        795,
+        675,
+        670,
+        660,
+        465,
+        395,
+        15
+      ],
+      "levels_suppressed": 1
+    },
+    "region_51y": {
+      "kind": "categorical",
+      "n": 7780,
+      "missing_pct": 58.28,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1255,
+        940,
+        825,
+        785,
+        725,
+        685,
+        670,
+        570,
+        565,
+        420,
+        340
+      ],
+      "levels_suppressed": 0
+    },
+    "region_5y": {
+      "kind": "categorical",
+      "n": 13135,
+      "missing_pct": 29.56,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        3580,
+        1720,
+        1420,
+        1280,
+        1165,
+        975,
+        885,
+        800,
+        750,
+        495,
+        65
+      ],
+      "levels_suppressed": 0
+    }
+  }
+}
