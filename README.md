@@ -176,6 +176,29 @@ Both times, stopping was the right answer. A human made the fix, and the variabl
 
 > 🔒 **The one rule that matters most:** never run any of this in a folder that contains real study data. Use a normal checkout of this repository, which contains only placeholders.
 
+## Running it in a sandbox
+
+You don't have to take the list above on trust. This repository ships a **sandbox configuration**, so if you clone it and run Claude Code, the AI is confined automatically — there's no switch to remember to flip.
+
+```mermaid
+flowchart TD
+    C["You clone the repository"]
+    S["Claude Code reads<br/>.claude/settings.json"]
+    B["Sandbox turns itself on"]
+    N["🌐 Network: GitHub only<br/>nothing else is reachable"]
+    F["📁 Files: bcs70/ cannot be written to<br/>blocked outright, not just flagged later"]
+    C --> S --> B
+    B --> N
+    B --> F
+```
+
+Two things are worth understanding about this:
+
+- **It confines, it doesn't merely warn.** The `bcs70/` data folder is meant to be read-only. Until now that was enforced by review and by an automatic check that catches a bad write *after* it happened. Inside the sandbox the write simply fails.
+- **Setup happens first, outside the sandbox.** Installing the R packages needs CRAN, and signing in to GitHub needs a browser — neither of which the sandbox permits. Both are one-time steps the AI never repeats.
+
+Full instructions, including what the settings do and two honest limitations, are in [CONTRIBUTING.md § Setup](CONTRIBUTING.md#setup-running-the-agent-in-sandbox-mode).
+
 ## Where to go next
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — the full workflow in detail, and how to request a variable

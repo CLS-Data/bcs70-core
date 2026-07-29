@@ -4,3 +4,7 @@
 # runner output can contain real derived values when run against the real
 # data mount - it must never be committed to this repo
 output/
+
+# personal Claude Code overrides - never committed, so one contributor
+# cannot silently change the sandbox settings everyone else relies on
+.claude/settings.local.json
