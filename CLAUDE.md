@@ -53,6 +53,10 @@ scripts/
 registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
 
+web/                              self-contained static site: search the metadata, read derived variables and their
+                                  source, draft a variable request. build_site.py regenerates web/data/ from bcs70/
+                                  and registry/ — rerun it after adding or changing a variable. See web/README.md.
+
 DATA_KNOWLEDGE.md                 hand-maintained ledger of known data quirks that no dictionary records
                                   (duplicate ids, cross-sweep name collisions, unusable derived variables,
                                   missing concepts). Read before deriving; agents never edit it.
@@ -119,4 +123,4 @@ Rscript scripts/build_registry.R                                    # regenerate
 
 `R/runner.R` writes to `output/`, which is gitignored — never commit anything from it, since running it against real data elsewhere would produce real derived values. `registry/` is the opposite: generated, but committed — it's the read path a front end or CI uses.
 
-Python: `pyproject.toml` targets `>=3.13` with no runtime dependencies and no `.py` files exist — Python is not currently part of this workflow.
+Python: `pyproject.toml` targets `>=3.13` with no runtime dependencies. The only Python in the repo is `web/build_site.py`, which generates the variable atlas's static JSON from the metadata and the registry (standard library only — see `web/README.md`). The derivation pipeline itself is entirely R.

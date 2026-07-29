@@ -1,0 +1,54 @@
+name: Publish variable atlas
+
+# Publishes web/ to GitHub Pages. Enable once in
+# Settings -> Pages -> Source -> GitHub Actions.
+#
+# The site is fully static and web/data/ is committed, so there is nothing to
+# build here - this only uploads the directory.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a run midway: a half-finished deploy would leave the published
+# site inconsistent with the branch.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Guards against the site data drifting from the metadata it claims to
+      # describe. build_site.py is deterministic and stdlib-only, so a diff
+      # here means someone changed bcs70/ or registry/ without rebuilding.
+      - name: Check web/data is up to date
+        run: |
+          python3 web/build_site.py
+          if ! git diff --quiet -- web/data; then
+            echo "::error::web/data is stale. Run 'python3 web/build_site.py' and commit the result."
+            git diff --stat -- web/data
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4

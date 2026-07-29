@@ -199,6 +199,16 @@ Two things are worth understanding about this:
 
 Full instructions, including what the settings do and two honest limitations, are in [CONTRIBUTING.md § Setup](CONTRIBUTING.md#setup-running-the-agent-in-sandbox-mode).
 
+## Browsing the data without writing any code
+
+The repository includes a small static site — the **variable atlas** — for finding your way around 32,000 variables spread over 55 years of surveys.
+
+- **Search the metadata.** Variable names are terse and change between sweeps, so search what a variable *measures* rather than guessing its name.
+- **Read the derived variables.** Each one shows the code that produces it, the files it draws on, and the raw variables it uses.
+- **Draft a request.** Collect candidate variables as you browse, describe what you want, and it opens a prefilled GitHub issue for you to review.
+
+Run it locally with `python3 -m http.server -d web`, or publish it — see [web/README.md](web/README.md).
+
 ## Where to go next
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — the full workflow in detail, and how to request a variable
