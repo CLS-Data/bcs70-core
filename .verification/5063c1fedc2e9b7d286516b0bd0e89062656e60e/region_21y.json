@@ -1,0 +1,54 @@
+{
+  "schema_version": 5,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/region",
+  "commit": "5063c1fedc2e9b7d286516b0bd0e89062656e60e",
+  "scope": "variable",
+  "variables": [
+    "region_21y"
+  ],
+  "status": "failure",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-07-29T15:53:36Z",
+  "duration_seconds": 1,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "lookup_complete": "pass",
+    "lookup_unambiguous": "fail",
+    "no_nan_or_infinite": "skip",
+    "no_residual_sentinels": "skip",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  },
+  "summary": {
+    "region_21y": {
+      "kind": "categorical",
+      "n": 1645,
+      "missing_pct": 0.0,
+      "levels": 10,
+      "codes": null,
+      "counts": [
+        335,
+        225,
+        195,
+        185,
+        180,
+        135,
+        115,
+        100,
+        90,
+        85
+      ],
+      "levels_suppressed": 0
+    }
+  }
+}
