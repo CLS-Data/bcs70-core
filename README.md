@@ -207,7 +207,9 @@ The repository includes a small static site — the **variable atlas** — for f
 - **Read the derived variables.** Each one shows the code that produces it, the files it draws on, and the raw variables it uses.
 - **Draft a request.** Collect candidate variables as you browse, describe what you want, and it opens a prefilled GitHub issue for you to review.
 
-Run it locally with `python3 -m http.server -d web`, or publish it — see [web/README.md](web/README.md).
+Run it locally with `python3 web/build_site.py && python3 -m http.server -d web` — the
+first command generates the site's data, which is not committed. It is published
+automatically from `main`; see [web/README.md](web/README.md).
 
 ## Where to go next
 
