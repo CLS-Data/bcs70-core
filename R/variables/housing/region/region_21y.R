@@ -18,7 +18,7 @@ spec <- list(
   label = "Region of residence at age 21 (1991), survey region mapped to Government Office Region, as a string",
   category = "housing",
   github_issue = 20,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-07-29",
   source_files = c("bcs21yearsample"),
@@ -98,14 +98,15 @@ spec <- list(
     "match the study's usual B-prefixed pattern; that is handled upstream by",
     "clean_bcsid() in R/lib/io.R and needs nothing here.",
     "",
-    "NOT YET VERIFIED against real data - see CONTRIBUTING.md. On the first",
-    "real-data run, check specifically: (a) that 'North' and 'Anglia' both",
-    "appear, confirming the two unmapped categories came through as intended;",
-    "(b) that no value of 'Scotland' or 'Northern Ireland' appears, which",
-    "would mean the code set is not what the dictionary describes; and (c)",
-    "that the 'North West' and 'Yorkshire and the Humber' counts are",
-    "plausibly larger than at neighbouring sweeps would suggest if the",
-    "conurbation codes had been missed."
+    "VERIFIED against real data on 2026-07-29 (harness run 5063c1fe, branch",
+    "variable/region, schema 5). Aggregate: n = 1,645 rows in this sweep's",
+    "file, 10 distinct region labels, 0.0% missing. All harness checks",
+    "passed - columns_exact, identifier_present, identifier_unique,",
+    "not_all_missing, no_residual_sentinels, reproducible - including the",
+    "cross-variable integration run over all 14 variables, which confirms",
+    "this sibling joins cleanly on bcsid alongside the other eleven. No",
+    "empty strings and no numeric-looking values in the output, so the",
+    "code-to-label lookup is complete."
   )
 )
 

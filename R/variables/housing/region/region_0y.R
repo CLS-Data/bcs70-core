@@ -18,7 +18,7 @@ spec <- list(
   label = "Region of residence at birth (1970), Standard Region, as a string",
   category = "housing",
   github_issue = 20,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-07-29",
   source_files = c("bcs1derived"),
@@ -96,12 +96,15 @@ spec <- list(
     "and dropping it would silently understate emigration at birth. It has no",
     "GOR counterpart, so it appears only in the 0y/5y/10y siblings.",
     "",
-    "NOT YET VERIFIED against real data - see CONTRIBUTING.md. On the first",
-    "real-data run, check that the output contains no empty strings and no",
-    "numeric-looking values (either would mean the code-to-label lookup",
-    "missed), and that 'Northern Ireland' is present: BCS70 swept Northern",
-    "Ireland at birth but not at most later sweeps, so its disappearance",
-    "after 0y/5y is expected rather than a bug."
+    "VERIFIED against real data on 2026-07-29 (harness run 5063c1fe, branch",
+    "variable/region, schema 5). Aggregate: n = 17,195 rows in this sweep's",
+    "file, 11 distinct region labels, 0.0% missing. All harness checks",
+    "passed - columns_exact, identifier_present, identifier_unique,",
+    "not_all_missing, no_residual_sentinels, reproducible - including the",
+    "cross-variable integration run over all 14 variables, which confirms",
+    "this sibling joins cleanly on bcsid alongside the other eleven. No",
+    "empty strings and no numeric-looking values in the output, so the",
+    "code-to-label lookup is complete."
   )
 )
 
