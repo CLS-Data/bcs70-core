@@ -12,6 +12,121 @@ work here is split across two environments:
   merged script and runs `R/runner.R` against it, then reports the result
   back here.
 
+## Setup: running the agent in sandbox mode
+
+This repository ships a sandbox configuration in `.claude/settings.json`, so
+a fresh clone is ready to run the agent confined. You do need a one-time
+setup first, and it has to happen **before** you turn the sandbox on.
+
+### Why setup happens outside the sandbox
+
+The sandbox allows network access to GitHub and nothing else. Two setup
+steps need more than that, and both are one-offs the agent never repeats:
+
+- **Installing the R packages** reaches CRAN, not GitHub.
+- **`gh auth login`** opens a browser, which the sandbox deliberately
+  prevents (launching other applications would defeat the isolation).
+
+So: set up unsandboxed, then work sandboxed. The agent itself only ever
+needs GitHub.
+
+### One-time setup
+
+**1. Clone over HTTPS.** Not SSH — SSH is port 22 and cannot traverse the
+sandbox's HTTP proxy, so pushes would fail once the sandbox is on:
+
+    git clone https://github.com/CLS-Data/bcs70-core.git
+    cd bcs70-core
+
+If you already cloned over SSH, switch the remote:
+
+    git remote set-url origin https://github.com/CLS-Data/bcs70-core.git
+
+**2. Install R and the four packages** the checks need:
+
+    Rscript -e 'install.packages(c("styler", "lintr", "testthat", "jsonlite"))'
+
+**3. Authenticate GitHub** and let git reuse that login, so no separate
+credentials are needed:
+
+    gh auth login          # choose HTTPS when asked about git protocol
+    gh auth setup-git
+
+**4. Confirm setup worked**, still unsandboxed:
+
+    gh auth status
+    Rscript -e 'testthat::test_dir("tests/testthat")'
+
+### Then just run Claude Code
+
+    claude
+
+The sandbox turns itself on from `.claude/settings.json` — there is nothing
+to enable by hand. Ask for the agent as normal:
+
+> Use the variable-deriver agent
+
+### What the shipped settings do
+
+| Setting | Effect |
+|---|---|
+| `sandbox.enabled: true` | Sandbox is on by default for anyone who clones this repo |
+| `network.allowedDomains` | Only `github.com`, `api.github.com`, `codeload.github.com`, `objects.githubusercontent.com` are reachable |
+| `filesystem.denyWrite: ["bcs70"]` | **Enforces the `bcs70/` read-only rule at the OS level**, not just by convention and CI |
+| `autoAllowBashIfSandboxed: true` | Commands don't prompt individually — the confinement is the safety boundary, not the prompts |
+| `enableWeakerNetworkIsolation: true` | macOS only; required for `gh` to work at all (see below). Ignored on Linux |
+
+The `bcs70/` entry is the one worth noticing. That directory is read-only in
+principle, enforced until now only by review and the `guard-bcs70` CI job -
+which catches a bad write *after* it has already happened. Under the
+sandbox, the write fails outright.
+
+### Two limitations, stated plainly
+
+**The allowlist prompts; it does not hard-deny.** Making it deny outright
+requires `sandbox.network.strictAllowlist`, and per the settings schema that
+key is *ignored* in project settings - it is only honoured from your own
+`~/.claude/settings.json`. It therefore cannot be shipped with this repo. If
+you want deterministic denial rather than a prompt, add it yourself:
+
+```json
+{ "sandbox": { "network": { "strictAllowlist": true } } }
+```
+
+Note this applies globally, to all your projects, not just this one.
+
+**`enableWeakerNetworkIsolation` is a real trade-off.** `gh` is a Go binary
+and won't trust the sandbox proxy's certificate on macOS without it - every
+`gh` call fails with `tls: failed to verify certificate: x509: ...`, which
+looks like an auth problem and isn't. The setting fixes that by allowing
+access to `com.apple.trustd.agent`, and its own documentation notes this
+"opens a potential data exfiltration vector". In this repository the
+practical exposure is small, because a correct checkout contains no real
+study data - every file under `bcs70/` is an empty placeholder. That is only
+true if you have followed the hard rule below.
+
+> **Never point Claude Code at a checkout containing real study data**, with
+> or without the sandbox. The sandbox restricts *where* data could go; it
+> does not make exposing real data acceptable.
+
+### Verifying the sandbox is actually on
+
+Ask Claude to run each of these. The first three should succeed, the last
+two should be blocked:
+
+    gh auth status                      # should work
+    git fetch origin                    # should work
+    Rscript -e 'testthat::test_dir("tests/testthat")'   # should work
+
+    curl -sS https://cran.r-project.org # should be blocked or prompt
+    touch bcs70/SHOULD_NOT_EXIST        # should be denied
+
+If `touch bcs70/...` succeeds, the sandbox is not active - check that
+`.claude/settings.json` is present and that nothing in your
+`.claude/settings.local.json` or `~/.claude/settings.json` is overriding
+`sandbox.enabled`. Settings load user → project → local, so a local file
+wins over the one shipped here.
+
 ## Workflow
 
 1. **Request.** Open an issue using the "Derived variable request" template:
