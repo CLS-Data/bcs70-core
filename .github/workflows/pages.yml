@@ -1,16 +1,22 @@
 name: Publish variable atlas
 
-# Publishes web/ to GitHub Pages. Enable once in
-# Settings -> Pages -> Source -> GitHub Actions.
+# Publishes web/ to GitHub Pages.
 #
-# The site is fully static and web/data/ is committed, so there is nothing to
-# build here - this only uploads the directory.
+# Requires Settings -> Pages -> Source -> GitHub Actions. With the source set
+# to a branch instead, configure-pages below fails and nothing is published -
+# which is exactly how the site silently went stale before.
+#
+# data/ is generated here rather than committed, so the published site is
+# always built from the registry and metadata of the commit being published
+# and cannot drift from them.
 
 on:
   push:
     branches: [main]
     paths:
       - "web/**"
+      - "registry/**"
+      - "bcs70/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -34,17 +40,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Guards against the site data drifting from the metadata it claims to
-      # describe. build_site.py is deterministic and stdlib-only, so a diff
-      # here means someone changed bcs70/ or registry/ without rebuilding.
-      - name: Check web/data is up to date
-        run: |
-          python3 web/build_site.py
-          if ! git diff --quiet -- web/data; then
-            echo "::error::web/data is stale. Run 'python3 web/build_site.py' and commit the result."
-            git diff --stat -- web/data
-            exit 1
-          fi
+      # build_site.py is stdlib-only and deterministic, and reads only
+      # committed inputs (bcs70/ metadata and registry/variables.json), so this
+      # reproduces exactly the data the published commit describes. It never
+      # opens a .tab file, so no row of study data can reach the artifact.
+      - name: Build site data
+        run: python3 web/build_site.py
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

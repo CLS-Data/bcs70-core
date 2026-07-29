@@ -8,3 +8,9 @@ output/
 # personal Claude Code overrides - never committed, so one contributor
 # cannot silently change the sandbox settings everyone else relies on
 .claude/settings.local.json
+
+# the atlas's generated JSON - built by .github/workflows/pages.yml at publish
+# time from bcs70/ and registry/, so committing it would only create a second
+# copy that can disagree with the metadata it claims to describe.
+# Run 'python3 web/build_site.py' to produce it locally.
+web/data/

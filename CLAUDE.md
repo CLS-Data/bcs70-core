@@ -54,8 +54,9 @@ registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
 
 web/                              self-contained static site: search the metadata, read derived variables and their
-                                  source, draft a variable request. build_site.py regenerates web/data/ from bcs70/
-                                  and registry/ — rerun it after adding or changing a variable. See web/README.md.
+                                  source, draft a variable request. build_site.py generates web/data/ from bcs70/
+                                  and registry/; that output is gitignored and built by CI at publish time, so adding
+                                  a variable needs no rebuild step — run it only to preview locally. See web/README.md.
 
 DATA_KNOWLEDGE.md                 hand-maintained ledger of known data quirks that no dictionary records
                                   (duplicate ids, cross-sweep name collisions, unusable derived variables,
