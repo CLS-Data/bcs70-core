@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BCS70 Variable Atlas</title>
+<meta name="description" content="Find raw variables across 55 years of BCS70 instruments, see what has been harmonised from them, and draft a new variable request.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>🗺️</text></svg>">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="mark">
+    <span class="mark-name">BCS70</span>
+    <span class="mark-sub">variable atlas</span>
+  </div>
+
+  <nav class="views" aria-label="Views">
+    <button class="view-tab is-current" data-view="metadata" aria-current="page">Metadata</button>
+    <button class="view-tab" data-view="derived">Derived</button>
+    <button class="view-tab" data-view="scratch">Scratchpad <span class="tally" id="scratch-tally" hidden>0</span></button>
+  </nav>
+
+  <button class="theme" id="theme" type="button" aria-label="Switch colour theme" title="Switch colour theme"></button>
+</header>
+
+<!-- The spine: a life-course axis, 0y to 51y. It reflects whatever is on
+     screen - matches per sweep while searching, coverage while reading a
+     derived family. Gaps are the point, so absence is drawn, not hidden. -->
+<section class="spine" aria-label="Coverage by sweep">
+  <div class="spine-head">
+    <span class="spine-title" id="spine-title">Coverage</span>
+    <span class="spine-note" id="spine-note"></span>
+  </div>
+  <ol class="spine-track" id="spine-track"></ol>
+</section>
+
+<main id="main">
+
+  <!-- ── Metadata ─────────────────────────────────────────────────── -->
+  <section class="view is-current" data-view="metadata">
+    <div class="pane pane-list">
+      <div class="finder">
+        <label class="field">
+          <span class="field-label">Search variables</span>
+          <input type="search" id="q" placeholder="tenure, bmi, b960421…" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="finder-meta">
+          <span id="result-count">—</span>
+          <button class="link-btn" id="clear-filters" hidden>Clear filters</button>
+        </div>
+        <div class="chips" id="active-filters"></div>
+      </div>
+      <ol class="results" id="results"></ol>
+      <p class="more" id="more" hidden></p>
+    </div>
+    <div class="pane pane-detail" id="detail" tabindex="-1">
+      <div class="empty">
+        <h2>Find a variable</h2>
+        <p>Search by name or by what it measures. Names are terse and inconsistent across sweeps — <code>d2</code> at 10y and <code>c6.8</code> at 16y both ask about housing tenure — so searching the label usually works better than guessing the name.</p>
+        <p class="empty-hint">Click a sweep on the spine above to narrow to one age.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Derived ──────────────────────────────────────────────────── -->
+  <section class="view" data-view="derived">
+    <div class="pane pane-list">
+      <div class="finder">
+        <label class="field">
+          <span class="field-label">Search derived variables</span>
+          <input type="search" id="dq" placeholder="housing tenure, smoking…" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="finder-meta"><span id="derived-count">—</span></div>
+      </div>
+      <ol class="results" id="derived-list"></ol>
+    </div>
+    <div class="pane pane-detail" id="derived-detail" tabindex="-1">
+      <div class="empty">
+        <h2>What has been harmonised</h2>
+        <p>Each entry is one R script that turns raw sweep variables into a single harmonised column. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
+        <p class="empty-hint">Status matters: <em>draft</em> means it has only been checked against fabricated data.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Scratchpad ───────────────────────────────────────────────── -->
+  <section class="view" data-view="scratch">
+    <div class="pane pane-list">
+      <div class="finder">
+        <span class="field-label">Candidate variables</span>
+        <p class="finder-help">Added from the metadata view. These become the “known source variables” on the issue.</p>
+      </div>
+      <ol class="results" id="basket"></ol>
+      <p class="basket-empty" id="basket-empty">Nothing collected yet. Search the metadata, open a variable, and choose <strong>Add to scratchpad</strong>.</p>
+    </div>
+
+    <div class="pane pane-detail">
+      <form class="draft" id="draft" autocomplete="off">
+        <h2>Draft a variable request</h2>
+        <p class="draft-intro">This composes an issue against the repository’s request template. Nothing is submitted until you review it on GitHub.</p>
+
+        <label class="field">
+          <span class="field-label">Proposed name <em>required</em></span>
+          <input id="f-name" placeholder="highest_qualification_age30" spellcheck="false">
+          <span class="field-help">snake_case. Becomes the output column name.</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Sweeps involved <em>required</em></span>
+          <input id="f-sweeps" placeholder="26y, 29y" spellcheck="false">
+          <span class="field-help">Fills in from your candidates. Say “each age” if you want one per sweep.</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Category <em>required</em></span>
+          <select id="f-category"></select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">What should this capture? <em>required</em></span>
+          <textarea id="f-description" rows="4" placeholder="The concept this should represent, and why it is useful."></textarea>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Known source variables</span>
+          <textarea id="f-sources" rows="4" spellcheck="false"></textarea>
+          <span class="field-help">Auto-filled from your candidates. Edit freely.</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Coding and edge cases</span>
+          <textarea id="f-notes" rows="3" placeholder="Missing-value handling, sweeps to exclude, precedent to follow."></textarea>
+        </label>
+
+        <div class="draft-actions">
+          <a class="btn btn-primary" id="submit" href="#" target="_blank" rel="noopener">Open as GitHub issue</a>
+          <button class="btn" id="copy" type="button">Copy as text</button>
+          <button class="btn btn-quiet" id="reset" type="button">Clear draft</button>
+        </div>
+        <p class="draft-status" id="draft-status" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <span id="foot-counts">—</span>
+  <span class="foot-sep">·</span>
+  <span>Metadata only — every <code>.tab</code> in this repository is an empty placeholder, and no row of study data is published here.</span>
+  <span class="foot-sep">·</span>
+  <a id="foot-repo" href="#">Repository</a>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
