@@ -4,9 +4,8 @@ bcs11_age51_benefits_longf,State Benefits Long Format Data File
 bcs11_age51_covidbens_longf,Covid-19 State Benefits Long Format Data File
 bcs11_age51_covidvax_longf,Vaccinations for Covid-19 Long Format Data File
 bcs11_age51_debt_longf,Debts Owed Long Format Data File
-bcs11_age51_econshock_longf,Respondent Economic Shocks since Covid-19 Outbreak Long
-Format Data File,bcs11_age51_econshockp_longf
-Partner Economic Shocks since Covid-19 Outbreak Long Format,Data File
+bcs11_age51_econshock_longf,Respondent Economic Shocks since Covid-19 Outbreak Long Format Data File
+bcs11_age51_econshockp_longf,Partner Economic Shocks since Covid-19 Outbreak Long Format Data File
 bcs11_age51_employment_longf,Economic Activity Histories Long Format Data File
 bcs11_age51_housing_longf,Housing Histories Long Format Data File
 bcs11_age51_main,Main Survey Data File

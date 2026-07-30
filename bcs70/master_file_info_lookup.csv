@@ -155,7 +155,13 @@ study_number,sweep,file_name,description,file_type,path,source_table_path
 8547,46y,bcs_age46_employment,Employment History Data File,tab,bcs_age46_employment.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
 8547,46y,bcs_age46_housing,Housing History Data File,tab,bcs_age46_housing.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
 8547,46y,bcs_age46_long_acting_medication,Long-acting Medication Data File,tab,bcs_age46_long_acting_medication.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
-8547,46y,bcs_age46_main,"Core Interview, Self-completion and Nurse Administered Measurements",tab,bcs_age46_main.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_main,"Core Interview, Self-completion and Nurse Administered Measurements Data File",tab,bcs_age46_main.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_medication,BNF Codes for Medication Data File,tab,bcs_age46_medication.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_nutrients,Nutrient Data File,tab,bcs_age46_nutrients.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_persongrid,Household Grid Data File,tab,bcs_age46_persongrid.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_qualifications,Qualifications History Data File,tab,bcs_age46_qualifications.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_relationships,Relationships Data File,tab,bcs_age46_relationships.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
+8547,46y,bcs_age46_unfolding,Unfolding Brackets Data File,tab,bcs_age46_unfolding.tab,46y/metadata/8547/file_information/8547_file_information_table.csv
 8611,46y,8611_bcs_age46_accelerometry_user_guide,BCS Age 46 Accelerometry User Guide,pdf,metadata/8611/pdfs/8611_bcs_age46_accelerometry_user_guide.pdf,46y/metadata/8611/file_information/8611_file_information_table.csv
 8611,46y,bcs_age46_activpal_avg,BCS Age 46 Accelerometry ActivPal Average Data File,tab,bcs_age46_activpal_avg.tab,46y/metadata/8611/file_information/8611_file_information_table.csv
 8611,46y,bcs_age46_activpal_days,BCS Age 46 Accelerometry ActivPal Days Data File,tab,bcs_age46_activpal_days.tab,46y/metadata/8611/file_information/8611_file_information_table.csv
@@ -163,7 +169,8 @@ study_number,sweep,file_name,description,file_type,path,source_table_path
 9347,51y,bcs11_age51_covidbens_longf,Covid-19 State Benefits Long Format Data File,tab,bcs11_age51_covidbens_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
 9347,51y,bcs11_age51_covidvax_longf,Vaccinations for Covid-19 Long Format Data File,tab,bcs11_age51_covidvax_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
 9347,51y,bcs11_age51_debt_longf,Debts Owed Long Format Data File,tab,bcs11_age51_debt_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
-9347,51y,bcs11_age51_econshock_longf,Respondent Economic Shocks since Covid-19 Outbreak Long,tab,bcs11_age51_econshock_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_econshock_longf,Respondent Economic Shocks since Covid-19 Outbreak Long Format Data File,tab,bcs11_age51_econshock_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
+9347,51y,bcs11_age51_econshockp_longf,Partner Economic Shocks since Covid-19 Outbreak Long Format Data File,tab,bcs11_age51_econshockp_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
 9347,51y,bcs11_age51_employment_longf,Economic Activity Histories Long Format Data File,tab,bcs11_age51_employment_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
 9347,51y,bcs11_age51_housing_longf,Housing Histories Long Format Data File,tab,bcs11_age51_housing_longf.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
 9347,51y,bcs11_age51_main,Main Survey Data File,tab,bcs11_age51_main.tab,51y/metadata/9347/file_information/9347_file_information_table.csv
