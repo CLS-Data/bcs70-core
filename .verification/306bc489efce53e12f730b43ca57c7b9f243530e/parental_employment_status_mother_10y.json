@@ -1,0 +1,44 @@
+{
+  "schema_version": 5,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/parental_employment_status",
+  "commit": "306bc489efce53e12f730b43ca57c7b9f243530e",
+  "scope": "variable",
+  "variables": [
+    "parental_employment_status_mother_10y"
+  ],
+  "status": "success",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-07-30T10:50:50Z",
+  "duration_seconds": 6,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "no_nan_or_infinite": "skip",
+    "no_residual_sentinels": "skip",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  },
+  "summary": {
+    "parental_employment_status_mother_10y": {
+      "kind": "categorical",
+      "n": 5985,
+      "missing_pct": 13.14,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        3875,
+        2115
+      ],
+      "levels_suppressed": 0
+    }
+  }
+}
