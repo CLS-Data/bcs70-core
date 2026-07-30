@@ -8,11 +8,11 @@ bcs_age46_dietary_questionnaire,On-line Dietary Questionnaire Data File
 bcs_age46_employment,Employment History Data File
 bcs_age46_housing,Housing History Data File
 bcs_age46_long_acting_medication,Long-acting Medication Data File
-bcs_age46_main,"Core Interview, Self-completion and Nurse Administered Measurements"
-Data File,bcs_age46_medication
-BNF Codes for Medication Data File,bcs_age46_nutrients
-Nutrient Data File,bcs_age46_persongrid
-Household Grid Data File,bcs_age46_qualifications
-Qualifications History Data File,bcs_age46_relationships
-Relationships Data File,bcs_age46_unfolding
-Unfolding Brackets Data File,ukda_data_dictionaries
+bcs_age46_main,"Core Interview, Self-completion and Nurse Administered Measurements Data File"
+bcs_age46_medication,BNF Codes for Medication Data File
+bcs_age46_nutrients,Nutrient Data File
+bcs_age46_persongrid,Household Grid Data File
+bcs_age46_qualifications,Qualifications History Data File
+bcs_age46_relationships,Relationships Data File
+bcs_age46_unfolding,Unfolding Brackets Data File
+ukda_data_dictionaries,UK Data Archive Data Dictionaries
