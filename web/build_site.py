@@ -38,6 +38,12 @@ SWEEP_ORDER = [
 
 DICT_SUFFIX = "_ukda_data_dictionary_variables.csv"
 
+# Measurement levels in increasing order of information, not alphabetical, so
+# the site's filter reads nominal -> ordinal -> scale. This is the field the
+# site filters on rather than variable_type, which is degenerate here: 31,472
+# of 32,454 variables are "numeric", 981 unrecorded and one "other".
+MEASUREMENT_LEVELS = ["NOMINAL", "ORDINAL", "SCALE"]
+
 
 def clean(value: str | None) -> str | None:
     """Normalise the several ways this corpus spells 'no value'."""
@@ -138,10 +144,13 @@ def main() -> int:
 
     # Compact search index: each variable is a positional array, not an
     # object. At ~32k variables, repeated key names would dominate the
-    # payload.  [name, label, fileIndex, sweepIndex]
+    # payload.  [name, label, fileIndex, sweepIndex, levelIndex]
+    # levelIndex points into `levels` below, or -1 where the dictionary
+    # records no measurement level.
     index: list[list] = []
     built_slugs: list[str] = []
     orphans: list[str] = []
+    levels = list(MEASUREMENT_LEVELS)
 
     for path in sorted(REPO.joinpath("bcs70").rglob(f"*{DICT_SUFFIX}")):
         rel = path.relative_to(REPO).parts
@@ -167,16 +176,25 @@ def main() -> int:
                     values = json.loads(raw)
                 except json.JSONDecodeError:
                     values = None
+            level = clean(r.get("measurement_level"))
+            # An unseen level is appended rather than folded into "unrecorded",
+            # the same way an unknown sweep is appended to SWEEP_ORDER: a new
+            # deposit inventing a level should show up, not disappear.
+            if level and level not in levels:
+                levels.append(level)
             variables.append({
                 "variable": r["variable"],
                 "label": clean(r.get("variable_label")),
                 "pos": clean(r.get("pos")),
                 "type": clean(r.get("variable_type")),
-                "measurement": clean(r.get("measurement_level")),
+                "measurement": level,
                 "missing": clean(r.get("spss_user_missing_values")),
                 "values": values,
             })
-            index.append([r["variable"], clean(r.get("variable_label")) or "", idx, sweep_pos[sweep]])
+            index.append([
+                r["variable"], clean(r.get("variable_label")) or "",
+                idx, sweep_pos[sweep], levels.index(level) if level else -1,
+            ])
 
         # The slug carries the sweep for the same collision reason - without
         # it the second dictionary overwrites the first on disk.
@@ -212,6 +230,7 @@ def main() -> int:
         "repo": detect_repo(),
         "built": date.today().isoformat(),
         "sweeps": sweeps,
+        "levels": levels,
         "files": files,
         "filesWithDict": built_slugs,
         "unlisted": [f["slug"] for f in files if not f["inLookup"]],
@@ -223,6 +242,11 @@ def main() -> int:
             "derived": len(derived),
         },
     })
+
+    extra_levels = levels[len(MEASUREMENT_LEVELS):]
+    if extra_levels:
+        print(f"warning: measurement levels missing from MEASUREMENT_LEVELS, "
+              f"appended: {', '.join(extra_levels)}")
 
     unlisted = [f["slug"] for f in files if not f["inLookup"]]
     if unlisted:

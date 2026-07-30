@@ -274,6 +274,33 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
   font-family: var(--mono); font-size: 11px;
 }
 
+/* Facets: measurement level in the metadata view, category in the derived
+   one. Toggles, not a select, because the count beside each option is half
+   the information - and a zero is kept visible rather than dropped. */
+.facet-group { margin-bottom: 12px; }
+
+.facets { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.facet {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--mono); font-size: 11px;
+  cursor: pointer;
+}
+.facet:hover:not(:disabled) { border-color: var(--ink-2); color: var(--ink); }
+.facet.is-on {
+  border-color: var(--contour); color: var(--contour);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--contour);
+}
+.facet-n { font-size: 10px; color: var(--ink-3); font-weight: 400; }
+.facet.is-on .facet-n { color: var(--contour); }
+.facet.is-empty { border-style: dashed; color: var(--ink-3); }
+.facet:disabled { cursor: default; opacity: .7; }
+
 .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
