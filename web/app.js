@@ -27,17 +27,22 @@ const CATEGORIES = [
   ["Other", "other"],
 ];
 
+const LEVEL_UNRECORDED = -1;   // dictionary records no measurement level
+
 const state = {
   manifest: null,
-  vars: [],          // [name, label, fileIdx, sweepIdx]
+  vars: [],          // [name, label, fileIdx, sweepIdx, levelIdx]
   derived: [],
   dictCache: new Map(),
   query: "",
   sweepFilter: null, // sweep index, or null
   fileFilter: null,  // file index, or null
+  levelFilter: null, // measurement level index, LEVEL_UNRECORDED, or null
+  levelCounts: new Map(),
   matches: [],
   selected: null,
   derivedQuery: "",
+  derivedCategory: null, // category slug, or null
   derivedSelected: null,
   basket: [],
   view: "metadata",
@@ -45,6 +50,15 @@ const state = {
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// NOMINAL -> Nominal. The dictionaries shout; the interface doesn't need to.
+const levelName = (i) => i === LEVEL_UNRECORDED
+  ? "Unrecorded"
+  : ((state.manifest.levels || [])[i] || "?").replace(/^(.)(.*)$/,
+      (_, a, b) => a + b.toLowerCase());
+
+const categoryName = (slug) =>
+  (CATEGORIES.find(([, s]) => s === slug) || [slug])[0];
 
 function highlight(text, term) {
   const t = String(text ?? "");
@@ -145,16 +159,45 @@ function renderSpine() {
 function runSearch() {
   const q = state.query.trim().toLowerCase();
   const out = [];
+  // Level counts are tallied BEFORE the level filter is applied, so each
+  // facet shows what choosing it would give rather than what is on screen.
+  const counts = new Map();
   for (const row of state.vars) {
     if (state.sweepFilter !== null && row[3] !== state.sweepFilter) continue;
     if (state.fileFilter !== null && row[2] !== state.fileFilter) continue;
     if (q && !row[0].toLowerCase().includes(q) && !row[1].toLowerCase().includes(q)) continue;
+    const level = row[4] ?? LEVEL_UNRECORDED;
+    counts.set(level, (counts.get(level) || 0) + 1);
+    if (state.levelFilter !== null && level !== state.levelFilter) continue;
     out.push(row);
   }
+  state.levelCounts = counts;
   state.matches = out;
   renderResults();
   renderSpine();
+  renderLevelFacets();
   renderFilters();
+}
+
+/* Measurement level — the dictionaries' one discriminating type field.
+   variable_type is not offered: 31,472 of 32,454 variables are "numeric", so
+   filtering on it would be a no-op. Every level is drawn even at zero, for
+   the same reason an empty sweep is drawn on the spine: knowing a search has
+   no scale variables in it is the answer, not a reason to hide the control. */
+function renderLevelFacets() {
+  const levels = state.manifest.levels || [];
+  const group = $("#level-facets");
+  if (!levels.length) { $("#level-group").hidden = true; return; }
+
+  const keys = [...levels.keys(), LEVEL_UNRECORDED];
+  group.innerHTML = keys.map((key) => {
+    const n = state.levelCounts.get(key) || 0;
+    const on = state.levelFilter === key;
+    return `<button class="facet${on ? " is-on" : ""}${n ? "" : " is-empty"}"
+              data-level="${key}" aria-pressed="${on}" ${n || on ? "" : "disabled"}>
+        ${esc(levelName(key))}<span class="facet-n">${n ? n.toLocaleString() : "—"}</span>
+      </button>`;
+  }).join("");
 }
 
 function renderResults() {
@@ -195,6 +238,9 @@ function renderFilters() {
   }
   if (state.fileFilter !== null) {
     chips.push(`<button class="chip" data-clear="file">file ${esc(state.manifest.files[state.fileFilter].name)} ✕</button>`);
+  }
+  if (state.levelFilter !== null) {
+    chips.push(`<button class="chip" data-clear="level">level ${esc(levelName(state.levelFilter).toLowerCase())} ✕</button>`);
   }
   $("#active-filters").innerHTML = chips.join("");
   $("#clear-filters").hidden = chips.length === 0;
@@ -286,6 +332,7 @@ async function showVariable(row) {
   $("#filter-file")?.addEventListener("click", () => {
     state.fileFilter = fileIdx;
     state.sweepFilter = null;
+    state.levelFilter = null;
     state.query = "";
     $("#q").value = "";
     runSearch();
@@ -294,12 +341,39 @@ async function showVariable(row) {
 
 /* ── Derived variables ───────────────────────────────────────────────── */
 
+function matchesDerivedQuery(d, q) {
+  return !q || d.id.toLowerCase().includes(q) ||
+    (d.label || "").toLowerCase().includes(q) ||
+    (d.family || "").toLowerCase().includes(q);
+}
+
+/* Categories are the fixed list from the issue template, and all ten are
+   drawn even where nothing has been harmonised yet — "no health variables
+   exist" is the most useful thing this control can tell you. */
+function renderCategoryFacets() {
+  const q = state.derivedQuery.trim().toLowerCase();
+  const counts = new Map();
+  state.derived.filter((d) => matchesDerivedQuery(d, q))
+    .forEach((d) => counts.set(d.category, (counts.get(d.category) || 0) + 1));
+
+  $("#category-facets").innerHTML = CATEGORIES.map(([label, slug]) => {
+    const n = counts.get(slug) || 0;
+    const on = state.derivedCategory === slug;
+    return `<button class="facet${on ? " is-on" : ""}${n ? "" : " is-empty"}"
+              data-category="${esc(slug)}" aria-pressed="${on}" ${n || on ? "" : "disabled"}>
+        ${esc(label)}<span class="facet-n">${n || "—"}</span>
+      </button>`;
+  }).join("");
+
+  $("#clear-category").hidden = state.derivedCategory === null;
+}
+
 function renderDerivedList() {
   const q = state.derivedQuery.trim().toLowerCase();
-  const list = state.derived.filter((d) =>
-    !q || d.id.toLowerCase().includes(q) ||
-    (d.label || "").toLowerCase().includes(q) ||
-    (d.family || "").toLowerCase().includes(q));
+  const list = state.derived.filter((d) => matchesDerivedQuery(d, q) &&
+    (state.derivedCategory === null || d.category === state.derivedCategory));
+
+  renderCategoryFacets();
 
   $("#derived-count").textContent = state.derived.length
     ? `${list.length} of ${state.derived.length}`
@@ -312,11 +386,19 @@ function renderDerivedList() {
     return;
   }
 
+  if (!list.length) {
+    $("#derived-list").innerHTML =
+      `<li><p class="basket-empty">Nothing matches. ${state.derivedCategory !== null
+        ? `No ${esc(categoryName(state.derivedCategory).toLowerCase())} variable matches this search.`
+        : ""}</p></li>`;
+    return;
+  }
+
   let lastFamily = null;
   $("#derived-list").innerHTML = list.map((d) => {
     const head = d.family !== lastFamily
       ? `<li><p class="more" style="border-bottom:1px solid var(--rule);margin:0">
-           ${esc(d.category)} / <strong>${esc(d.family)}</strong></p></li>` : "";
+           ${esc(categoryName(d.category))} / <strong>${esc(d.family)}</strong></p></li>` : "";
     lastFamily = d.family;
     const cur = state.derivedSelected?.id === d.id ? " is-current" : "";
     return head + `<li><button class="row${cur}" data-id="${esc(d.id)}">
@@ -348,7 +430,7 @@ function showDerived(d) {
 
   $("#derived-detail").innerHTML = `
     <div class="detail-head">
-      <div class="detail-eyebrow">${esc(d.category)} · ${esc(d.family)} · ${statusPill(d.status)}</div>
+      <div class="detail-eyebrow">${esc(categoryName(d.category))} · ${esc(d.family)} · ${statusPill(d.status)}</div>
       <h1 class="detail-name">${esc(d.id)}</h1>
       <p class="detail-label">${esc(d.label)}</p>
     </div>
@@ -396,14 +478,15 @@ function showDerived(d) {
       const idx = state.manifest.files.findIndex((f) => f.name === b.dataset.file);
       if (idx < 0) return;
       switchView("metadata");
-      state.fileFilter = idx; state.sweepFilter = null; state.query = "";
+      state.fileFilter = idx; state.sweepFilter = null; state.levelFilter = null;
+      state.query = "";
       $("#q").value = ""; runSearch();
     }));
 
   $$("#derived-detail [data-var]").forEach((b) =>
     b.addEventListener("click", () => {
       switchView("metadata");
-      state.fileFilter = null; state.sweepFilter = null;
+      state.fileFilter = null; state.sweepFilter = null; state.levelFilter = null;
       state.query = b.dataset.var; $("#q").value = b.dataset.var;
       runSearch();
     }));
@@ -563,6 +646,19 @@ function wireUp() {
     if (btn) showDerived(state.derived.find((d) => d.id === btn.dataset.id));
   });
 
+  $("#category-facets").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-category]");
+    if (!btn) return;
+    const slug = btn.dataset.category;
+    state.derivedCategory = state.derivedCategory === slug ? null : slug;
+    renderDerivedList();
+  });
+
+  $("#clear-category").addEventListener("click", () => {
+    state.derivedCategory = null;
+    renderDerivedList();
+  });
+
   $("#spine-track").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-sweep]");
     if (!btn) return;
@@ -577,11 +673,20 @@ function wireUp() {
     if (!btn) return;
     if (btn.dataset.clear === "sweep") state.sweepFilter = null;
     if (btn.dataset.clear === "file") state.fileFilter = null;
+    if (btn.dataset.clear === "level") state.levelFilter = null;
+    runSearch();
+  });
+
+  $("#level-facets").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-level]");
+    if (!btn) return;
+    const key = Number(btn.dataset.level);
+    state.levelFilter = state.levelFilter === key ? null : key;
     runSearch();
   });
 
   $("#clear-filters").addEventListener("click", () => {
-    state.sweepFilter = null; state.fileFilter = null;
+    state.sweepFilter = null; state.fileFilter = null; state.levelFilter = null;
     state.query = ""; $("#q").value = "";
     runSearch();
   });

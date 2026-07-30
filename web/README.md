@@ -40,11 +40,26 @@ its own copy.
 **Metadata** — search 32,000+ variables by name or label. Names are terse and
 inconsistent between sweeps, so searching the label usually beats guessing the
 name. Open one to see its value labels, declared missing codes, position, and
-the file and study it came from.
+the file and study it came from. Filter by **measurement level** (nominal,
+ordinal, scale, unrecorded), by sweep from the spine, or by file from a
+variable's detail pane; the three combine, and each shows as a clearable chip.
 
-**Derived** — the harmonised variables. Each shows the R source that produces
-it, the deposited files it draws on, and the raw variables it needs. Source
-files and variables are clickable and jump back into the metadata view.
+**Derived** — the harmonised variables, filterable by **category**. Each shows
+the R source that produces it, the deposited files it draws on, and the raw
+variables it needs. Source files and variables are clickable and jump back
+into the metadata view.
+
+The level filter reads `measurement_level`, not `variable_type`. The latter is
+the more obvious "type" field and is shown on the detail pane, but it does not
+discriminate: 31,472 of 32,454 variables are `numeric`, 981 record nothing and
+one is `other`, so filtering on it would be a no-op.
+
+Both filters draw every option, including options with nothing behind them,
+for the reason the spine draws empty sweeps: knowing a search contains no
+scale variables, or that no health variable has been harmonised yet, is the
+answer rather than a reason to hide the control. Counts beside each option are
+tallied *before* that filter is applied, so a count says what choosing it
+would give, not what is already on screen.
 
 **Scratchpad** — collect candidate variables while browsing, describe what you
 want, and open a prefilled GitHub issue against the repository's request

@@ -48,6 +48,10 @@
           <span class="field-label">Search variables</span>
           <input type="search" id="q" placeholder="tenure, bmi, b960421…" autocomplete="off" spellcheck="false">
         </label>
+        <div class="facet-group" id="level-group">
+          <span class="field-label" id="level-label">Measurement level</span>
+          <div class="facets" id="level-facets" role="group" aria-labelledby="level-label"></div>
+        </div>
         <div class="finder-meta">
           <span id="result-count">—</span>
           <button class="link-btn" id="clear-filters" hidden>Clear filters</button>
@@ -74,7 +78,14 @@
           <span class="field-label">Search derived variables</span>
           <input type="search" id="dq" placeholder="housing tenure, smoking…" autocomplete="off" spellcheck="false">
         </label>
-        <div class="finder-meta"><span id="derived-count">—</span></div>
+        <div class="facet-group">
+          <span class="field-label" id="category-label">Category</span>
+          <div class="facets" id="category-facets" role="group" aria-labelledby="category-label"></div>
+        </div>
+        <div class="finder-meta">
+          <span id="derived-count">—</span>
+          <button class="link-btn" id="clear-category" hidden>Clear category</button>
+        </div>
       </div>
       <ol class="results" id="derived-list"></ol>
     </div>
