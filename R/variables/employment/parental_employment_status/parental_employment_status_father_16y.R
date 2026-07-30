@@ -22,7 +22,7 @@ spec <- list(
   label = "Father's employment status at age 16 (1986): employed or not employed",
   category = "employment",
   github_issue = 25,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-07-30",
   source_files = c("bcs7016x"),
@@ -62,7 +62,16 @@ spec <- list(
     "'Employed'; c6.16 == 2 -> 'Not employed'; anything else (both",
     "documented negative codes, or any undocumented value) -> NA.",
     "",
-    "NOT YET VERIFIED against real data - see CONTRIBUTING.md."
+    "VERIFIED against real data on 2026-07-30 (harness run 306bc489, branch",
+    "variable/parental_employment_status, schema 5). Aggregate: n = 5,285,",
+    "54.49% missing, both 'Employed'/'Not employed' levels represented (no",
+    "degenerate all-one-category output). All harness checks passed -",
+    "columns_exact, identifier_present, identifier_unique, not_all_missing,",
+    "reproducible, workspace_writes_confined - including the cross-variable",
+    "integration run across all 22 variables in this build, which confirms",
+    "this sibling joins cleanly on bcsid alongside the rest of the family.",
+    "No row-level or respondent-level data was inspected, only this",
+    "aggregate harness summary."
   )
 )
 
