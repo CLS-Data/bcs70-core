@@ -1,0 +1,543 @@
+{
+  "schema_version": 5,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/bmi-issue-28",
+  "commit": "cb4c6ddc6e11a1ac84cb6135e4510cf7d53499ac",
+  "scope": "integration",
+  "variables": [
+    "bmi_0y",
+    "bmi_10y",
+    "bmi_16y",
+    "bmi_26y",
+    "bmi_29y",
+    "bmi_34y",
+    "bmi_42m",
+    "bmi_42y",
+    "bmi_46y",
+    "bmi_51y",
+    "first_age_smoke",
+    "highest_qualification",
+    "parental_employment_status_father_0y",
+    "parental_employment_status_father_10y",
+    "parental_employment_status_father_16y",
+    "parental_employment_status_father_42m",
+    "parental_employment_status_mother_0y",
+    "parental_employment_status_mother_10y",
+    "parental_employment_status_mother_42m",
+    "parental_employment_status_mother_5y",
+    "region_0y",
+    "region_10y",
+    "region_16y",
+    "region_21y",
+    "region_26y",
+    "region_29y",
+    "region_34y",
+    "region_38y",
+    "region_42y",
+    "region_46y",
+    "region_51y",
+    "region_5y"
+  ],
+  "status": "success",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-08-04T14:31:28Z",
+  "duration_seconds": 101,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "no_nan_or_infinite": "pass",
+    "no_residual_sentinels": "pass",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  },
+  "summary": {
+    "bmi_0y": {
+      "kind": "numeric",
+      "n": 2225,
+      "missing_pct": 88.08,
+      "mean": 17.32,
+      "sd": 2.81,
+      "p25": 15.95,
+      "p50": 17.11,
+      "p75": 18.28
+    },
+    "bmi_10y": {
+      "kind": "numeric",
+      "n": 5590,
+      "missing_pct": 70.02,
+      "mean": 16.88,
+      "sd": 2.12,
+      "p25": 15.45,
+      "p50": 16.53,
+      "p75": 17.92
+    },
+    "bmi_16y": {
+      "kind": "numeric",
+      "n": 7955,
+      "missing_pct": 57.33,
+      "mean": 21.11,
+      "sd": 3.09,
+      "p25": 19.13,
+      "p50": 20.67,
+      "p75": 22.59
+    },
+    "bmi_26y": {
+      "kind": "numeric",
+      "n": 7330,
+      "missing_pct": 60.69,
+      "mean": 23.63,
+      "sd": 3.88,
+      "p25": 21.08,
+      "p50": 22.96,
+      "p75": 25.4
+    },
+    "bmi_29y": {
+      "kind": "numeric",
+      "n": 2455,
+      "missing_pct": 86.83,
+      "mean": 24.95,
+      "sd": 4.37,
+      "p25": 21.84,
+      "p50": 24.19,
+      "p75": 27.12
+    },
+    "bmi_34y": {
+      "kind": "numeric",
+      "n": 9340,
+      "missing_pct": 49.91,
+      "mean": 25.86,
+      "sd": 4.8,
+      "p25": 22.59,
+      "p50": 25.11,
+      "p75": 28.17
+    },
+    "bmi_42m": {
+      "kind": "numeric",
+      "n": 2150,
+      "missing_pct": 88.48,
+      "mean": 15.91,
+      "sd": 1.87,
+      "p25": 14.78,
+      "p50": 15.8,
+      "p75": 16.89
+    },
+    "bmi_42y": {
+      "kind": "numeric",
+      "n": 8835,
+      "missing_pct": 52.62,
+      "mean": 26.83,
+      "sd": 5.21,
+      "p25": 23.3,
+      "p50": 25.99,
+      "p75": 29.35
+    },
+    "bmi_46y": {
+      "kind": "numeric",
+      "n": 8190,
+      "missing_pct": 56.07,
+      "mean": 27.71,
+      "sd": 5.6,
+      "p25": 23.92,
+      "p50": 26.82,
+      "p75": 30.4
+    },
+    "bmi_51y": {
+      "kind": "numeric",
+      "n": 7245,
+      "missing_pct": 61.13,
+      "mean": 28.2,
+      "sd": 5.79,
+      "p25": 24.25,
+      "p50": 27.28,
+      "p75": 31.07
+    },
+    "first_age_smoke": {
+      "kind": "numeric",
+      "n": 5315,
+      "missing_pct": 71.5,
+      "mean": 16.64,
+      "sd": 4.59,
+      "p25": 14.0,
+      "p50": 16.0,
+      "p75": 18.0
+    },
+    "highest_qualification": {
+      "kind": "categorical",
+      "n": 13830,
+      "missing_pct": 25.81,
+      "levels": 6,
+      "codes": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "counts": [
+        1210,
+        1090,
+        3780,
+        2090,
+        3425,
+        2240
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_father_0y": {
+      "kind": "categorical",
+      "n": 15825,
+      "missing_pct": 15.14,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        15215,
+        605
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_father_10y": {
+      "kind": "categorical",
+      "n": 5865,
+      "missing_pct": 68.55,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        5530,
+        330
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_father_16y": {
+      "kind": "categorical",
+      "n": 5285,
+      "missing_pct": 71.65,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        4650,
+        635
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_father_42m": {
+      "kind": "categorical",
+      "n": 2185,
+      "missing_pct": 88.28,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        2125,
+        60
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_mother_0y": {
+      "kind": "categorical",
+      "n": 12255,
+      "missing_pct": 34.28,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        11530,
+        720
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_mother_10y": {
+      "kind": "categorical",
+      "n": 5985,
+      "missing_pct": 67.89,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        3875,
+        2115
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_mother_42m": {
+      "kind": "categorical",
+      "n": 2290,
+      "missing_pct": 87.71,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        1680,
+        615
+      ],
+      "levels_suppressed": 0
+    },
+    "parental_employment_status_mother_5y": {
+      "kind": "categorical",
+      "n": 12995,
+      "missing_pct": 30.31,
+      "levels": 2,
+      "codes": null,
+      "counts": [
+        7550,
+        5445
+      ],
+      "levels_suppressed": 0
+    },
+    "region_0y": {
+      "kind": "categorical",
+      "n": 17195,
+      "missing_pct": 7.78,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        5020,
+        2170,
+        1745,
+        1615,
+        1485,
+        1050,
+        1035,
+        1025,
+        880,
+        630,
+        540
+      ],
+      "levels_suppressed": 0
+    },
+    "region_10y": {
+      "kind": "categorical",
+      "n": 14785,
+      "missing_pct": 20.69,
+      "levels": 10,
+      "codes": null,
+      "counts": [
+        4075,
+        1865,
+        1545,
+        1465,
+        1455,
+        1090,
+        1040,
+        910,
+        825,
+        510
+      ],
+      "levels_suppressed": 0
+    },
+    "region_16y": {
+      "kind": "categorical",
+      "n": 11415,
+      "missing_pct": 38.77,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1485,
+        1445,
+        1155,
+        1150,
+        1130,
+        1045,
+        920,
+        880,
+        850,
+        710,
+        655
+      ],
+      "levels_suppressed": 0
+    },
+    "region_21y": {
+      "kind": "categorical",
+      "n": 1645,
+      "missing_pct": 91.18,
+      "levels": 10,
+      "codes": null,
+      "counts": [
+        335,
+        225,
+        195,
+        185,
+        180,
+        135,
+        115,
+        100,
+        90,
+        85
+      ],
+      "levels_suppressed": 0
+    },
+    "region_26y": {
+      "kind": "categorical",
+      "n": 8420,
+      "missing_pct": 54.85,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1175,
+        1020,
+        925,
+        885,
+        790,
+        770,
+        750,
+        700,
+        580,
+        420,
+        400
+      ],
+      "levels_suppressed": 1
+    },
+    "region_29y": {
+      "kind": "categorical",
+      "n": 11260,
+      "missing_pct": 39.61,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1505,
+        1395,
+        1210,
+        1125,
+        1080,
+        1050,
+        1040,
+        915,
+        775,
+        625,
+        535
+      ],
+      "levels_suppressed": 0
+    },
+    "region_34y": {
+      "kind": "categorical",
+      "n": 9660,
+      "missing_pct": 48.2,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1405,
+        1120,
+        985,
+        950,
+        910,
+        900,
+        895,
+        830,
+        720,
+        510,
+        440
+      ],
+      "levels_suppressed": 0
+    },
+    "region_38y": {
+      "kind": "categorical",
+      "n": 8875,
+      "missing_pct": 52.41,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1345,
+        1040,
+        935,
+        825,
+        815,
+        810,
+        805,
+        805,
+        645,
+        455,
+        390
+      ],
+      "levels_suppressed": 1
+    },
+    "region_42y": {
+      "kind": "categorical",
+      "n": 9835,
+      "missing_pct": 47.24,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1525,
+        1195,
+        985,
+        945,
+        935,
+        910,
+        810,
+        805,
+        750,
+        530,
+        445
+      ],
+      "levels_suppressed": 0
+    },
+    "region_46y": {
+      "kind": "categorical",
+      "n": 8580,
+      "missing_pct": 53.98,
+      "levels": 12,
+      "codes": null,
+      "counts": [
+        1325,
+        1035,
+        920,
+        810,
+        805,
+        795,
+        675,
+        670,
+        660,
+        465,
+        395,
+        15
+      ],
+      "levels_suppressed": 1
+    },
+    "region_51y": {
+      "kind": "categorical",
+      "n": 7780,
+      "missing_pct": 58.28,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        1255,
+        940,
+        825,
+        785,
+        725,
+        685,
+        670,
+        570,
+        565,
+        420,
+        340
+      ],
+      "levels_suppressed": 0
+    },
+    "region_5y": {
+      "kind": "categorical",
+      "n": 13135,
+      "missing_pct": 29.56,
+      "levels": 11,
+      "codes": null,
+      "counts": [
+        3580,
+        1720,
+        1420,
+        1280,
+        1165,
+        975,
+        885,
+        800,
+        750,
+        495,
+        65
+      ],
+      "levels_suppressed": 0
+    }
+  }
+}
