@@ -18,7 +18,7 @@ spec <- list(
   label = "Body mass index (kg/m2) at age 26, self-reported",
   category = "health",
   github_issue = 28,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-08-04",
   source_files = c("bcs96x"),
@@ -82,7 +82,14 @@ spec <- list(
     "BMI downwards, so a jump between 16y and 26y is partly a change of",
     "instrument rather than of body composition.",
     "",
-    "NOT YET VERIFIED against real data - synthetic tests only."
+    "VERIFIED against real data on 2026-08-04 (harness 5.0.0,",
+    "runner 4.5.3, commit cb4c6ddc). Every harness check passed:",
+    "columns_exact, identifier_present, identifier_unique,",
+    "no_nan_or_infinite, no_residual_sentinels, not_all_missing,",
+    "output_written, reproducible, workspace_writes_confined.",
+    "n = 7,330 non-missing, mean 23.63, sd 3.88, median 22.96.",
+    "The 88 sentinel is applied only to the imperial columns, so",
+    "genuine 88 kg cases in b960443 are retained."
   )
 )
 

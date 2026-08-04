@@ -18,7 +18,7 @@ spec <- list(
   label = "Body mass index (kg/m2) at 22 months, measured (0y sweep, 22-month sub-sample)",
   category = "health",
   github_issue = 28,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-08-04",
   source_files = c("bcs7072b"),
@@ -81,7 +81,17 @@ spec <- list(
     "a z-score against a growth reference) rather than raw. No cut-off",
     "classification is emitted.",
     "",
-    "NOT YET VERIFIED against real data - synthetic tests only."
+    "VERIFIED against real data on 2026-08-04 (harness 5.0.0,",
+    "runner 4.5.3, commit cb4c6ddc). Every harness check passed:",
+    "columns_exact, identifier_present, identifier_unique,",
+    "no_nan_or_infinite, no_residual_sentinels, not_all_missing,",
+    "output_written, reproducible, workspace_writes_confined.",
+    "n = 2,225 non-missing, mean 17.32, sd 2.81, median 17.11.",
+    "Mean and median sit at the infant BMI peak, i.e. consistent with",
+    "the 22-month age this file actually measures and NOT with birth",
+    "(a newborn's BMI is near 13). N also matches the user guide's",
+    "valid n for the two source variables. Both confirm the reading",
+    "of bcs7072b recorded above."
   )
 )
 

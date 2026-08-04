@@ -18,7 +18,7 @@ spec <- list(
   label = "Body mass index (kg/m2) at age 10, measured",
   category = "health",
   github_issue = 28,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-08-04",
   source_files = c("sn3723"),
@@ -67,7 +67,15 @@ spec <- list(
     "sex-standardised rather than against adult cut-offs. No cut-off",
     "classification is emitted.",
     "",
-    "NOT YET VERIFIED against real data - synthetic tests only."
+    "VERIFIED against real data on 2026-08-04 (harness 5.0.0,",
+    "runner 4.5.3, commit cb4c6ddc). Every harness check passed:",
+    "columns_exact, identifier_present, identifier_unique,",
+    "no_nan_or_infinite, no_residual_sentinels, not_all_missing,",
+    "output_written, reproducible, workspace_writes_confined.",
+    "n = 5,590 non-missing, mean 16.88, sd 2.12, median 16.53.",
+    "The millimetre / tenth-of-a-kilogram scaling of the sn3723",
+    "measures is handled correctly: leaving it unconverted would put",
+    "the mean orders of magnitude out."
   )
 )
 

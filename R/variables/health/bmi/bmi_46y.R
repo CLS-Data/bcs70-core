@@ -18,7 +18,7 @@ spec <- list(
   label = "Body mass index (kg/m2) at age 46, self-reported",
   category = "health",
   github_issue = 28,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-08-04",
   source_files = c("bcs_age46_main"),
@@ -71,7 +71,12 @@ spec <- list(
     "inside a plausible adult envelope (height 1.20-2.20 m, weight",
     "25-300 kg) and lets everything else fall through to NA.",
     "",
-    "NOT YET VERIFIED against real data - synthetic tests only."
+    "VERIFIED against real data on 2026-08-04 (harness 5.0.0,",
+    "runner 4.5.3, commit cb4c6ddc). Every harness check passed:",
+    "columns_exact, identifier_present, identifier_unique,",
+    "no_nan_or_infinite, no_residual_sentinels, not_all_missing,",
+    "output_written, reproducible, workspace_writes_confined.",
+    "n = 8,190 non-missing, mean 27.71, sd 5.60, median 26.82."
   )
 )
 

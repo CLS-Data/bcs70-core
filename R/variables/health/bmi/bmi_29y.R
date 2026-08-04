@@ -18,7 +18,7 @@ spec <- list(
   label = "Body mass index (kg/m2) at age 29-30, self-reported",
   category = "health",
   github_issue = 28,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-08-04",
   source_files = c("bcs2000"),
@@ -85,7 +85,18 @@ spec <- list(
     "SELF-REPORTED, NOT MEASURED - see bmi_26y's notes on the instrument",
     "change between 16y and 26y.",
     "",
-    "NOT YET VERIFIED against real data - synthetic tests only."
+    "VERIFIED against real data on 2026-08-04 (harness 5.0.0,",
+    "runner 4.5.3, commit cb4c6ddc). Every harness check passed:",
+    "columns_exact, identifier_present, identifier_unique,",
+    "no_nan_or_infinite, no_residual_sentinels, not_all_missing,",
+    "output_written, reproducible, workspace_writes_confined.",
+    "n = 2,455 non-missing, mean 24.95, sd 4.37, median 24.19.",
+    "Coverage is low relative to the ~11,260 cases the 29y sweep",
+    "reaches elsewhere: only ~2,540 rows carry any height or weight",
+    "answer at all. The self-reported (2-suffixed) columns are the",
+    "correct ones - the unsuffixed height/weight are proxy-respondent",
+    "answers - so this is a property of the deposit, not of the",
+    "derivation. Treat 29y as a sub-sample when pooling."
   )
 )
 

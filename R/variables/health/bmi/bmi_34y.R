@@ -18,7 +18,7 @@ spec <- list(
   label = "Body mass index (kg/m2) at age 34, self-reported (height may be carried from age 29)",
   category = "health",
   github_issue = 28,
-  status = "draft",
+  status = "verified",
   author = "Mack Nixon (via Claude Code, variable-deriver agent)",
   created = "2026-08-04",
   source_files = c("bcs_2004_followup"),
@@ -89,7 +89,12 @@ spec <- list(
     "(height 1.20-2.20 m, weight 25-300 kg) after conversion and lets",
     "everything else fall through to NA.",
     "",
-    "NOT YET VERIFIED against real data - synthetic tests only."
+    "VERIFIED against real data on 2026-08-04 (harness 5.0.0,",
+    "runner 4.5.3, commit cb4c6ddc). Every harness check passed:",
+    "columns_exact, identifier_present, identifier_unique,",
+    "no_nan_or_infinite, no_residual_sentinels, not_all_missing,",
+    "output_written, reproducible, workspace_writes_confined.",
+    "n = 9,340 non-missing, mean 25.86, sd 4.80, median 25.11."
   )
 )
 
