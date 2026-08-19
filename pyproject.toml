@@ -4,4 +4,26 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
+
+# The repository proper still installs nothing. Everything that reads the
+# deposits, builds the registry or generates the atlas is standard library,
+# and that stays true: `python3 web/build_site.py` and browsing the atlas
+# need no install at all.
 dependencies = []
+
+[project.optional-dependencies]
+# The variable-request assistant, and only it. Segregated because it is the
+# one part of this repository that is a convenience rather than the pipeline
+# — CI never installs it, the derivation never touches it, and someone who
+# only wants to browse the atlas should not be made to carry LangGraph.
+#
+#     uv sync --extra assistant
+#
+# Without it, `python3 web/server.py` still serves the atlas, the metadata
+# search and the registry; only the assistant drawer turns itself off, and
+# it says why.
+assistant = [
+    "langgraph>=1.2,<2",
+    "langchain-core>=1.0,<2",
+    "langchain-ollama>=1.0,<2",
+]

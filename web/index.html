@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BCS70 Variable Atlas</title>
-<meta name="description" content="Find raw variables across 55 years of BCS70 instruments, see what has been harmonised from them, and draft a new variable request.">
+<title>Variable atlas</title>
+<!-- Title, description and the masthead below are replaced at boot from
+     manifest.dataset, which build_site.py copies out of dataset.toml. -->
+<meta name="description" content="">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>🗺️</text></svg>">
 </head>
@@ -14,8 +16,8 @@
 
 <header class="masthead">
   <div class="mark">
-    <span class="mark-name">BCS70</span>
-    <span class="mark-sub">variable atlas</span>
+    <span class="mark-name"></span>
+    <span class="mark-sub"></span>
   </div>
 
   <nav class="views" aria-label="Views">
@@ -24,13 +26,19 @@
     <button class="view-tab" data-view="scratch">Scratchpad <span class="tally" id="scratch-tally" hidden>0</span></button>
   </nav>
 
+  <button class="chat-toggle" id="chat-toggle" type="button"
+          aria-expanded="false" aria-controls="chat-drawer"
+          title="Variable request assistant (⌘J)">
+    <span class="chat-toggle-mark">✳</span> Assistant
+  </button>
+
   <button class="theme" id="theme" type="button" aria-label="Switch colour theme" title="Switch colour theme"></button>
 </header>
 
-<!-- The spine: a life-course axis, 0y to 51y. It reflects whatever is on
-     screen - matches per sweep while searching, coverage while reading a
-     derived family. Gaps are the point, so absence is drawn, not hidden. -->
-<section class="spine" aria-label="Coverage by sweep">
+<!-- The spine: the study's time axis. It reflects whatever is on screen -
+     matches per wave while searching, coverage while reading a derived
+     family. Gaps are the point, so absence is drawn, not hidden. -->
+<section class="spine" id="spine" aria-label="Coverage">
   <div class="spine-head">
     <span class="spine-title" id="spine-title">Coverage</span>
     <span class="spine-note" id="spine-note"></span>
@@ -46,7 +54,7 @@
       <div class="finder">
         <label class="field">
           <span class="field-label">Search variables</span>
-          <input type="search" id="q" placeholder="tenure, bmi, b960421…" autocomplete="off" spellcheck="false">
+          <input type="search" id="q" placeholder="search…" autocomplete="off" spellcheck="false">
         </label>
         <div class="facet-group" id="level-group">
           <span class="field-label" id="level-label">Measurement level</span>
@@ -64,8 +72,8 @@
     <div class="pane pane-detail" id="detail" tabindex="-1">
       <div class="empty">
         <h2>Find a variable</h2>
-        <p>Search by name or by what it measures. Names are terse and inconsistent across sweeps — <code>d2</code> at 10y and <code>c6.8</code> at 16y both ask about housing tenure — so searching the label usually works better than guessing the name.</p>
-        <p class="empty-hint">Click a sweep on the spine above to narrow to one age.</p>
+        <p>Search by name or by what it measures. Names are terse and inconsistent between waves, so searching the label usually works better than guessing the name.</p>
+        <p class="empty-hint">Click a point on the spine above to narrow to one wave.</p>
       </div>
     </div>
   </section>
@@ -92,7 +100,7 @@
     <div class="pane pane-detail" id="derived-detail" tabindex="-1">
       <div class="empty">
         <h2>What has been harmonised</h2>
-        <p>Each entry is one R script that turns raw sweep variables into a single harmonised column. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
+        <p>Each entry is one script that turns raw variables into a single harmonised column. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
         <p class="empty-hint">Status matters: <em>draft</em> means it has only been checked against fabricated data.</p>
       </div>
     </div>
@@ -121,9 +129,9 @@
         </label>
 
         <label class="field">
-          <span class="field-label">Sweeps involved <em>required</em></span>
-          <input id="f-sweeps" placeholder="26y, 29y" spellcheck="false">
-          <span class="field-help">Fills in from your candidates. Say “each age” if you want one per sweep.</span>
+          <span class="field-label" id="f-waves-label">Waves involved <em>required</em></span>
+          <input id="f-waves" spellcheck="false">
+          <span class="field-help">Fills in from your candidates.</span>
         </label>
 
         <label class="field">
@@ -144,7 +152,7 @@
 
         <label class="field">
           <span class="field-label">Coding and edge cases</span>
-          <textarea id="f-notes" rows="3" placeholder="Missing-value handling, sweeps to exclude, precedent to follow."></textarea>
+          <textarea id="f-notes" rows="3" placeholder="Missing-value handling, waves to exclude, precedent to follow."></textarea>
         </label>
 
         <div class="draft-actions">
@@ -162,11 +170,71 @@
 <footer class="foot">
   <span id="foot-counts">—</span>
   <span class="foot-sep">·</span>
-  <span>Metadata only — every <code>.tab</code> in this repository is an empty placeholder, and no row of study data is published here.</span>
   <span class="foot-sep">·</span>
   <a id="foot-repo" href="#">Repository</a>
 </footer>
 
+<!-- ── The assistant ──────────────────────────────────────────────────
+     A docked drawer rather than a fourth view, because the gesture that
+     makes it worth having - dragging a variable out of the search results
+     and into the conversation - needs both on screen at once. -->
+<aside class="chat-drawer" id="chat-drawer" hidden aria-label="Variable request assistant">
+
+  <div class="chat-grip" id="chat-grip" role="separator" aria-orientation="vertical"
+       title="Drag to resize"></div>
+
+  <header class="chat-head">
+    <span class="chat-status is-unknown" id="chat-status"></span>
+    <span class="chat-name">Assistant</span>
+    <nav class="chat-tabs" aria-label="Assistant panels">
+      <button data-panel-tab="chat" class="is-current" aria-pressed="true">Chat</button>
+      <button data-panel-tab="draft" aria-pressed="false">Draft</button>
+      <button data-panel-tab="settings" aria-pressed="false">Setup</button>
+    </nav>
+    <button class="chat-x" id="chat-reset" type="button"
+            title="Start a new conversation">⟲</button>
+    <button class="chat-x" id="chat-close" type="button" aria-label="Close the assistant">✕</button>
+  </header>
+
+  <p class="chat-remote" id="chat-remote-warn" hidden>
+    <strong>Hosted model.</strong> Variable names and dictionary labels are being
+    sent off this machine. No study data exists in this site to send.
+  </p>
+
+  <div class="chat-strip" data-panel="chat">
+    <div class="chat-steps" id="chat-steps" role="group" aria-label="Checklist"></div>
+    <span class="chat-strip-meta">
+      <span class="chat-mode" id="chat-mode" hidden></span>
+      <span class="chat-progress" id="chat-progress"></span>
+    </span>
+  </div>
+
+  <div class="chat-scroll" data-panel="chat" id="chat-log"></div>
+  <div class="chat-scroll chat-form" data-panel="draft" id="chat-draft" hidden></div>
+  <div class="chat-scroll chat-form" data-panel="settings" id="chat-settings" hidden></div>
+
+  <div class="chat-foot" data-panel="chat">
+    <div class="replies" id="chat-replies" hidden></div>
+    <div class="pinned" id="chat-pinned" hidden></div>
+    <div class="composer">
+      <textarea id="chat-input" rows="1" placeholder="Describe the variable you want…"
+                spellcheck="true"></textarea>
+      <div class="composer-actions">
+        <button class="btn btn-quiet" id="chat-search" type="button"
+                title="Search the dictionaries for what's in the box">⌕ Search</button>
+        <button class="think-toggle" id="chat-think" type="button"
+                aria-pressed="false" hidden>reasoning off</button>
+        <span class="composer-spacer"></span>
+        <button class="btn btn-primary" id="chat-send" type="button">Send</button>
+        <button class="btn" id="chat-stop" type="button" hidden>Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-dropzone" aria-hidden="true"><span>Drop to pin as context</span></div>
+</aside>
+
 <script src="app.js"></script>
+<script type="module" src="chat.js"></script>
 </body>
 </html>

@@ -1,0 +1,54 @@
+{
+  "schema_version": 5,
+  "harness_version": "5.0.0",
+  "checks_profile": "default",
+  "branch": "variable/bmi-issue-28",
+  "commit": "cb4c6ddc6e11a1ac84cb6135e4510cf7d53499ac",
+  "scope": "variable",
+  "variables": [
+    "bmi_51y"
+  ],
+  "status": "success",
+  "error_class": null,
+  "runner_exit_code": 0,
+  "python_version": "3.13.11",
+  "runner_version": "4.5.3",
+  "run_started_utc": "2026-08-04T14:31:22Z",
+  "duration_seconds": 6,
+  "checks": {
+    "columns_exact": "pass",
+    "identifier_known": "skip",
+    "identifier_present": "pass",
+    "identifier_unique": "pass",
+    "no_nan_or_infinite": "pass",
+    "no_residual_sentinels": "pass",
+    "not_all_missing": "pass",
+    "output_written": "pass",
+    "reproducible": "pass",
+    "workspace_writes_confined": "pass"
+  },
+  "summary": {
+    "bmi_51y": {
+      "kind": "numeric",
+      "n": 7245,
+      "missing_pct": 9.59,
+      "mean": 28.2,
+      "sd": 5.79,
+      "p25": 24.25,
+      "p50": 27.28,
+      "p75": 31.07,
+      "hist": [
+        15,
+        130,
+        765,
+        1560,
+        1700,
+        1280,
+        805,
+        420,
+        270,
+        300
+      ]
+    }
+  }
+}

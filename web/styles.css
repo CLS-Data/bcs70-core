@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BCS70 Variable Atlas
+   Variable atlas
 
    Palette is taken from Ordnance Survey mapping rather than the usual
    editorial cream: drafting-film paper, deep ink, contour magenta as the
@@ -7,8 +7,8 @@
    life course being mapped, so map colours are the honest source.
 
    Monospace is the DISPLAY face, not just the code face. Every noun in this
-   corpus is a code - b960421, -2 Not known, bcs7016x - so setting headings
-   in mono is true to the material. Body copy stays in a sans for reading.
+   corpus is a code - a variable name, a value label, a file - so setting
+   headings in mono is true to the material. Body copy stays in a sans.
    ========================================================================== */
 
 :root {
@@ -29,6 +29,7 @@
 
   --step: 4px;
   --rail: 400px;
+  --chat-w: 420px;
   --shadow: 0 1px 0 rgba(19, 26, 34, .04), 0 2px 10px -6px rgba(19, 26, 34, .18);
 }
 
@@ -65,6 +66,11 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Any rule that sets `display` outranks the `hidden` attribute's UA default,
+   so a hidden .btn or .pinned stays on screen. Everything on this page that
+   toggles visibility does it with `hidden`, so it is settled once here. */
+[hidden] { display: none !important; }
 
 html, body { height: 100%; }
 
@@ -206,7 +212,7 @@ code, kbd { font-family: var(--mono); font-size: .92em; }
   min-height: 2px;
   transition: height .18s ease;
 }
-/* Absence is information here, so an empty sweep is drawn as a dashed void
+/* Absence is information here, so an empty wave is drawn as a dashed void
    rather than simply being a shorter bar. */
 .node.is-empty .node-bar { border-bottom-style: dashed; }
 .node.is-empty .node-fill { background: none; }
@@ -330,7 +336,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
   font-family: var(--mono); font-size: 13px; font-weight: 700;
   letter-spacing: -.02em; color: var(--ink);
 }
-.row-sweep {
+.row-wave {
   margin-left: auto;
   font-family: var(--mono); font-size: 10px;
   color: var(--ink-3);
@@ -427,7 +433,6 @@ pre.code {
 .pill-draft { color: var(--ochre); }
 .pill-verified { color: var(--moss); }
 .pill-ready { color: var(--sea); }
-.pill-warn { color: var(--contour); }
 
 .warn {
   display: flex; gap: 10px; align-items: flex-start;
@@ -498,9 +503,431 @@ pre.code {
 }
 .foot-sep { opacity: .5; }
 
+/* ── The assistant ────────────────────────────────────────────────────
+
+   A drawer, not a view. It sits alongside whatever is on screen so a
+   variable can be dragged straight out of the results and into the
+   conversation, which is the one interaction that makes it worth having.
+   The transcript borrows the corpus's own voice: names in mono, sweeps as
+   small caps, contour magenta only for what the researcher said and what
+   still needs answering.
+   ------------------------------------------------------------------- */
+
+.chat-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper); color: var(--ink-2);
+  font-family: var(--mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: .07em;
+  cursor: pointer;
+}
+.chat-toggle:hover { border-color: var(--ink-2); color: var(--ink); }
+.chat-toggle[aria-expanded="true"] {
+  background: var(--contour); border-color: var(--contour); color: #fff;
+}
+.chat-toggle-mark { font-size: 13px; line-height: 1; }
+
+body.chat-open { padding-right: var(--chat-w); }
+
+.chat-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: var(--chat-w);
+  z-index: 12;
+  display: flex; flex-direction: column;
+  background: var(--paper-2);
+  border-left: 1px solid var(--rule);
+  box-shadow: -8px 0 24px -18px rgba(0, 0, 0, .5);
+}
+
+.chat-grip {
+  position: absolute; left: -3px; top: 0; bottom: 0; width: 7px;
+  cursor: col-resize; z-index: 2;
+}
+.chat-grip:hover { background: var(--contour); opacity: .35; }
+
+.chat-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.chat-name {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+
+/* One dot carries the whole connection story: grey unknown, moss for a
+   local model, ochre when the model is hosted elsewhere, contour when
+   Ollama isn't answering. */
+.chat-status {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ink-3); flex: none;
+}
+.chat-status.is-ok { background: var(--moss); }
+.chat-status.is-ok.is-remote { background: var(--ochre); }
+.chat-status.is-down { background: var(--contour); }
+
+.chat-mode {
+  padding: 1px 5px;
+  white-space: nowrap;
+  border: 1px solid var(--rule); border-radius: 2px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .05em;
+  cursor: help;
+}
+.chat-mode.is-agentic { color: var(--sea); border-color: var(--sea); }
+
+.chat-tabs { margin-left: auto; display: flex; gap: 2px; }
+.chat-tabs button {
+  border: 0; background: none; cursor: pointer;
+  padding: 4px 8px; border-radius: 2px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.chat-tabs button:hover { color: var(--ink); background: var(--paper-3); }
+.chat-tabs button.is-current { color: var(--contour); background: var(--paper-3); }
+
+.chat-x {
+  border: 0; background: none; cursor: pointer;
+  color: var(--ink-3); font-size: 14px; line-height: 1; padding: 4px;
+}
+.chat-x:hover { color: var(--contour); }
+.chat-x.is-armed {
+  color: var(--contour); border: 1px solid var(--contour); border-radius: 2px;
+  font-family: var(--mono); font-size: 10px; padding: 2px 5px;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+
+.chat-remote {
+  margin: 0; padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--ochre) 12%, transparent);
+  font-size: 11.5px; color: var(--ink-2);
+}
+.chat-remote strong { color: var(--ochre); }
+
+/* The checklist. Six steps is small enough to show whole, which is the
+   point - you can see how much of the request is still unanswered without
+   reading the transcript back. */
+.chat-strip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.chat-steps { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 0; }
+.step {
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: none; cursor: pointer;
+  padding: 2px 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.step:hover { color: var(--ink); border-color: var(--ink-2); }
+.step.is-done { color: var(--moss); border-color: var(--moss); }
+.step.is-now { color: var(--contour); border-color: var(--contour); font-weight: 700; }
+.chat-strip-meta {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  flex: none;
+}
+.chat-progress {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+}
+
+.chat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 12px; }
+.chat-form { padding: 16px 14px 40px; background: var(--paper-2); }
+.chat-form .section-title { margin-top: 26px; }
+
+.chat-intro { color: var(--ink-2); }
+.chat-intro h3 {
+  margin: 4px 0 8px;
+  font-family: var(--mono); font-size: 15px; letter-spacing: -.02em; color: var(--ink);
+}
+.chat-intro p { margin: 0 0 10px; font-size: 13px; }
+.chat-intro-hint { color: var(--ink-3); font-size: 12px !important; }
+.chat-seeds { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 14px; }
+.seed {
+  border: 1px dashed var(--rule); border-radius: 2px;
+  background: none; cursor: pointer;
+  padding: 4px 8px; font-size: 12px; color: var(--ink-2); text-align: left;
+}
+.seed:hover { border-style: solid; border-color: var(--contour); color: var(--contour); }
+
+.msg { margin-bottom: 16px; font-size: 13.5px; line-height: 1.5; }
+.msg-body p { margin: 0 0 8px; }
+.msg-body p:last-child { margin-bottom: 0; }
+.msg-body ul { margin: 6px 0; padding-left: 18px; }
+.msg-body code { background: var(--paper-3); padding: 0 3px; border-radius: 2px; }
+.chat-pre {
+  background: var(--paper-3); border: 1px solid var(--rule);
+  padding: 8px; overflow-x: auto;
+  font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap;
+}
+
+.msg-mode {
+  display: inline-block; margin-bottom: 3px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--sea);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+
+.msg-user .msg-body {
+  border-left: 2px solid var(--contour);
+  padding-left: 10px; color: var(--ink);
+}
+.msg-bot .msg-body { color: var(--ink-2); }
+.msg-bot .msg-body strong { color: var(--ink); }
+
+/* The working line: one row at the foot of the transcript, with dots that
+   move. Shown only while there is nothing else to watch — once tokens are
+   streaming, the text is the progress indicator. */
+.working {
+  margin: 4px 0 12px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--contour);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.working.is-quiet { color: var(--ink-3); }
+
+.ellipsis span {
+  display: inline-block;
+  animation: blink 1.2s infinite both;
+}
+.ellipsis span:nth-child(2) { animation-delay: .2s; }
+.ellipsis span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 60%, 100% { opacity: .2; } 30% { opacity: 1; } }
+
+/* Reasoning on/off, beside Send. Quiet when off; it is not the default and
+   should not look like the point of the composer. */
+.think-toggle {
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: none; cursor: pointer;
+  padding: 6px 9px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.think-toggle:hover { color: var(--ink); border-color: var(--ink-2); }
+.think-toggle.is-on { color: var(--sea); border-color: var(--sea); }
+
+.msg-think pre {
+  margin: 6px 0 0; padding: 8px;
+  background: var(--paper-3); border-left: 2px solid var(--rule);
+  font-family: var(--mono); font-size: 11px; white-space: pre-wrap;
+  color: var(--ink-3); max-height: 220px; overflow-y: auto;
+}
+
+/* What the model chose to look up, and what came back. Set apart from both
+   voices in the conversation because it is neither - it is the working. */
+.msg-tool .msg-head code {
+  text-transform: none; letter-spacing: 0;
+  color: var(--sea); background: none; font-weight: 700;
+}
+.tool-mark { color: var(--sea); font-size: 12px; }
+.msg-tool.is-running { opacity: .7; }
+.msg-tool .codes { margin-top: 4px; font-size: 11.5px; }
+.msg-tool .codes td { padding: 3px 8px 3px 0; }
+.msg-tool .hits { max-height: 320px; overflow-y: auto; }
+.msg-head {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
+}
+.msg-head code { text-transform: none; letter-spacing: 0; color: var(--ink-2); }
+.msg-note { color: var(--ink-3); font-size: 11px; }
+
+.hits { list-style: none; margin: 6px 0 0; padding: 0; }
+.hit {
+  position: relative;
+  padding: 5px 40px 5px 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: grab;
+}
+.hit:hover { background: var(--paper-3); }
+.hit-names {
+  display: block;
+  font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* A variable name the assistant surfaced, and a way into the atlas. Dotted
+   underline rather than a link colour: these sit inside a dense list of codes
+   and would shout. */
+.varlink {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--ink);
+  border-bottom: 1px dotted var(--ink-3);
+}
+.varlink:hover { color: var(--contour); border-bottom-color: var(--contour); }
+.varlink.is-missing {
+  color: var(--ochre); border-bottom-style: none; cursor: default;
+  text-decoration: line-through;
+}
+.hit-more { color: var(--ink-3); font-weight: 400; }
+.hit-label { display: block; font-size: 12px; color: var(--ink-2); }
+.hit-meta {
+  display: block;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .04em;
+}
+.hit-pin {
+  position: absolute; right: 0; top: 6px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper-2); cursor: pointer;
+  padding: 1px 5px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.hit-pin:hover:not(:disabled) { border-color: var(--contour); color: var(--contour); }
+.hit-pin:disabled { color: var(--moss); border-color: var(--moss); cursor: default; }
+
+.chat-foot { border-top: 1px solid var(--rule); padding: 10px 12px; }
+
+/* Answers to whatever was just asked, stacked above the composer. A list
+   rather than a row of chips: these are alternatives to read and choose
+   between, and a wrapping row makes a set of choices look like a set of
+   tags. Numbered, arrow-navigable, and every one of them editable once
+   chosen — picking fills the box rather than sending. */
+.replies { margin-bottom: 8px; }
+
+.choices-head {
+  margin: 0 0 5px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+
+.choice-list { list-style: none; margin: 0; padding: 0; }
+.choice-list li { margin-bottom: 3px; }
+
+.choice {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  padding: 5px 9px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper);
+  cursor: pointer; text-align: left;
+  font-family: var(--sans); font-size: 13px; line-height: 1.35;
+  color: var(--ink-2);
+}
+.choice:hover, .choice:focus-visible {
+  border-color: var(--contour); color: var(--ink);
+  background: var(--paper-3);
+  outline: none;
+}
+.choice:focus-visible { box-shadow: inset 3px 0 0 var(--contour); }
+
+.choice-key {
+  flex: none; min-width: 1.1em;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+}
+.choice:hover .choice-key, .choice:focus-visible .choice-key { color: var(--contour); }
+.choice-text { flex: 1; }
+
+.choices-hint {
+  margin: 6px 0 0;
+  font-size: 10.5px; color: var(--ink-3);
+}
+.choices-hint kbd {
+  border: 1px solid var(--rule); border-radius: 2px;
+  padding: 0 3px; margin-right: 1px;
+  font-size: 9.5px; color: var(--ink-3);
+}
+
+.pinned { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.pinchip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 4px 2px 7px;
+  border: 1px solid var(--contour); border-radius: 2px;
+  background: color-mix(in srgb, var(--contour) 8%, transparent);
+  font-family: var(--mono); font-size: 10.5px;
+}
+.pinchip.is-derived {
+  border-color: var(--moss);
+  background: color-mix(in srgb, var(--moss) 8%, transparent);
+}
+.pinchip-name { color: var(--ink); font-weight: 700; }
+.pinchip-wave { color: var(--ink-3); }
+.pinchip button {
+  border: 0; background: none; cursor: pointer;
+  color: var(--ink-3); font-size: 11px; line-height: 1; padding: 0 2px;
+}
+.pinchip button:hover { color: var(--contour); }
+
+.composer textarea {
+  width: 100%; resize: none;
+  padding: 8px 10px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--sans); font-size: 13.5px; line-height: 1.45;
+}
+.composer textarea:focus { outline: 2px solid var(--contour); outline-offset: -1px; }
+.composer-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.composer-spacer { flex: 1; }
+
+/* The dropzone is drawn only while a variable is in flight over the
+   drawer, so it never sits there as decoration. */
+.chat-dropzone {
+  position: absolute; inset: 6px;
+  display: none; align-items: center; justify-content: center;
+  border: 2px dashed var(--contour); border-radius: 3px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  z-index: 5; pointer-events: none;
+}
+.chat-drawer.is-dropping .chat-dropzone { display: flex; }
+.chat-dropzone span {
+  font-family: var(--mono); font-size: 12px; color: var(--contour);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+/* While something is being dragged anywhere on the page, the drawer edge
+   advertises itself as a target. */
+body.is-dragging-var .chat-drawer { border-left-color: var(--contour); }
+
+.warn-stack summary {
+  cursor: pointer; list-style: none;
+  font-family: var(--mono); font-size: 10px; color: var(--ochre);
+  text-transform: uppercase; letter-spacing: .06em; margin-top: 6px;
+}
+.warn-stack summary::before { content: "▸ "; }
+.warn-stack[open] summary::before { content: "▾ "; }
+.warn-stack pre {
+  margin: 6px 0 0; padding: 8px;
+  background: var(--paper-3); border-left: 2px solid var(--ochre);
+  font-family: var(--mono); font-size: 10.5px; white-space: pre-wrap;
+  color: var(--ink-2); max-height: 200px; overflow-y: auto;
+}
+
+.srcvars { list-style: none; margin: 6px 0 18px; padding: 0; }
+.srcvars li {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 0; border-bottom: 1px solid var(--rule);
+  font-size: 11.5px;
+}
+.srcvars code { font-size: 11.5px; font-weight: 700; }
+.srcvars li span { flex: 1; color: var(--ink-3); font-family: var(--sans); }
+.srcvars li.is-known code { color: var(--moss); }
+.srcvars li.is-unknown code { color: var(--ochre); }
+.srcvars li.is-unknown span { color: var(--ochre); }
+.srcvars li button {
+  border: 0; background: none; cursor: pointer; color: var(--ink-3);
+  font-size: 12px; line-height: 1; padding: 0 2px;
+}
+.srcvars li button:hover { color: var(--contour); }
+.srcvars-empty { color: var(--ink-3); border-bottom: 0 !important; }
+
+
+.chat-form input[type="text"], .chat-form input:not([type]),
+.chat-form select, .chat-form textarea { width: 100%; }
+.chat-form .field.check {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center;
+}
+.chat-form .field.check input { width: auto; }
+.chat-form .field.check .field-help { grid-column: 2; margin-top: 0; }
+.chat-form .field-label em {
+  font-style: normal; color: var(--ochre); text-transform: lowercase; letter-spacing: 0;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
+  /* Below this width there is nothing left to drag a variable out of, so
+     the drawer stops being a side panel and covers the page instead. */
+  body.chat-open { padding-right: 0; }
+  .chat-drawer { width: 100%; }
+  .chat-grip { display: none; }
+
   .view.is-current { grid-template-columns: 1fr; }
   .pane-list { border-right: 0; border-bottom: 1px solid var(--rule); max-height: 42vh; }
   .pane { overflow-y: visible; }
