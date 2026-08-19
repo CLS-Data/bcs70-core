@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """Build the static JSON that the variable atlas reads.
 
-Run from the repository root:
-
     python3 web/build_site.py
 
-Standard library only - no dependencies to install, and no R toolchain
-needed just to rebuild the site. R stays for the derivation pipeline.
+Standard library only — no dependencies to install, and no R toolchain needed
+just to rebuild the site. R stays for the derivation pipeline.
 
-READ-ONLY with respect to bcs70/: this reads metadata CSVs and writes into
-web/data/. It never touches anything under bcs70/, and never opens a .tab
-file, so no row of study data can reach the site. Everything it emits is
-metadata - variable names, labels, value labels, missing-value codes - plus
-the derived-variable specs and their R source.
+Everything dataset-specific comes from `dataset.toml`: which directory the
+deposits are in, how the metadata CSVs are named, the wave order, the
+categories. Point that file at another study and this script needs no edit.
+
+READ-ONLY with respect to the deposits: this reads metadata CSVs and writes
+into `web/data/`. It never opens a data file, so no row of study data can
+reach the site. Everything it emits is metadata — variable names, labels,
+value labels, missing-value codes — plus the derived-variable specs and their
+R source.
 """
 
 from __future__ import annotations
@@ -20,29 +22,16 @@ from __future__ import annotations
 import csv
 import json
 import shutil
-import subprocess
 import sys
 from datetime import date
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-DATA = REPO / "web" / "data"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from config import REPO, Config, ConfigError, get as get_config  # noqa: E402
+
+DATA = Path(__file__).resolve().parent / "data"
 DICT = DATA / "dict"
-
-# Sweeps in life-course order, not alphabetical. The whole site is indexed by
-# age, so "42m" (42 months) belongs between 0y and 5y, not after 38y.
-SWEEP_ORDER = [
-    "0y", "42m", "5y", "10y", "16y", "21y", "26y",
-    "29y", "34y", "38y", "42y", "46y", "51y", "xwave",
-]
-
-DICT_SUFFIX = "_ukda_data_dictionary_variables.csv"
-
-# Measurement levels in increasing order of information, not alphabetical, so
-# the site's filter reads nominal -> ordinal -> scale. This is the field the
-# site filters on rather than variable_type, which is degenerate here: 31,472
-# of 32,454 variables are "numeric", 981 unrecorded and one "other".
-MEASUREMENT_LEVELS = ["NOMINAL", "ORDINAL", "SCALE"]
 
 
 def clean(value: str | None) -> str | None:
@@ -60,106 +49,102 @@ def write_json(path: Path, payload: object) -> int:
     return len(text.encode("utf-8"))
 
 
-def detect_repo() -> str:
-    try:
-        url = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            cwd=REPO, capture_output=True, text=True, check=True,
-        ).stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return "CLS-Data/bcs70-core"
-    if "github.com" not in url:
-        return "CLS-Data/bcs70-core"
-    slug = url.split("github.com", 1)[1].lstrip(":/")
-    return slug.removesuffix(".git")
+def read_lookup(cfg: Config) -> list[dict]:
+    path = cfg.root / cfg.lookup_csv
+    if not path.exists():
+        raise ConfigError(f"{path} not found — check [dataset].root and [metadata].lookup")
+    with path.open(newline="", encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
 
 
-def main() -> int:
-    lookup_path = REPO / "bcs70" / "master_file_info_lookup.csv"
-    if not lookup_path.exists():
-        print(f"error: {lookup_path} not found - run from the repo root", file=sys.stderr)
-        return 1
-
-    with lookup_path.open(newline="", encoding="utf-8") as fh:
-        lookup = list(csv.DictReader(fh))
-
-    all_sweeps = {row["sweep"] for row in lookup}
-    sweeps = [s for s in SWEEP_ORDER if s in all_sweeps]
-    unknown = sorted(all_sweeps - set(SWEEP_ORDER))
+def order_waves(cfg: Config, lookup: list[dict]) -> list[str]:
+    """Configured order first, then anything the deposits invented."""
+    col = cfg.lookup_columns
+    present = {row[col["wave"]] for row in lookup}
+    waves = [w for w in cfg.waves if w in present]
+    unknown = sorted(present - set(cfg.waves))
     if unknown:
-        print(f"warning: sweeps missing from SWEEP_ORDER, appended: {', '.join(unknown)}")
-        sweeps += unknown
-    sweep_pos = {s: i for i, s in enumerate(sweeps)}
+        print(f"warning: {cfg.wave_plural} missing from [wave].order, appended: "
+              f"{', '.join(unknown)}")
+        waves += unknown
+    return waves
 
-    # -- Files ------------------------------------------------------------
-    # One entry per deposited .tab. Keyed by sweep + name, never name alone:
-    # bcs70_age16_school_type is deposited under BOTH 16y (study 3535) and
-    # 42y (study 7473). A name-only key silently collapses the two and
-    # misattributes every 42y variable to the 16y file.
-    tabs = [r for r in lookup if r["file_type"] == "tab"]
-    tabs.sort(key=lambda r: (sweep_pos.get(r["sweep"], 999), r["file_name"]))
 
+def collect_files(cfg: Config, lookup: list[dict], position: dict[str, int]) -> list[dict]:
+    """One entry per deposited data file.
+
+    Keyed by wave + name, never name alone: at least one file name is
+    deposited under two different waves, and a name-only key silently
+    collapses the two and misattributes every variable in the second.
+    """
+    col = cfg.lookup_columns
+    tabs = [r for r in lookup if r[col["file_type"]] == "tab"]
     files = [
         {
-            "name": r["file_name"],
-            "sweep": r["sweep"],
-            "study": r["study_number"],
-            "slug": f"{r['sweep']}__{r['file_name']}",
-            "description": clean(r.get("description")),
+            "name": r[col["file_name"]],
+            "wave": r[col["wave"]],
+            "study": r[col["study"]],
+            "slug": f'{r[col["wave"]]}__{r[col["file_name"]]}',
+            "description": clean(r.get(col["description"])),
             "inLookup": True,
         }
         for r in tabs
     ]
 
-    # Some deposited .tab files have a full data dictionary but no row in
-    # master_file_info_lookup.csv at all, which means load_tab() cannot
-    # resolve them and the derivation pipeline cannot use them. They are
-    # included here and flagged rather than dropped: someone searching for a
-    # variable needs to find it AND be told the pipeline can't reach it yet.
-    for path in sorted(REPO.joinpath("bcs70").rglob(f"*{DICT_SUFFIX}")):
-        rel = path.relative_to(REPO).parts
-        sweep, name = rel[1], path.name.removesuffix(DICT_SUFFIX)
-        if any(f["sweep"] == sweep and f["name"] == name for f in files):
+    # Some deposited files have a full data dictionary but no row in the
+    # master lookup at all, which means the pipeline cannot resolve them.
+    # They are included and flagged rather than dropped: someone searching
+    # for a variable needs to find it AND be told it cannot be used yet.
+    known = {(f["wave"], f["name"]) for f in files}
+    for path in sorted(cfg.root.rglob(f"*{cfg.dictionary_suffix}")):
+        parts = path.relative_to(cfg.root).parts
+        wave, name = parts[0], path.name.removesuffix(cfg.dictionary_suffix)
+        if (wave, name) in known:
             continue
-        if not (REPO / "bcs70" / sweep / f"{name}.tab").exists():
+        if not (cfg.root / wave / f"{name}.tab").exists():
             continue
         files.append({
             "name": name,
-            "sweep": sweep,
-            "study": rel[3] if len(rel) > 3 else None,
-            "slug": f"{sweep}__{name}",
+            "wave": wave,
+            "study": parts[2] if len(parts) > 2 else None,
+            "slug": f"{wave}__{name}",
             "description": None,
             "inLookup": False,
         })
 
-    files.sort(key=lambda f: (sweep_pos.get(f["sweep"], 999), f["name"]))
-    file_index = {(f["sweep"], f["name"]): i for i, f in enumerate(files)}
+    files.sort(key=lambda f: (position.get(f["wave"], 999), f["name"]))
+    return files
 
-    # -- Dictionaries -----------------------------------------------------
-    # One JSON per file with every variable's label, type, missing codes and
-    # value labels. Fetched lazily by the site, so page weight stays small.
+
+def build_dictionaries(cfg: Config, files: list[dict], position: dict[str, int]):
+    """Write one JSON per file, and the compact cross-corpus search index.
+
+    Each variable in the index is a positional array, not an object: at tens
+    of thousands of variables, repeated key names would dominate the payload.
+
+        [name, label, fileIndex, waveIndex, levelIndex]
+
+    `levelIndex` points into `levels`, or -1 where none is recorded.
+    """
     if DICT.exists():
         shutil.rmtree(DICT)
     DICT.mkdir(parents=True)
 
-    # Compact search index: each variable is a positional array, not an
-    # object. At ~32k variables, repeated key names would dominate the
-    # payload.  [name, label, fileIndex, sweepIndex, levelIndex]
-    # levelIndex points into `levels` below, or -1 where the dictionary
-    # records no measurement level.
+    col = cfg.columns
     index: list[list] = []
-    built_slugs: list[str] = []
+    built: list[str] = []
     orphans: list[str] = []
-    levels = list(MEASUREMENT_LEVELS)
+    levels = list(cfg.measurement_levels)
+    file_index = {(f["wave"], f["name"]): i for i, f in enumerate(files)}
 
-    for path in sorted(REPO.joinpath("bcs70").rglob(f"*{DICT_SUFFIX}")):
-        rel = path.relative_to(REPO).parts
-        sweep = rel[1]
-        name = path.name.removesuffix(DICT_SUFFIX)
+    for path in sorted(cfg.root.rglob(f"*{cfg.dictionary_suffix}")):
+        parts = path.relative_to(cfg.root).parts
+        wave = parts[0]
+        name = path.name.removesuffix(cfg.dictionary_suffix)
 
-        idx = file_index.get((sweep, name))
+        idx = file_index.get((wave, name))
         if idx is None:
-            orphans.append(f"{sweep}/{name}")  # dictionary with no .tab on disk
+            orphans.append(f"{wave}/{name}")   # dictionary with no data file
             continue
 
         with path.open(newline="", encoding="utf-8") as fh:
@@ -168,95 +153,125 @@ def main() -> int:
             continue
 
         variables = []
-        for r in rows:
-            raw = clean(r.get("value_labels_json"))
-            values = None
-            if raw:
-                try:
-                    values = json.loads(raw)
-                except json.JSONDecodeError:
-                    values = None
-            level = clean(r.get("measurement_level"))
-            # An unseen level is appended rather than folded into "unrecorded",
-            # the same way an unknown sweep is appended to SWEEP_ORDER: a new
+        for row in rows:
+            raw = clean(row.get(col["value_labels"]))
+            try:
+                values = json.loads(raw) if raw else None
+            except json.JSONDecodeError:
+                values = None
+
+            level = clean(row.get(col["measurement"]))
+            # An unseen level is appended rather than folded into
+            # "unrecorded", the same way an unknown wave is appended: a new
             # deposit inventing a level should show up, not disappear.
             if level and level not in levels:
                 levels.append(level)
+
             variables.append({
-                "variable": r["variable"],
-                "label": clean(r.get("variable_label")),
-                "pos": clean(r.get("pos")),
-                "type": clean(r.get("variable_type")),
+                "variable": row[col["variable"]],
+                "label": clean(row.get(col["label"])),
+                "pos": clean(row.get(col["position"])),
+                "type": clean(row.get(col["type"])),
                 "measurement": level,
-                "missing": clean(r.get("spss_user_missing_values")),
+                "missing": clean(row.get(col["missing"])),
                 "values": values,
             })
             index.append([
-                r["variable"], clean(r.get("variable_label")) or "",
-                idx, sweep_pos[sweep], levels.index(level) if level else -1,
+                row[col["variable"]],
+                clean(row.get(col["label"])) or "",
+                idx,
+                position[wave],
+                levels.index(level) if level else -1,
             ])
 
-        # The slug carries the sweep for the same collision reason - without
+        # The slug carries the wave for the same collision reason — without
         # it the second dictionary overwrites the first on disk.
-        slug = f"{sweep}__{name}"
+        slug = f"{wave}__{name}"
         write_json(DICT / f"{slug}.json",
-                   {"file": name, "sweep": sweep, "slug": slug, "variables": variables})
-        built_slugs.append(slug)
+                   {"file": name, "wave": wave, "slug": slug, "variables": variables})
+        built.append(slug)
+
+    return index, built, orphans, levels
+
+
+def collect_derived() -> list[dict]:
+    """The registry, plus each script's actual source.
+
+    So the site can show how a variable was made without fetching anything
+    from GitHub.
+    """
+    registry = REPO / "registry" / "variables.json"
+    if not registry.exists():
+        return []
+
+    derived = []
+    for category, entries in json.loads(
+            registry.read_text("utf-8")).get("categories", {}).items():
+        for entry in entries:
+            script = REPO / entry["file"] if entry.get("file") else None
+            entry["source"] = (
+                script.read_text("utf-8") if script and script.exists() else None
+            )
+            entry.setdefault("family", None)
+            entry.setdefault("category", category)
+            derived.append(entry)
+
+    derived.sort(key=lambda e: (e.get("category") or "", e.get("family") or "", e["id"]))
+    return derived
+
+
+def main() -> int:
+    try:
+        cfg = get_config()
+        lookup = read_lookup(cfg)
+    except ConfigError as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 1
+
+    waves = order_waves(cfg, lookup)
+    position = {w: i for i, w in enumerate(waves)}
+
+    files = collect_files(cfg, lookup, position)
+    index, built, orphans, levels = build_dictionaries(cfg, files, position)
+    derived = collect_derived()
 
     index_bytes = write_json(DATA / "variables.json", index)
-
-    # -- Derived variables ------------------------------------------------
-    # The registry, plus each script's actual R source, so the site can show
-    # how a variable was made without fetching anything from GitHub.
-    derived = []
-    registry = REPO / "registry" / "variables.json"
-    if registry.exists():
-        reg = json.loads(registry.read_text(encoding="utf-8"))
-        for category, entries in reg.get("categories", {}).items():
-            for entry in entries:
-                script = REPO / entry["file"] if entry.get("file") else None
-                entry["source"] = (
-                    script.read_text(encoding="utf-8")
-                    if script and script.exists() else None
-                )
-                entry.setdefault("family", None)
-                entry.setdefault("category", category)
-                derived.append(entry)
-    derived.sort(key=lambda e: (e.get("category") or "", e.get("family") or "", e["id"]))
     write_json(DATA / "derived.json", derived)
-
-    # -- Manifest ---------------------------------------------------------
     write_json(DATA / "manifest.json", {
-        "repo": detect_repo(),
+        # The browser's copy of dataset.toml. One source of truth: nothing in
+        # the front end hard-codes a category, a wave or an issue field.
+        "dataset": cfg.for_browser(),
+        "repo": cfg.issue["repo"],
         "built": date.today().isoformat(),
-        "sweeps": sweeps,
+        "waves": waves,
         "levels": levels,
         "files": files,
-        "filesWithDict": built_slugs,
+        "filesWithDict": built,
         "unlisted": [f["slug"] for f in files if not f["inLookup"]],
         "counts": {
             "variables": len(index),
             "files": len(files),
-            "dictionaries": len(built_slugs),
-            "sweeps": len(sweeps),
+            "dictionaries": len(built),
+            "waves": len(waves),
             "derived": len(derived),
         },
     })
 
-    extra_levels = levels[len(MEASUREMENT_LEVELS):]
-    if extra_levels:
-        print(f"warning: measurement levels missing from MEASUREMENT_LEVELS, "
-              f"appended: {', '.join(extra_levels)}")
+    extra = levels[len(cfg.measurement_levels):]
+    if extra:
+        print(f"warning: measurement levels missing from [metadata], appended: "
+              f"{', '.join(extra)}")
 
     unlisted = [f["slug"] for f in files if not f["inLookup"]]
     if unlisted:
-        print(f"note: {len(unlisted)} file(s) have a dictionary and a .tab on disk "
-              f"but no master_file_info_lookup.csv row, so load_tab() cannot reach "
-              f"them. Included and flagged: {', '.join(unlisted)}")
+        print(f"note: {len(unlisted)} file(s) have a dictionary and a data file on "
+              f"disk but no {cfg.lookup_csv} row, so the pipeline cannot reach them. "
+              f"Included and flagged: {', '.join(unlisted)}")
     if orphans:
-        print(f"note: {len(orphans)} dictionary/ies have no .tab on disk, skipped.")
+        print(f"note: {len(orphans)} dictionary/ies have no data file on disk, skipped.")
+
     print(f"Built {len(index):,} variables across {len(files)} files "
-          f"({len(built_slugs)} dictionaries), {len(derived)} derived. "
+          f"({len(built)} dictionaries), {len(derived)} derived. "
           f"Index {index_bytes / 1_048_576:.1f} MB.")
     return 0
 

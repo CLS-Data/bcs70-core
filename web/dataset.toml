@@ -1,0 +1,424 @@
+#  ────────────────────────────────────────────────────────────────────────
+#  Everything about THIS dataset. Nothing dataset-specific belongs in the
+#  Python or the JavaScript; it all belongs here.
+#
+#  The atlas and its assistant were written for BCS70, but nothing in the
+#  code knows that. To point them at another longitudinal study, copy this
+#  file, change it, and run `python3 web/build_site.py`. The things most
+#  likely to differ are near the top: what a repeated measurement is called,
+#  how the metadata CSVs are named, and what the raw variable names look
+#  like.
+#
+#  Read by `web/config.py` (stdlib `tomllib`) on both sides: the Python uses
+#  it directly, and `build_site.py` bakes the parts the browser needs into
+#  `data/manifest.json` so the front end has no second copy to drift from.
+#  ────────────────────────────────────────────────────────────────────────
+
+
+[dataset]
+key       = "bcs70"
+name      = "BCS70"
+full_name = "the 1970 British Cohort Study"
+tagline   = "variable atlas"
+blurb     = """
+Find raw variables across 55 years of instruments, see what has been \
+harmonised from them, and draft a new variable request."""
+
+# What the study IS, in the assistant's own words. This goes into the system
+# prompt verbatim and the model treats it as fact, so keep it to things you
+# would defend in writing. Counts are NOT here on purpose — sweeps, variables
+# and files are counted from the data at run time so they cannot drift.
+about = """
+BCS70 follows a cohort of people born in England, Scotland and Wales in a \
+single week of 1970, surveyed repeatedly from birth into their fifties. Each \
+sweep is a separate data collection with its own questionnaires, its own \
+variable names and its own coding decisions; nothing was designed to line up \
+across sweeps, which is why harmonising a concept is real work rather than a \
+rename. A sweep may be split across several UK Data Service study numbers, \
+deposited years apart."""
+
+# Traps worth knowing before proposing a derivation. Taken from the
+# repository's own DATA_KNOWLEDGE.md ledger — the things no data dictionary
+# records. Add to this as that ledger grows.
+cautions = [
+  "Raw variable names are NOT unique across sweeps, and a name that collides often means something different. Never carry a name from one sweep to another without checking that sweep's own dictionary.",
+  "Missing-value schemes vary per variable, not per sweep: -1/-2/-3 in early sweeps, -9/-8/-7/-1 at 34y, and others elsewhere. Always inspect the variable rather than assuming.",
+  "Some variable names contain dots, which are not decimal points and are part of the name.",
+  "Some deposited 'derived' variables are unusable and must be re-derived from the raw items. Say so rather than assuming a deposited derivation is sound.",
+]
+
+# Directory holding the deposits, relative to the repository root. Read-only:
+# nothing in this project may write to it.
+root = "bcs70"
+
+# The column that links a person across every file.
+identifier = "bcsid"
+
+# Offered as starting points on the assistant's empty screen. Concrete
+# requests someone might plausibly make of this study.
+examples = [
+  "BMI at each age",
+  "Housing tenure at every sweep",
+  "Highest qualification by 30",
+  "Household income across the adult sweeps",
+  "Ever smoked regularly",
+  "Ever unemployed before 30",
+  "Number of children at each adult sweep",
+  "Self-rated general health",
+]
+
+
+# ── The repeated-measurement axis ───────────────────────────────────────
+# What one round of data collection is called, and how the rounds are
+# ordered. Another study might call these "waves", "visits" or "rounds", and
+# index them by year rather than by age.
+[wave]
+term       = "sweep"
+plural     = "sweeps"
+indexed_by = "age"
+
+# Life-course order, not alphabetical: "42m" (42 months) belongs between 0y
+# and 5y, not after 38y. The whole site is indexed by this.
+order = [
+  "0y", "42m", "5y", "10y", "16y", "21y", "26y",
+  "29y", "34y", "38y", "42y", "46y", "51y", "xwave",
+]
+
+# The bucket for files that belong to no single wave. Leave empty if the
+# dataset has none.
+cross      = "xwave"
+cross_note = "holds cross-sweep files"
+
+
+# ── Where the metadata lives ────────────────────────────────────────────
+[metadata]
+lookup            = "master_file_info_lookup.csv"
+dictionary_suffix = "_ukda_data_dictionary_variables.csv"
+
+# In increasing order of information, not alphabetical, so the site's filter
+# reads nominal -> ordinal -> scale. An unseen level is appended rather than
+# dropped, so a new deposit inventing one shows up.
+measurement_levels = ["NOMINAL", "ORDINAL", "SCALE"]
+
+# Column names inside the master lookup CSV.
+[metadata.lookup_columns]
+wave        = "sweep"
+file_name   = "file_name"
+file_type   = "file_type"
+study       = "study_number"
+description = "description"
+
+# Column names inside each data-dictionary CSV.
+[metadata.columns]
+variable     = "variable"
+label        = "variable_label"
+position     = "pos"
+type         = "variable_type"
+measurement  = "measurement_level"
+missing      = "spss_user_missing_values"
+value_labels = "value_labels_json"
+
+
+# ── What the corpus is like ─────────────────────────────────────────────
+# Told to the model so it does not have to infer it, and shown to people in
+# the empty states. If your variable names are readable rather than opaque,
+# say so here — it changes how the assistant searches.
+[corpus]
+name_examples = ["b960421", "c6.8", "d2"]
+naming = """
+Names are opaque codes and are not consistent between sweeps; the label is \
+what carries meaning."""
+missing_convention = """
+Negative values are usually missing-value sentinels, and the scheme differs \
+between variables."""
+
+
+# ── Output categories ───────────────────────────────────────────────────
+# The fixed list a derived variable is grouped by. `label` is verbatim what
+# the issue form's dropdown matches on, so do not prettify it; `slug` is what
+# the registry groups by.
+[[category]]
+label = "Demographic"
+slug  = "demographic"
+[[category]]
+label = "Socio-economic"
+slug  = "socio_economic"
+[[category]]
+label = "Health"
+slug  = "health"
+[[category]]
+label = "Education"
+slug  = "education"
+[[category]]
+label = "Employment"
+slug  = "employment"
+[[category]]
+label = "Family & relationships"
+slug  = "family_relationships"
+[[category]]
+label = "Housing"
+slug  = "housing"
+[[category]]
+label = "Behavioural / lifestyle"
+slug  = "behavioural_lifestyle"
+[[category]]
+label = "Cognitive / ability"
+slug  = "cognitive_ability"
+[[category]]
+label = "Other"
+slug  = "other"
+
+
+# ── The request this all ends in ────────────────────────────────────────
+# Field ids come from .github/ISSUE_TEMPLATE/<template>. If you rename one
+# there, rename it here; nothing else refers to them.
+[issue]
+repo         = ""                      # blank: detect from the git remote
+template     = "variable_request.yml"
+title_prefix = "[variable] "
+
+[issue.fields]
+name        = "variable-name"
+waves       = "sweeps"
+category    = "category"
+description = "description"
+sources     = "source-vars"
+notes       = "logic-notes"
+
+
+# ── The assistant ───────────────────────────────────────────────────────
+[assistant]
+ollama      = "http://localhost:11434"
+
+# Picked on a fresh profile when it is installed. Anything already chosen in
+# the browser wins; this only decides the starting point. Tool support is the
+# one thing the assistant cannot work without, so a model without it is never
+# chosen automatically.
+model       = "gpt-oss:120b-cloud"
+temperature = 0.4
+# How each message is routed to an intent:
+#   model      — ask the helper model. Handles anything, costs a round trip.
+#   heuristic  — punctuation and opening words. Instant, and good on the
+#                obvious cases; it cannot learn a new intent.
+#   auto       — the model, falling back to the heuristic if it fails.
+router      = "auto"
+max_hops    = 5     # tool round-trips allowed within one turn
+max_turns   = 24    # messages kept in the model's context
+candidates  = 10    # search hits handed to the model per lookup
+timeout     = 600   # seconds to wait on a model
+
+# How the model marks the answer buttons it is offering. Must be something
+# it will not otherwise write.
+choices_open  = "<choices>"
+choices_close = "</choices>"
+
+
+# ── Retrieval ───────────────────────────────────────────────────────────
+[retrieval]
+k1        = 1.2     # BM25 term-frequency saturation
+b         = 0.75    # BM25 length normalisation
+pool      = 150     # documents scored before grouping
+name_lift = 2.5     # weight on an exact variable-name match, scaled by idf
+
+# Small and deliberate. A big stoplist would eat "no", "not" and "yes",
+# which in this corpus are frequently the whole meaning of a variable.
+stopwords = [
+  "a", "an", "and", "are", "as", "at", "be", "been", "by", "for", "from",
+  "had", "has", "have", "in", "into", "is", "it", "its", "of", "on", "or",
+  "that", "the", "their", "there", "these", "they", "this", "to", "was",
+  "were", "with",
+]
+
+
+# ── What the assistant can be asked to do ───────────────────────────────
+# The router picks one of these per message. Adding a capability means adding
+# an entry here — a description the router matches on, and the instructions
+# the assistant then works to. No code changes.
+#
+# The FIRST entry is the fallback: used for the opening message, and whenever
+# the router cannot decide.
+
+[[intent]]
+id    = "interview"
+label = "working on the request"
+# Answering a question is progress; a step gets credited. Only one intent
+# should advance the checklist.
+advances = true
+description = """
+The researcher is answering a question we asked, stating what they want \
+derived, correcting something they said earlier, or telling us to carry on."""
+instructions = """
+Work through the checklist, one step per message.
+
+- Ask ONE question, about the current step, and end the message with it.
+- Never summarise what is settled or list what is left; both are on screen.
+- If the researcher revises something already settled, that overrides the
+  step: say what you now have for it, confirm it in one question, then move on."""
+
+[[intent]]
+id    = "explore"
+label = "asking about the data"
+# Asking a question is not answering one, so nothing is ticked off.
+advances = false
+# Where the fallback rule sends a message that looks like a question.
+heuristic = "question"
+description = """
+The researcher is asking a question ABOUT the study or its variables — what \
+exists, where, how something is coded, how many, what a name means. They want \
+an answer, not the next interview question."""
+instructions = """
+Answer the question they asked, and stop.
+
+- Look it up. Do not answer from memory about which variables exist, what they
+  are called or how they are coded — that is what the tools are for.
+- Be concrete: name the variables, name the waves, quote the codes.
+- If the corpus does not have it, say so plainly. An empty search is an answer.
+- Say what you did not check. A search returns the best matches, not
+  everything; if you are reporting coverage, say so.
+- Do NOT ask a checklist question and do not chase the next step. One short
+  answer. They will come back to it."""
+
+
+# ── The interview ───────────────────────────────────────────────────────
+# The whole specification of what the assistant asks. Six steps, in the order
+# a derivation gets blocked on them.
+#
+# `probes` are what the step must establish, given to the model. `replies`
+# are offered as buttons when the model's own question is too open to pull
+# choices out of.
+#
+# These questions come from how derivations here have actually gone wrong —
+# imperial and metric in one concept, the respondent changing from parent to
+# cohort member mid-life-course, deposited "derived" variables that cannot be
+# used. For another dataset, rewrite them from its own hard-won findings.
+
+[interview]
+[[interview.step]]
+id    = "concept"
+title = "Concept"
+goal  = "Establish exactly one measured concept, and what it is for."
+probes = [
+  "What should this variable capture, in one sentence?",
+  'Is this one measured concept or several? "Age started smoking" and "cigarettes per day" are two concepts and need two separate issues.',
+  "What question does having it harmonised across sweeps let someone answer?",
+]
+replies = [
+  "Yes — one concept",
+  "That's two concepts, split them",
+  "It's for a life-course trajectory analysis",
+]
+
+[[interview.step]]
+id    = "coverage"
+title = "Coverage"
+goal  = "Fix which sweeps are in scope, and whether this is a family of siblings."
+probes = [
+  "Which sweeps — named ages, or every sweep that asked it?",
+  "One column per sweep (a family: bmi_10y, bmi_16y, …) or a single summary column across the life course?",
+  "Where a sweep never asked it, should that be NA in the output, or should the sweep simply have no sibling script?",
+]
+replies = [
+  "Every sweep that asked it",
+  "One column per sweep",
+  "A single summary across the life course",
+  "Adult sweeps only, 16y onwards",
+  "No sibling where the sweep never asked it",
+]
+
+[[interview.step]]
+id    = "form"
+title = "Output form"
+goal  = "Decide the shape and units of the output column."
+probes = [
+  "What does the column contain — a number, an ordered scale, a binary flag, or a labelled category?",
+  "If categorical: the exact levels, and their order.",
+  "What units? Does anything need converting — height and weight are asked in imperial at some sweeps and metric at others.",
+]
+replies = [
+  "A continuous number",
+  "A binary yes/no flag",
+  "An ordered scale",
+  "A labelled category",
+  "Convert imperial to metric first",
+]
+
+[[interview.step]]
+id    = "provenance"
+title = "Respondent"
+goal  = "Pin down whose answer this is, and whether deposited derived versions are usable."
+probes = [
+  "Who answers at each age — the cohort member, a parent, a teacher, a partner, or a nurse/interviewer measurement?",
+  "If the respondent changes across sweeps, is that acceptable, or should those sweeps be excluded?",
+  "Where the deposit already has its own derived version, use it or re-derive from the raw items?",
+]
+replies = [
+  "Cohort member only",
+  "Whoever answered at that sweep",
+  "Re-derive from the raw items",
+  "Use the deposited derived version",
+  "Exclude sweeps with a different respondent",
+]
+
+[[interview.step]]
+id    = "harmonisation"
+title = "Harmonisation"
+goal  = "Settle cross-sweep reconciliation and the missing-value policy."
+probes = [
+  "When sweeps used different response scales, what wins — collapse to the coarsest common scale, or keep each sweep's detail?",
+  "How do the negative sentinels map? All to NA, or must \"don't know\", \"refused\" and \"not applicable\" stay distinguishable?",
+  "Any implausible values to filter, and at what bounds?",
+]
+replies = [
+  "All negative codes become NA",
+  "Keep don't know and refused distinct",
+  "Collapse to the coarsest common scale",
+  "Keep each sweep's own detail",
+  "No implausible-value filtering",
+]
+
+[[interview.step]]
+id    = "identity"
+title = "Name & check"
+goal  = "Name it, categorise it, and say what would show the result is wrong."
+probes = [
+  "What snake_case name? For a family, what suffix pattern (bmi_10y, bmi_16y)?",
+  "Which category — demographic, socio-economic, health, education, employment, family & relationships, housing, behavioural/lifestyle, cognitive/ability, other?",
+  "What would tell you the output is wrong — an expected range, a distribution, a published figure to compare against?",
+]
+replies = [
+  "Follow the existing family's naming",
+  "Compare against the published CLS figures",
+  "No particular validation in mind",
+]
+
+
+# ── The edge-case notes ─────────────────────────────────────────────────
+# Named slots rather than one free-text field, because a catch-all gets
+# skipped: asked for "terse lines covering form, units, respondent, missing
+# handling and bounds", a large model returned an empty string on all six
+# turns of a conversation that had settled every one of them. Named slots get
+# filled. They are composed back into one notes block in issue order.
+[[note_slot]]
+key     = "output_form"
+heading = "Output form and units"
+asks    = "the column's type, its levels if categorical, its units, and any rounding"
+
+[[note_slot]]
+key     = "respondent"
+heading = "Respondent and source"
+asks    = "who answers at each wave, and whether to use the deposit's own derived version or re-derive from raw items"
+
+[[note_slot]]
+key     = "reconciliation"
+heading = "Cross-sweep reconciliation"
+asks    = "how waves measuring it differently are brought together"
+
+[[note_slot]]
+key     = "missing"
+heading = "Missing and implausible values"
+asks    = "what the missing-value sentinels map to, and any implausible-value bounds"
+
+[[note_slot]]
+key     = "validation"
+heading = "What would show this is wrong"
+asks    = "what would show the output is wrong — expected range, distribution, a figure to compare against"

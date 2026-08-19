@@ -1,41 +1,33 @@
 /* ==========================================================================
-   BCS70 Variable Atlas — static client, no dependencies.
+   Variable atlas — static client, no dependencies.
 
    Reads the JSON that web/build_site.py emits. Everything is metadata:
-   variable names, labels, value labels, missing-value codes, and the R
-   source of each derived variable. No study data exists in this site.
+   variable names, labels, value labels, missing-value codes, and the source
+   of each derived variable. No study data exists in this site.
+
+   Nothing here names a dataset. The study's name, what a wave is called, the
+   categories and the issue form's field ids all arrive in manifest.dataset,
+   which build_site.py copies out of dataset.toml.
    ========================================================================== */
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const MAX_ROWS = 300;      // rendered at once; the count line reports the rest
-const STORE_KEY = "bcs70-atlas-draft";
-
-// The issue form's dropdown options, verbatim. These are the strings GitHub
-// matches on when prefilling, so they must not be prettified.
-const CATEGORIES = [
-  ["Demographic", "demographic"],
-  ["Socio-economic", "socio_economic"],
-  ["Health", "health"],
-  ["Education", "education"],
-  ["Employment", "employment"],
-  ["Family & relationships", "family_relationships"],
-  ["Housing", "housing"],
-  ["Behavioural / lifestyle", "behavioural_lifestyle"],
-  ["Cognitive / ability", "cognitive_ability"],
-  ["Other", "other"],
-];
+// Storage keys are namespaced per dataset: two atlases served from the same
+// origin must not share a draft, a theme or a conversation.
+const storeKey = (name) => `atlas:${state.dataset?.key || "unknown"}:${name}`;
 
 const LEVEL_UNRECORDED = -1;   // dictionary records no measurement level
 
 const state = {
   manifest: null,
-  vars: [],          // [name, label, fileIdx, sweepIdx, levelIdx]
+  dataset: null,     // manifest.dataset — see the note at the top of this file
+  vars: [],          // [name, label, fileIdx, waveIdx, levelIdx]
   derived: [],
   dictCache: new Map(),
   query: "",
-  sweepFilter: null, // sweep index, or null
+  waveFilter: null,  // wave index, or null
   fileFilter: null,  // file index, or null
   levelFilter: null, // measurement level index, LEVEL_UNRECORDED, or null
   levelCounts: new Map(),
@@ -57,8 +49,28 @@ const levelName = (i) => i === LEVEL_UNRECORDED
   : ((state.manifest.levels || [])[i] || "?").replace(/^(.)(.*)$/,
       (_, a, b) => a + b.toLowerCase());
 
+const capitalise = (s) => String(s).replace(/^./, (c) => c.toUpperCase());
+
+// Reached from the assistant drawer as well as from here, so it tolerates a
+// manifest that predates the dataset block rather than throwing "cannot read
+// properties of undefined" from inside a conversation.
+const categories = () => state.dataset?.categories || [];
 const categoryName = (slug) =>
-  (CATEGORIES.find(([, s]) => s === slug) || [slug])[0];
+  (categories().find((c) => c.slug === slug) || { label: slug }).label;
+
+/* What a dragged variable carries. The assistant drawer reads this off
+   dataTransfer, so anything draggable anywhere in the site describes itself
+   the same way and there is one shape to keep in step. */
+function dragPayload(row) {
+  const file = state.manifest.files[row[2]];
+  return {
+    kind: "variable",
+    name: row[0],
+    label: row[1] || "",
+    file: file ? file.name : "",
+    wave: state.manifest.waves[row[3]] || "",
+  };
+}
 
 function highlight(text, term) {
   const t = String(text ?? "");
@@ -79,25 +91,28 @@ async function boot() {
       fetch("data/derived.json").then((r) => r.json()),
     ]);
     state.manifest = manifest;
+    state.dataset = manifest.dataset;
     state.vars = vars;
     state.derived = derived;
   } catch (err) {
     document.body.innerHTML =
       '<p style="font-family:var(--mono);padding:40px;max-width:60ch">' +
-      "Could not load the site data. This page reads JSON over HTTP, so it " +
-      "cannot run from a <code>file://</code> path. Serve the directory " +
-      "instead:<br><br><code>python3 -m http.server -d web</code><br><br>" +
+      "Could not load the site data. Build it and serve it:<br><br>" +
+      "<code>python3 web/build_site.py</code><br>" +
+      "<code>python3 web/server.py</code><br><br>" +
       "then open <code>http://localhost:8000</code>." +
       "</p>";
-    return;
+    return false;
   }
 
+  applyBranding();
+
   const c = state.manifest.counts;
+  const waves = state.dataset.wave.plural;
   $("#foot-counts").textContent =
     `${c.variables.toLocaleString()} variables · ${c.files} files · ` +
-    `${c.sweeps} sweeps · ${c.derived} derived · built ${state.manifest.built}`;
-  const repoUrl = `https://github.com/${state.manifest.repo}`;
-  $("#foot-repo").href = repoUrl;
+    `${c.waves} ${waves} · ${c.derived} derived · built ${state.manifest.built}`;
+  $("#foot-repo").href = `https://github.com/${state.dataset.issue.repo}`;
 
   restoreDraft();
   buildCategorySelect();
@@ -108,29 +123,44 @@ async function boot() {
   renderBasket();
 }
 
+/* The dataset's own name, everywhere the markup left a placeholder. */
+function applyBranding() {
+  const d = state.dataset;
+  document.title = `${d.name} ${d.tagline}`;
+  $(".mark-name").textContent = d.name;
+  $(".mark-sub").textContent = d.tagline;
+  $("#spine").setAttribute("aria-label", `Coverage by ${d.wave.term}`);
+  $("#f-waves-label").innerHTML =
+    `${esc(capitalise(d.wave.plural))} involved <em>required</em>`;
+  $("#f-waves").placeholder = d.wave.order?.slice(0, 2).join(", ") || "";
+  const meta = document.querySelector('meta[name="description"]');
+  if (meta && d.blurb) meta.setAttribute("content", d.blurb);
+}
+
 /* ── Spine ───────────────────────────────────────────────────────────── */
-/* Counts per sweep for whatever is currently on screen. Absence is drawn,
-   not omitted — a sweep with no matches is the useful signal. */
+/* Counts per wave for whatever is currently on screen. Absence is drawn,
+   not omitted — a wave with no matches is the useful signal. */
 
 function spineCounts() {
-  const n = state.manifest.sweeps.length;
+  const n = state.manifest.waves.length;
   const counts = new Array(n).fill(0);
   if (state.view === "derived" && state.derivedSelected) {
-    // Coverage of the selected variable's family across sweeps.
+    // Coverage of the selected variable's family across waves.
     const fam = state.derivedSelected.family;
     state.derived.filter((d) => d.family === fam).forEach((d) => {
       (d.source_files || []).forEach((name) => {
         const f = state.manifest.files.find((x) => x.name === name);
-        if (f) counts[state.manifest.sweeps.indexOf(f.sweep)] += 1;
+        if (f) counts[state.manifest.waves.indexOf(f.wave)] += 1;
       });
     });
-    return { counts, title: `Coverage · ${fam}`, note: "sweeps this family draws on" };
+    return { counts, title: `Coverage · ${fam}`,
+             note: `${state.dataset.wave.plural} this family draws on` };
   }
   state.matches.forEach((row) => { counts[row[3]] += 1; });
   const note = state.query || state.fileFilter !== null
     ? `${state.matches.length.toLocaleString()} matching variables`
     : "all variables";
-  return { counts, title: "Matches by sweep", note };
+  return { counts, title: `Matches by ${state.dataset.wave.term}`, note };
 }
 
 function renderSpine() {
@@ -139,16 +169,16 @@ function renderSpine() {
   $("#spine-title").textContent = title;
   $("#spine-note").textContent = note;
 
-  $("#spine-track").innerHTML = state.manifest.sweeps.map((sweep, i) => {
+  $("#spine-track").innerHTML = state.manifest.waves.map((wave, i) => {
     const n = counts[i];
     const pct = n ? Math.max(6, Math.round((n / max) * 100)) : 0;
-    const on = state.sweepFilter === i;
+    const on = state.waveFilter === i;
     return `<li>
-      <button class="node${n ? "" : " is-empty"}" data-sweep="${i}"
+      <button class="node${n ? "" : " is-empty"}" data-wave="${i}"
               aria-pressed="${on}"
-              title="${esc(sweep)} — ${n.toLocaleString()} ${n === 1 ? "variable" : "variables"}">
+              title="${esc(wave)} — ${n.toLocaleString()} ${n === 1 ? "variable" : "variables"}">
         <span class="node-bar"><span class="node-fill" style="height:${pct}%"></span></span>
-        <span class="node-age">${esc(sweep)}</span>
+        <span class="node-age">${esc(wave)}</span>
         <span class="node-n">${n ? n.toLocaleString() : "—"}</span>
       </button></li>`;
   }).join("");
@@ -163,7 +193,7 @@ function runSearch() {
   // facet shows what choosing it would give rather than what is on screen.
   const counts = new Map();
   for (const row of state.vars) {
-    if (state.sweepFilter !== null && row[3] !== state.sweepFilter) continue;
+    if (state.waveFilter !== null && row[3] !== state.waveFilter) continue;
     if (state.fileFilter !== null && row[2] !== state.fileFilter) continue;
     if (q && !row[0].toLowerCase().includes(q) && !row[1].toLowerCase().includes(q)) continue;
     const level = row[4] ?? LEVEL_UNRECORDED;
@@ -182,7 +212,7 @@ function runSearch() {
 /* Measurement level — the dictionaries' one discriminating type field.
    variable_type is not offered: 31,472 of 32,454 variables are "numeric", so
    filtering on it would be a no-op. Every level is drawn even at zero, for
-   the same reason an empty sweep is drawn on the spine: knowing a search has
+   the same reason an empty wave is drawn on the spine: knowing a search has
    no scale variables in it is the answer, not a reason to hide the control. */
 function renderLevelFacets() {
   const levels = state.manifest.levels || [];
@@ -211,10 +241,11 @@ function renderResults() {
   $("#results").innerHTML = shown.map((row, i) => {
     const file = state.manifest.files[row[2]];
     const cur = state.selected === row ? " is-current" : "";
-    return `<li><button class="row${cur}" data-i="${i}">
+    return `<li><button class="row${cur}" data-i="${i}" draggable="true"
+      data-drag="${esc(JSON.stringify(dragPayload(row)))}">
       <span class="row-top">
         <span class="row-name">${highlight(row[0], q)}</span>
-        <span class="row-sweep">${esc(state.manifest.sweeps[row[3]])}</span>
+        <span class="row-wave">${esc(state.manifest.waves[row[3]])}</span>
       </span>
       <span class="row-label">${highlight(row[1] || "—", q)}</span>
       <span class="row-file">${esc(file ? file.name : "?")}</span>
@@ -224,7 +255,7 @@ function renderResults() {
   const more = $("#more");
   if (total > MAX_ROWS) {
     more.hidden = false;
-    more.textContent = `Showing the first ${MAX_ROWS.toLocaleString()} of ${total.toLocaleString()}. Narrow the search or pick a sweep.`;
+    more.textContent = `Showing the first ${MAX_ROWS.toLocaleString()} of ${total.toLocaleString()}. Narrow the search or pick a ${state.dataset.wave.term}.`;
   } else {
     more.hidden = true;
   }
@@ -233,8 +264,9 @@ function renderResults() {
 
 function renderFilters() {
   const chips = [];
-  if (state.sweepFilter !== null) {
-    chips.push(`<button class="chip" data-clear="sweep">sweep ${esc(state.manifest.sweeps[state.sweepFilter])} ✕</button>`);
+  if (state.waveFilter !== null) {
+    chips.push(`<button class="chip" data-clear="wave">${
+      esc(state.dataset.wave.term)} ${esc(state.manifest.waves[state.waveFilter])} ✕</button>`);
   }
   if (state.fileFilter !== null) {
     chips.push(`<button class="chip" data-clear="file">file ${esc(state.manifest.files[state.fileFilter].name)} ✕</button>`);
@@ -256,9 +288,9 @@ async function loadDict(slug) {
 async function showVariable(row) {
   state.selected = row;
   renderResults();
-  const [name, label, fileIdx, sweepIdx] = row;
+  const [name, label, fileIdx, waveIdx] = row;
   const file = state.manifest.files[fileIdx];
-  const sweep = state.manifest.sweeps[sweepIdx];
+  const wave = state.manifest.waves[waveIdx];
   const detail = $("#detail");
 
   detail.innerHTML = `<p class="empty">Loading ${esc(name)}…</p>`;
@@ -280,7 +312,7 @@ async function showVariable(row) {
 
   detail.innerHTML = `
     <div class="detail-head">
-      <div class="detail-eyebrow">${esc(sweep)} · ${esc(file.name)}</div>
+      <div class="detail-eyebrow">${esc(wave)} · ${esc(file.name)}</div>
       <h1 class="detail-name">${esc(name)}</h1>
       <p class="detail-label">${esc(label || "No label recorded in the dictionary.")}</p>
     </div>
@@ -292,7 +324,7 @@ async function showVariable(row) {
       until that row is added.</div></div>` : ""}
 
     <dl class="facts">
-      <div class="fact"><dt>Sweep</dt><dd>${esc(sweep)}</dd></div>
+      <div class="fact"><dt>${esc(capitalise(state.dataset.wave.term))}</dt><dd>${esc(wave)}</dd></div>
       <div class="fact"><dt>File</dt><dd>${esc(file.name)}</dd></div>
       <div class="fact"><dt>Study</dt><dd>${esc(file.study || "—")}</dd></div>
       <div class="fact"><dt>Position</dt><dd>${esc(entry?.pos || "—")}</dd></div>
@@ -323,15 +355,21 @@ async function showVariable(row) {
         ${inBasket ? "In scratchpad" : "Add to scratchpad"}
       </button>
       <button class="btn" id="filter-file">Show all in ${esc(file.name)}</button>
+      <button class="btn" id="pin-chat">Pin to assistant</button>
     </div>`;
 
+  $("#pin-chat")?.addEventListener("click", () => {
+    window.AtlasChat?.pin({ kind: "variable", name, label, file: file.name, wave });
+    window.AtlasChat?.open();
+  });
+
   $("#add-basket")?.addEventListener("click", () => {
-    addToBasket({ name, label, file: file.name, sweep });
+    addToBasket({ name, label, file: file.name, wave });
     showVariable(row);
   });
   $("#filter-file")?.addEventListener("click", () => {
     state.fileFilter = fileIdx;
-    state.sweepFilter = null;
+    state.waveFilter = null;
     state.levelFilter = null;
     state.query = "";
     $("#q").value = "";
@@ -356,7 +394,7 @@ function renderCategoryFacets() {
   state.derived.filter((d) => matchesDerivedQuery(d, q))
     .forEach((d) => counts.set(d.category, (counts.get(d.category) || 0) + 1));
 
-  $("#category-facets").innerHTML = CATEGORIES.map(([label, slug]) => {
+  $("#category-facets").innerHTML = categories().map(({ label, slug }) => {
     const n = counts.get(slug) || 0;
     const on = state.derivedCategory === slug;
     return `<button class="facet${on ? " is-on" : ""}${n ? "" : " is-empty"}"
@@ -401,10 +439,18 @@ function renderDerivedList() {
            ${esc(categoryName(d.category))} / <strong>${esc(d.family)}</strong></p></li>` : "";
     lastFamily = d.family;
     const cur = state.derivedSelected?.id === d.id ? " is-current" : "";
-    return head + `<li><button class="row${cur}" data-id="${esc(d.id)}">
+    // Draggable too. Dropping a harmonised variable into the assistant is
+    // how you say "follow this one's precedent" - a different claim from
+    // dropping a raw variable, so the payload says which it is.
+    const payload = {
+      kind: "derived", name: d.id, label: d.label || "",
+      file: d.file || "", wave: d.family || "",
+    };
+    return head + `<li><button class="row${cur}" data-id="${esc(d.id)}"
+      draggable="true" data-drag="${esc(JSON.stringify(payload))}">
       <span class="row-top">
         <span class="row-name">${esc(d.id)}</span>
-        <span class="row-sweep">${statusPill(d.status)}</span>
+        <span class="row-wave">${statusPill(d.status)}</span>
       </span>
       <span class="row-label">${esc(d.label)}</span>
     </button></li>`;
@@ -454,7 +500,7 @@ function showDerived(d) {
       <li><button data-file="${esc(name)}">
         <span class="ll-name">${esc(name)}</span>
         <span class="ll-desc">${esc(file?.description || "")}</span>
-        <span class="ll-meta">${esc(file ? file.sweep : "not in lookup")}</span>
+        <span class="ll-meta">${esc(file ? file.wave : "not in lookup")}</span>
       </button></li>`).join("")}
     </ul>
 
@@ -478,7 +524,7 @@ function showDerived(d) {
       const idx = state.manifest.files.findIndex((f) => f.name === b.dataset.file);
       if (idx < 0) return;
       switchView("metadata");
-      state.fileFilter = idx; state.sweepFilter = null; state.levelFilter = null;
+      state.fileFilter = idx; state.waveFilter = null; state.levelFilter = null;
       state.query = "";
       $("#q").value = ""; runSearch();
     }));
@@ -486,7 +532,7 @@ function showDerived(d) {
   $$("#derived-detail [data-var]").forEach((b) =>
     b.addEventListener("click", () => {
       switchView("metadata");
-      state.fileFilter = null; state.sweepFilter = null; state.levelFilter = null;
+      state.fileFilter = null; state.waveFilter = null; state.levelFilter = null;
       state.query = b.dataset.var; $("#q").value = b.dataset.var;
       runSearch();
     }));
@@ -508,11 +554,15 @@ function renderBasket() {
 
   $("#basket-empty").hidden = state.basket.length > 0;
   $("#basket").innerHTML = state.basket.map((b, i) => `
-    <li><div class="row" style="cursor:default;display:flex;align-items:flex-start;gap:8px">
+    <li><div class="row" style="cursor:grab;display:flex;align-items:flex-start;gap:8px"
+        draggable="true" data-drag="${esc(JSON.stringify({
+          kind: "variable", name: b.name, label: b.label || "",
+          file: b.file || "", wave: b.wave || "",
+        }))}">
       <div style="flex:1;min-width:0">
         <span class="row-top">
           <span class="row-name">${esc(b.name)}</span>
-          <span class="row-sweep">${esc(b.sweep)}</span>
+          <span class="row-wave">${esc(b.wave)}</span>
         </span>
         <span class="row-label">${esc(b.label || "—")}</span>
         <span class="row-file">${esc(b.file)}</span>
@@ -531,17 +581,17 @@ function renderBasket() {
 // Sweeps and source variables are derived from the basket, but only while
 // the user hasn't typed over them — their edit always wins.
 function syncDerivedFields() {
-  const sweepsField = $("#f-sweeps");
+  const wavesField = $("#f-waves");
   const sourcesField = $("#f-sources");
   if (!state.basket.length) return;
 
-  const sweeps = [...new Set(state.basket.map((b) => b.sweep))]
-    .sort((a, b) => state.manifest.sweeps.indexOf(a) - state.manifest.sweeps.indexOf(b));
-  if (!sweepsField.dataset.touched) sweepsField.value = sweeps.join(", ");
+  const waves = [...new Set(state.basket.map((b) => b.wave))]
+    .sort((a, b) => state.manifest.waves.indexOf(a) - state.manifest.waves.indexOf(b));
+  if (!wavesField.dataset.touched) wavesField.value = waves.join(", ");
 
   if (!sourcesField.dataset.touched) {
     sourcesField.value = state.basket
-      .map((b) => `${b.name} — ${b.label || "no label"} (${b.file}, ${b.sweep})`)
+      .map((b) => `${b.name} — ${b.label || "no label"} (${b.file}, ${b.wave})`)
       .join("\n");
   }
   saveDraft();
@@ -550,13 +600,13 @@ function syncDerivedFields() {
 function buildCategorySelect() {
   $("#f-category").innerHTML =
     `<option value="">Choose one…</option>` +
-    CATEGORIES.map(([label]) => `<option value="${esc(label)}">${esc(label)}</option>`).join("");
+    categories().map((c) => `<option value="${esc(c.label)}">${esc(c.label)}</option>`).join("");
 }
 
 function draftValues() {
   return {
     name: $("#f-name").value.trim(),
-    sweeps: $("#f-sweeps").value.trim(),
+    waves: $("#f-waves").value.trim(),
     category: $("#f-category").value,
     description: $("#f-description").value.trim(),
     sources: $("#f-sources").value.trim(),
@@ -564,31 +614,38 @@ function draftValues() {
   };
 }
 
-function issueUrl() {
-  const v = draftValues();
-  const p = new URLSearchParams({ template: "variable_request.yml" });
-  if (v.name) { p.set("title", `[variable] ${v.name}`); p.set("variable-name", v.name); }
-  if (v.sweeps) p.set("sweeps", v.sweeps);
-  if (v.category) p.set("category", v.category);
-  if (v.description) p.set("description", v.description);
-  if (v.sources) p.set("source-vars", v.sources);
-  if (v.notes) p.set("logic-notes", v.notes);
-  return `https://github.com/${state.manifest.repo}/issues/new?${p}`;
+/* The one place a request becomes a URL, shared with the assistant drawer.
+   Field ids come from the config rather than being spelled here, so renaming
+   one in the issue template is a one-line change in dataset.toml. */
+function issueUrl(values) {
+  const { repo, template, titlePrefix, fields } = state.dataset.issue;
+  const params = new URLSearchParams(template ? { template } : {});
+  if (values.name) {
+    params.set("title", `${titlePrefix}${values.name}`);
+    params.set(fields.name, values.name);
+  }
+  const optional = [
+    [fields.waves, values.waves], [fields.category, values.category],
+    [fields.description, values.description], [fields.sources, values.sources],
+    [fields.notes, values.notes],
+  ];
+  for (const [key, value] of optional) if (value) params.set(key, value);
+  return `https://github.com/${repo}/issues/new?${params}`;
 }
 
 function refreshSubmit() {
   const v = draftValues();
-  const ready = v.name && v.sweeps && v.category && v.description;
+  const ready = v.name && v.waves && v.category && v.description;
   const btn = $("#submit");
-  btn.href = ready ? issueUrl() : "#";
+  btn.href = ready ? issueUrl(v) : "#";
   btn.setAttribute("aria-disabled", String(!ready));
-  btn.title = ready ? "" : "Fill in name, sweeps, category and description first";
+  btn.title = ready ? "" : `Fill in name, ${state.dataset.wave.plural}, category and description first`;
   saveDraft();
 }
 
 function saveDraft() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({
+    localStorage.setItem(storeKey("draft"), JSON.stringify({
       basket: state.basket, fields: draftValues(),
     }));
   } catch { /* private browsing, or storage full — the draft just won't persist */ }
@@ -596,13 +653,13 @@ function saveDraft() {
 
 function restoreDraft() {
   let saved;
-  try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); } catch { return; }
+  try { saved = JSON.parse(localStorage.getItem(storeKey("draft")) || "null"); } catch { return; }
   if (!saved) return;
   state.basket = saved.basket || [];
   const f = saved.fields || {};
   const set = (sel, val) => { if (val) { $(sel).value = val; $(sel).dataset.touched = "1"; } };
   queueMicrotask(() => {
-    set("#f-name", f.name); set("#f-sweeps", f.sweeps);
+    set("#f-name", f.name); set("#f-waves", f.waves);
     if (f.category) $("#f-category").value = f.category;
     set("#f-description", f.description); set("#f-sources", f.sources); set("#f-notes", f.notes);
     refreshSubmit();
@@ -660,10 +717,10 @@ function wireUp() {
   });
 
   $("#spine-track").addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-sweep]");
+    const btn = e.target.closest("[data-wave]");
     if (!btn) return;
-    const i = Number(btn.dataset.sweep);
-    state.sweepFilter = state.sweepFilter === i ? null : i;
+    const i = Number(btn.dataset.wave);
+    state.waveFilter = state.waveFilter === i ? null : i;
     if (state.view !== "metadata") switchView("metadata");
     runSearch();
   });
@@ -671,7 +728,7 @@ function wireUp() {
   $("#active-filters").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-clear]");
     if (!btn) return;
-    if (btn.dataset.clear === "sweep") state.sweepFilter = null;
+    if (btn.dataset.clear === "wave") state.waveFilter = null;
     if (btn.dataset.clear === "file") state.fileFilter = null;
     if (btn.dataset.clear === "level") state.levelFilter = null;
     runSearch();
@@ -686,12 +743,12 @@ function wireUp() {
   });
 
   $("#clear-filters").addEventListener("click", () => {
-    state.sweepFilter = null; state.fileFilter = null; state.levelFilter = null;
+    state.waveFilter = null; state.fileFilter = null; state.levelFilter = null;
     state.query = ""; $("#q").value = "";
     runSearch();
   });
 
-  ["#f-name", "#f-sweeps", "#f-category", "#f-description", "#f-sources", "#f-notes"]
+  ["#f-name", "#f-waves", "#f-category", "#f-description", "#f-sources", "#f-notes"]
     .forEach((sel) => {
       const el = $(sel);
       el.addEventListener("input", () => { el.dataset.touched = "1"; refreshSubmit(); });
@@ -704,7 +761,7 @@ function wireUp() {
     const v = draftValues();
     const text = [
       `Proposed variable name: ${v.name || "—"}`,
-      `Sweeps involved: ${v.sweeps || "—"}`,
+      `Sweeps involved: ${v.waves || "—"}`,
       `Category: ${v.category || "—"}`,
       "", "What should this variable capture?", v.description || "—",
       "", "Known or candidate source variables:", v.sources || "—",
@@ -720,7 +777,7 @@ function wireUp() {
 
   $("#reset").addEventListener("click", () => {
     state.basket = [];
-    ["#f-name", "#f-sweeps", "#f-description", "#f-sources", "#f-notes"]
+    ["#f-name", "#f-waves", "#f-description", "#f-sources", "#f-notes"]
       .forEach((s) => { $(s).value = ""; delete $(s).dataset.touched; });
     $("#f-category").value = "";
     saveDraft(); renderBasket(); refreshSubmit();
@@ -728,14 +785,14 @@ function wireUp() {
   });
 
   const theme = $("#theme");
-  const stored = localStorage.getItem("bcs70-atlas-theme");
+  const stored = localStorage.getItem(storeKey("theme"));
   if (stored) document.documentElement.dataset.theme = stored;
   theme.addEventListener("click", () => {
     const now = document.documentElement.dataset.theme ||
       (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     const next = now === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
-    localStorage.setItem("bcs70-atlas-theme", next);
+    localStorage.setItem(storeKey("theme"), next);
   });
 
   refreshSubmit();
@@ -749,4 +806,109 @@ function say(msg) {
   sayTimer = setTimeout(() => { el.textContent = ""; }, 4000);
 }
 
-boot();
+/* Fill the scratchpad form from outside — how the assistant hands a
+   finished draft back to the plain form, so both routes to an issue end at
+   the same place and the same review step. */
+function fillDraft(fields) {
+  const map = {
+    name: "#f-name", waves: "#f-waves", description: "#f-description",
+    sources: "#f-sources", notes: "#f-notes",
+  };
+  for (const [key, sel] of Object.entries(map)) {
+    if (!fields[key]) continue;
+    $(sel).value = fields[key];
+    $(sel).dataset.touched = "1";
+  }
+  if (fields.category) $("#f-category").value = fields.category;
+  refreshSubmit();
+}
+
+/* Open one raw variable from outside the metadata view — the assistant's
+   transcript links every name it surfaces through to here, so a lookup is a
+   way into the atlas rather than a dead end. Filters are cleared and the
+   search set to the name, so the variable is in the list beside its detail
+   rather than selected out of nowhere. */
+function openVariable(name, wave) {
+  const wanted = String(name || "").toLowerCase();
+  const rows = state.vars.filter((r) => String(r[0]).toLowerCase() === wanted);
+  const row = (wave && rows.find((r) => state.manifest.waves[r[3]] === wave)) || rows[0];
+  if (!row) return false;
+
+  switchView("metadata");
+  state.waveFilter = null;
+  state.fileFilter = null;
+  state.levelFilter = null;
+  state.query = row[0];
+  $("#q").value = row[0];
+  runSearch();
+  showVariable(row);
+  return true;
+}
+
+/* The same, for something already harmonised. */
+function openDerived(id) {
+  const entry = state.derived.find((d) => d.id === id);
+  if (!entry) return false;
+  switchView("derived");
+  state.derivedCategory = null;
+  state.derivedQuery = "";
+  $("#dq").value = "";
+  renderDerivedList();
+  showDerived(entry);
+  return true;
+}
+
+/* The one surface other scripts on this page use. Everything here is
+   already a top-level binding, but naming the contract explicitly is what
+   stops the assistant from quietly depending on an internal. */
+/* Open one raw variable from outside the metadata view — the assistant's
+   transcript links every name it surfaces through to here, so a lookup is a
+   way into the atlas rather than a dead end. Filters are cleared and the
+   search set to the name, so the variable is in the list beside its detail
+   rather than selected out of nowhere. */
+function openVariable(name, wave) {
+  const wanted = String(name || "").toLowerCase();
+  const rows = state.vars.filter((r) => String(r[0]).toLowerCase() === wanted);
+  const row = (wave && rows.find((r) => state.manifest.waves[r[3]] === wave)) || rows[0];
+  if (!row) return false;
+
+  switchView("metadata");
+  state.waveFilter = null;
+  state.fileFilter = null;
+  state.levelFilter = null;
+  state.query = row[0];
+  $("#q").value = row[0];
+  runSearch();
+  showVariable(row);
+  return true;
+}
+
+/* The same, for something already harmonised. */
+function openDerived(id) {
+  const entry = state.derived.find((d) => d.id === id);
+  if (!entry) return false;
+  switchView("derived");
+  state.derivedCategory = null;
+  state.derivedQuery = "";
+  $("#dq").value = "";
+  renderDerivedList();
+  showDerived(entry);
+  return true;
+}
+
+/* The one surface other scripts on this page use. Everything here is already
+   a top-level binding, but naming the contract explicitly is what stops the
+   assistant from quietly depending on an internal. */
+window.Atlas = {
+  state, esc, categories, categoryName, issueUrl, storeKey,
+  switchView, addToBasket, fillDraft, showVariable, runSearch, loadDict,
+  openVariable, openDerived,
+};
+
+/* The assistant is an ES module and therefore deferred, so it may load before
+   or after this finishes. Whichever lands second starts the drawer. */
+boot().then((ok) => {
+  if (ok === false) return;
+  window.Atlas.ready = true;
+  window.dispatchEvent(new Event("atlas:ready"));
+});

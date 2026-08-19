@@ -1,93 +1,134 @@
 # Variable atlas
 
-A static site for finding raw BCS70 variables across 55 years of instruments,
+A site for finding raw variables across a longitudinal study's instruments,
 reading what has been harmonised from them, and drafting a new variable
-request.
+request — with an assistant that will do the last part with you.
 
-Self-contained: no build tooling, no framework, no dependencies. Three source
-files plus generated JSON.
+Configured for one dataset at a time by `web/dataset.toml`.
 
 ```
 web/
-  index.html      structure
-  styles.css      tokens and layout
+  dataset.toml    EVERYTHING dataset-specific. Start here.
+  config.py       loads it                                       [stdlib]
+  build_site.py   generates data/ from the deposits and registry/ [stdlib]
+  server.py       serves the site and the assistant's /api        [stdlib]
+  index.html
+  styles.css
   app.js          search, detail, scratchpad
-  build_site.py   generates data/ from bcs70/ and registry/
-  data/           generated, gitignored - built by CI at publish time
+  chat.js         the assistant's turn loop and wiring
+  chat/           one module per panel — state, api, transcript, steps,
+                  composer, draft, settings
+  assistant/      what the assistant asks and looks up   → assistant/README.md
+  data/           generated, gitignored
 ```
+
+No bundler and no build step: `chat.js` is an ES module, `app.js` is a plain
+script, and the Python is standard library. The one exception is the
+assistant, which is an optional extra.
 
 ## Running it locally
 
-`data/` is not in the repository, so build it first. The page fetches JSON and
-cannot run from a `file://` path, so serve the directory rather than opening
-the file:
+`data/` is not in the repository, so build it first:
 
 ```
-python3 web/build_site.py        # required once, and after any metadata change
-python3 -m http.server -d web    # then open http://localhost:8000
+python3 web/build_site.py        # after any metadata or registry change
+python3 web/server.py            # then open http://localhost:8000
 ```
 
-`build_site.py` uses the standard library only. It reads the metadata CSVs
-under `bcs70/` and `registry/variables.json`, and writes `web/data/`. It never
-opens a `.tab` file, so no row of study data can reach the site.
+One process serves the site and the API. Browsing needs **no install at all**;
+the assistant needs one:
 
-Rebuild after: adding a derived variable, changing a spec, or any change to
-the metadata. Only your local preview is affected — the published site builds
-its own copy.
+```
+uv sync --extra assistant        # langgraph, langchain-ollama
+```
+
+Without it, `server.py` prints a note, `/api/health` reports
+`assistant: false`, and the drawer disables itself with the install command in
+its tooltip. Everything else is unaffected.
+
+`build_site.py` reads the metadata CSVs under the configured `[dataset] root`
+and `registry/variables.json`. It never opens a data file, so no row of study
+data can reach the site.
+
+## Pointing it at another dataset
+
+**Nothing outside `dataset.toml` names a study.** Not the Python, not the
+JavaScript, not the markup. The study's name and background, what one round of
+collection is called, the order of those rounds, the metadata CSVs' column
+names, the categories, the issue form's field ids, the retrieval tuning, the
+assistant's capabilities and its whole interview all live in that one file.
+
+```
+cp web/dataset.toml web/other.toml     # then edit it
+ATLAS_DATASET_CONFIG=web/other.toml python3 web/build_site.py
+ATLAS_DATASET_CONFIG=web/other.toml python3 web/server.py
+```
+
+Change `[wave] term` from `sweep` to `visit` and the whole system follows: the
+system prompt says "Visits are rounds, not years", the search tool's parameter
+is named `visit`, the draft asks for `bmi_<visit>`, and the scratchpad's label
+reads "Visits involved". That is checked, not asserted.
+
+`build_site.py` copies the browser's share of the config into
+`data/manifest.json`, so the front end reads one source of truth rather than
+keeping its own copy. Storage keys are namespaced per dataset
+(`atlas:<key>:draft`), so two atlases on one origin never collide.
 
 ## What it does
 
-**Metadata** — search 32,000+ variables by name or label. Names are terse and
-inconsistent between sweeps, so searching the label usually beats guessing the
+**Metadata** — search every variable by name or label. Names are terse and
+inconsistent between waves, so searching the label usually beats guessing the
 name. Open one to see its value labels, declared missing codes, position, and
-the file and study it came from. Filter by **measurement level** (nominal,
-ordinal, scale, unrecorded), by sweep from the spine, or by file from a
-variable's detail pane; the three combine, and each shows as a clearable chip.
+the file and study it came from. Filter by **measurement level**, by wave from
+the spine, or by file from a variable's detail pane; the three combine, and
+each shows as a clearable chip.
 
 **Derived** — the harmonised variables, filterable by **category**. Each shows
-the R source that produces it, the deposited files it draws on, and the raw
-variables it needs. Source files and variables are clickable and jump back
-into the metadata view.
+the source that produces it, the files it draws on, and the raw variables it
+needs, all clickable back into the metadata.
 
-The level filter reads `measurement_level`, not `variable_type`. The latter is
-the more obvious "type" field and is shown on the detail pane, but it does not
-discriminate: 31,472 of 32,454 variables are `numeric`, 981 record nothing and
-one is `other`, so filtering on it would be a no-op.
+**Scratchpad** — collect candidates while browsing, describe what you want, and
+open a prefilled GitHub issue. Nothing is submitted until you review it.
 
-Both filters draw every option, including options with nothing behind them,
-for the reason the spine draws empty sweeps: knowing a search contains no
-scale variables, or that no health variable has been harmonised yet, is the
-answer rather than a reason to hide the control. Counts beside each option are
-tallied *before* that filter is applied, so a count says what choosing it
-would give, not what is already on screen.
+**Assistant** — the same destination, reached by conversation.
+See [assistant/README.md](assistant/README.md).
 
-**Scratchpad** — collect candidate variables while browsing, describe what you
-want, and open a prefilled GitHub issue against the repository's request
-template. Nothing is submitted until you review it on GitHub. The draft
-persists in `localStorage`.
+The level filter reads `measurement_level`, not `variable_type`: the latter is
+the more obvious "type" field and does not discriminate — 31,472 of 32,454
+variables are `numeric`. Both filters draw every option including empty ones,
+for the reason the spine draws empty waves: knowing a search contains no scale
+variables is the answer, not a reason to hide the control. Counts beside each
+option are tallied *before* that filter is applied, so a count says what
+choosing it would give, not what is already on screen.
 
 ## The sweep spine
 
-The age axis across the top is the one element to understand. It always
-reflects what is on screen: matches per sweep while searching, coverage across
-sweeps while reading a derived family. Sweeps with nothing are drawn as dashed
-voids rather than omitted, because absence is usually the thing you need to
-know — housing tenure exists at 11 sweeps, BMI at 9, and two sweeps carry
-neither. Click a sweep to filter to it.
+The age axis across the top always reflects what is on screen: matches per wave
+while searching, coverage across waves while reading a derived family. Waves
+with nothing are drawn as dashed voids rather than omitted, because absence is
+usually the thing you need to know. Click one to filter to it.
 
 ## Two things the site deliberately surfaces
 
-**Files missing from the master lookup.** Seven deposited `.tab` files have a
-full data dictionary but no row in `master_file_info_lookup.csv`, so
-`load_tab()` cannot resolve them and no variable script can use them. Their
-variables are still searchable here, with a warning on the detail pane, rather
-than being hidden.
+**Files missing from the master lookup.** A deposited file can have a full data
+dictionary but no row in the lookup, so the pipeline cannot resolve it and no
+variable script can use it. Its variables stay searchable, with a warning on
+the detail pane, rather than being hidden.
 
-**Duplicate file names.** `bcs70_age16_school_type` is deposited under both 16y
-(study 3535) and 42y (study 7473). Everything here is keyed by sweep *and*
-name, never name alone, so the two stay distinct.
+**Duplicate file names.** One file name is deposited under two different waves.
+Everything here is keyed by wave *and* name, never name alone, so the two stay
+distinct.
 
 ## Deploying to GitHub Pages
+
+**Currently unavailable, and the local route above is the supported one.**
+GitHub Pages does not serve from a private account, so while the repository
+is private the workflow below cannot publish. It is kept intact rather than
+deleted: nothing about it has been made wrong by the account change, and it
+works again the moment the repository is public. Note that the assistant is
+local-only by construction — it talks to Ollama on `localhost` — so a
+published copy of this site would carry the drawer but never connect.
+
 
 `.github/workflows/pages.yml` runs `build_site.py` and uploads this directory
 on every push to `main` touching `web/`, `registry/`, or `bcs70/`. The site is

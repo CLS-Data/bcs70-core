@@ -53,10 +53,21 @@ scripts/
 registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
 
-web/                              self-contained static site: search the metadata, read derived variables and their
-                                  source, draft a variable request. build_site.py generates web/data/ from bcs70/
-                                  and registry/; that output is gitignored and built by CI at publish time, so adding
-                                  a variable needs no rebuild step — run it only to preview locally. See web/README.md.
+web/                              the variable atlas: search the metadata, read derived variables and their source,
+                                  draft a variable request, or talk to an assistant that builds the request with you.
+                                  build_site.py generates web/data/ from bcs70/ and registry/; that output is gitignored
+                                  and built by CI at publish time, so adding a variable needs no rebuild step — run it
+                                  only to preview locally. See web/README.md.
+  index.html, styles.css, app.js  the atlas front end (no framework, no build step)
+  dataset.toml                    everything dataset-specific — the study, its sweeps, categories, issue fields,
+                                  the assistant's capabilities and its whole interview. Change behaviour here first.
+  config.py                       loads it; the one place defaults live
+  chat.js + chat/                 draw the assistant; contain no prompts, tools or model calls
+  server.py                       serves the site and /api — `python3 web/server.py` (standard library)
+  assistant/                      the assistant's actual logic: router.py, prompts.py, tools.py (search/inspect/
+                                  list_harmonised over the dictionaries), retrieval.py (BM25), choices.py,
+                                  corpus.py, ollama.py — all standard library — plus graph.py (the LangGraph),
+                                  llm.py and agent.py, which need the `assistant` extra. See its README.
 
 DATA_KNOWLEDGE.md                 hand-maintained ledger of known data quirks that no dictionary records
                                   (duplicate ids, cross-sweep name collisions, unusable derived variables,
@@ -124,4 +135,23 @@ Rscript scripts/build_registry.R                                    # regenerate
 
 `R/runner.R` writes to `output/`, which is gitignored — never commit anything from it, since running it against real data elsewhere would produce real derived values. `registry/` is the opposite: generated, but committed — it's the read path a front end or CI uses.
 
-Python: `pyproject.toml` targets `>=3.13` with no runtime dependencies. The only Python in the repo is `web/build_site.py`, which generates the variable atlas's static JSON from the metadata and the registry (standard library only — see `web/README.md`). The derivation pipeline itself is entirely R.
+Python: `pyproject.toml` targets `>=3.13`. **`dependencies` is empty and must stay that way** — everything that reads the deposits, builds the registry or generates the atlas is standard library, and CI installs nothing. Python here is the tooling language, never the derivation language; the pipeline itself is entirely R.
+
+The one exception is declared as an optional extra, not a dependency:
+
+```
+uv sync --extra assistant     # langgraph, langchain-core, langchain-ollama
+```
+
+That extra buys the variable-request assistant and nothing else. Without it the atlas, the metadata search, the registry and `web/server.py` all still work; only the assistant drawer turns itself off, saying what to install. **Do not add anything to `dependencies`,** and do not make any other part of the repo import LangGraph.
+
+The Python, all under `web/`:
+
+- `web/dataset.toml` + `web/config.py` — **everything dataset-specific**: the study's name, what a sweep is called and their order, the metadata CSVs' column names, the ten categories, the issue form's field ids, the retrieval tuning, and the assistant's whole six-step interview. Nothing outside this file names BCS70 — the atlas is portable to another study by copying and editing it. Change behaviour here first, before reaching for the code.
+- `web/build_site.py` — generates the atlas's static JSON from the metadata and the registry, and copies the browser's share of the config into `data/manifest.json` so the front end has no second copy to drift from. Standard library.
+- `web/server.py` — serves the atlas *and* the assistant's `/api`. This is how the site is run locally: `python3 web/server.py`. Standard library. Plain `python3 -m http.server -d web` still serves the atlas, but the assistant drawer disables itself without the API behind it.
+- `web/assistant/` — the assistant: a LangGraph over the interview it conducts, its prompts, its tools over the dictionaries, and its BM25 retrieval. **See `web/assistant/README.md`** — the graph, the event contract, and the decisions that are not what you would write first. **Change the assistant's behaviour here, not in `web/chat.js`**, which only draws it — and change *what it asks* in `dataset.toml`, not here. The interview is served to the browser from that config, so the checklist, the fallback answers and the model's instructions cannot drift apart.
+
+`web/assistant/` is split on purpose: `prompts`, `choices`, `retrieval`, `corpus`, `ollama` and the tool executors are standard library and must stay so, because the atlas and the model picker depend on them; only `graph`, `llm` and `agent` need the extra, and importing the package does not pull them in.
+
+`web/assistant/` reads only `web/data/`, so it can never see anything the published site could not, and it opens no `.tab` file.
