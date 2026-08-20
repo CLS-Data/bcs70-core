@@ -107,12 +107,28 @@ the request however it is phrased.
 
 | | |
 |---|---|
-| `search_variables` | Whether a concept was measured, what it was called, at which waves. Optionally scoped to one wave. |
-| `inspect_variable` | One variable's full entry — declared missing values and every value label. What the sentinels *actually* mean. |
+| `search_variables` | **By meaning.** Whether a concept was measured, what it was called, at which waves. Optionally scoped to one wave. |
+| `inspect_variable` | **By name.** One variable's full entry — declared missing values and every value label. What the sentinels *actually* mean. On a miss it offers similar names but never picks one. |
 | `list_harmonised` | Whether **this repository** has already done it. A small registry — not the study's own `(Derived)` variables, which `search_variables` finds. Conflating the two once answered "which sweeps have a derived self-rated health variable?" with "no precedent". |
 
 Every call appears in the transcript with its arguments, and every variable
 name it surfaces links through to that variable in the atlas.
+
+**The split between the first two is the whole design.** One tool guessing at
+both intents is what produced the worst ranking bug this has had: a bonus for
+query words that happen to be variable names, which put `day` ("DAY NUMBER")
+above every cigarette variable for *"cigarettes per day"*. The bonus was also
+unnecessary — a name is indexed whole, so it is a term in exactly one document
+and BM25 ranks it first unaided. It is gone; the model declares which kind of
+lookup it wants by choosing a tool.
+
+`inspect_variable` **never resolves a name it was not given.** Where a lookup
+misses, it suggests names differing only in their digits — the same question at
+another wave, `b8hlthgn` → `b9hlthgn` — and leaves the choice to the model.
+Edit distance would be the obvious thing here and is the wrong thing: 93% of
+this study's 31,947 names have another *real* variable one edit away, and one
+edit from `b960434` includes height in feet, in metres and in centimetres. A
+fuzzy match would return a plausible, wrong, unfalsifiable answer.
 
 ## The state
 
@@ -161,7 +177,7 @@ standard library — these work with nothing installed
   router.py      which intent is this message? model, with a rule behind it
   prompts.py     the system prompt, schemas, extraction instructions
   choices.py     TagSpan: pulls tagged spans out of a live stream
-  retrieval.py   BM25 over the variable descriptions
+  retrieval.py   BM25 over the variable descriptions — meaning only
   corpus.py      the metadata build_site.py emits, and its shape
   tools.py       the three lookups: schemas, and executors
   ollama.py      listing models for the picker

@@ -51,6 +51,18 @@ its tooltip. Everything else is unaffected.
 and `registry/variables.json`. It never opens a data file, so no row of study
 data can reach the site.
 
+## Tests
+
+```
+python3 -m unittest discover -s web/tests
+```
+
+Standard library, nothing to install, and no built `data/` required — they run
+against a small synthetic corpus, so they work in a fresh checkout and in CI.
+They cover retrieval: that an exact name ranks first, that a word inside a
+phrase is **not** treated as a name, wave filtering, grouping, and the
+suggestions offered when a name lookup misses.
+
 ## Pointing it at another dataset
 
 **Nothing outside `dataset.toml` names a study.** Not the Python, not the

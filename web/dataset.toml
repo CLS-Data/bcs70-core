@@ -224,7 +224,11 @@ choices_close = "</choices>"
 k1        = 1.2     # BM25 term-frequency saturation
 b         = 0.75    # BM25 length normalisation
 pool      = 150     # documents scored before grouping
-name_lift = 2.5     # weight on an exact variable-name match, scaled by idf
+
+# There is no exact-name weighting here on purpose. Each variable's name is
+# indexed whole, so it is a term in exactly one document and BM25 ranks it
+# first unaided. Looking a variable up by name is `inspect_variable`'s job;
+# this index is about meaning. See the note in assistant/retrieval.py.
 
 # Small and deliberate. A big stoplist would eat "no", "not" and "yes",
 # which in this corpus are frequently the whole meaning of a variable.
