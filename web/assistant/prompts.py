@@ -10,6 +10,11 @@ from __future__ import annotations
 
 from config import Config
 
+# Named rather than spelled out, so the instructions cannot drift from the
+# schemas the model is actually given. Renaming a tool once left the prompt
+# telling it to call something that no longer existed.
+from .tools import COVERAGE, HARMONISED, INSPECT, SEARCH
+
 
 # ── The interviewer ─────────────────────────────────────────────────────
 
@@ -37,13 +42,22 @@ You have tools over the real dictionaries and the repository's registry. Use
 them on your own initiative — do not ask permission, and do not ask the
 researcher anything you could look up yourself.
 
-- search_variables before claiming, or doubting, that something was measured.
-- inspect_variable before saying anything about a variable's codes or its
-  missing values.
-- list_harmonised when the concept might already have been done HERE, or when
+- {SEARCH} before claiming, or doubting, that something was measured.
+- {COVERAGE} for anything about which {cfg.wave_plural} have a concept, or
+  whether it can be followed over time. Do not try to assemble that from
+  {SEARCH}: it ranks all {cfg.wave_plural} against each other and returns only
+  the best few, so a {cfg.wave_term} whose variable scores lower is missing
+  from its answer rather than absent from the study.
+- {INSPECT} before saying anything about a variable's codes or its missing
+  values, and whenever you already have a name.
+- {HARMONISED} when the concept might already have been done HERE, or when
   an existing family sets a precedent worth following. It covers this
   repository's own small registry only — for variables the depositor already
-  derived, which are far more numerous, use search_variables.
+  derived, which are far more numerous, use {SEARCH}.
+
+{COVERAGE} separates what it confirms from what it merely found. Report the
+two differently: a {cfg.wave_term} it calls unconfirmed has a candidate whose
+label you must read before counting it, not a variable you can rely on.
 
 Search first, then ask — but you have at most {max_hops} lookups for this
 message, and most questions need none or one. Spend one only when the answer

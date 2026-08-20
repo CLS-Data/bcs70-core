@@ -31,11 +31,12 @@ flowchart TD
     PRESS --> DRAFT
     DRAFT --> STOP([END])
 
-    subgraph tools ["the three lookups"]
+    subgraph tools ["the four lookups"]
         direction LR
-        T1["search_variables<br/>was it measured, and where"]
-        T2["inspect_variable<br/>what its codes mean"]
-        T3["list_harmonised<br/>has it been done here already"]
+        T1["search_variables<br/>was it measured, by meaning"]
+        T2["coverage<br/>which waves have it"]
+        T3["inspect_variable<br/>one variable, by name"]
+        T4["list_harmonised<br/>has it been done here already"]
     end
     LOOK -.-> tools
 
@@ -46,7 +47,7 @@ flowchart TD
     class INT,LOOK,PRESS,DRAFT node
     class CLS decision
     class START,STOP terminal
-    class T1,T2,T3 toolbox
+    class T1,T2,T3,T4 toolbox
     style tools fill:#eef2ee,stroke:#c5ccc3,color:#78838c
 ```
 
@@ -108,6 +109,7 @@ the request however it is phrased.
 | | |
 |---|---|
 | `search_variables` | **By meaning.** Whether a concept was measured, what it was called, at which waves. Optionally scoped to one wave. |
+| `coverage` | **By wave.** One concept reported across every wave, including the ones with nothing. See below — `search_variables` cannot answer this. |
 | `inspect_variable` | **By name.** One variable's full entry — declared missing values and every value label. What the sentinels *actually* mean. On a miss it offers similar names but never picks one. |
 | `list_harmonised` | Whether **this repository** has already done it. A small registry — not the study's own `(Derived)` variables, which `search_variables` finds. Conflating the two once answered "which sweeps have a derived self-rated health variable?" with "no precedent". |
 
@@ -121,6 +123,31 @@ above every cigarette variable for *"cigarettes per day"*. The bonus was also
 unnecessary — a name is indexed whole, so it is a term in exactly one document
 and BM25 ranks it first unaided. It is gone; the model declares which kind of
 lookup it wants by choosing a tool.
+
+**`coverage` exists because ranking and coverage are different questions.**
+`search_variables` scores every wave against every other and returns the best
+ten groups overall, so a wave whose variable ranks lower is missing from the
+answer rather than absent from the study — for *"general health"* the 29y and
+38y variables sit at rank 72 and 76 of a 150-document pool. `coverage` scores
+the same single pass and buckets by wave instead of truncating, reporting all
+fourteen including the empty ones. 0.4 ms, no extra model call.
+
+It answers in **three** states, not two. A wave is *measured* when a label
+accounts for enough of the query's idf mass, *possible* when it accounts for
+some, and *nothing* otherwise. The middle state is the point rather than a
+hedge: `hlthgen` ("How is your health generally") does not match the term
+`general` at all — "generally" does not stem to it — so a strict floor would
+drop the very wave the tool was built to surface. Its own result text says so
+in as many words, because a model told only "unconfirmed at 29y" folds that in
+with the waves that have nothing and reports a real variable as absent. That
+happened, and the wording is the fix.
+
+**What it does not fix is vocabulary.** Every extra word raises the idf mass a
+label must account for, so a more precise-sounding concept scores worse:
+`general health` confirms five waves, `self rated general health` confirms
+none. The tool says as much when nothing clears the bar, and its description
+asks for the fewest plain words — but this is a mitigation, not a solution.
+Query expansion is the real answer and is not built.
 
 `inspect_variable` **never resolves a name it was not given.** Where a lookup
 misses, it suggests names differing only in their digits — the same question at

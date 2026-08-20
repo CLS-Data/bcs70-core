@@ -169,6 +169,102 @@ class Grouping(unittest.TestCase):
         self.assertEqual(groups[0]["waves"], ["10y", "16y", "42y"])
 
 
+class Coverage(unittest.TestCase):
+    """Reporting a concept wave by wave.
+
+    The labels below are shaped to land either side of the two thresholds:
+    matching both query terms scores 1.0, matching one of two scores about a
+    half, and matching one of three about a third. "general" and "health" are
+    given the same document frequency on purpose, so that one-term matches sit
+    squarely between the floors rather than on one of them.
+    """
+
+    WAVES = ("0y", "10y", "26y", "42y")
+    ROWS = [
+        ("h1", "General state of health",        0, 3),  # both terms
+        ("h3", "General health check",           0, 3),  # both terms
+        ("h2", "How is your health generally",   0, 2),  # "health" only
+        ("n1", "General Election vote",          0, 1),  # "general" only
+        ("x1", "Shoe size",                      0, 0),  # neither
+    ]
+
+    def coverage(self, query="general health"):
+        corpus = StubCorpus(self.ROWS, self.WAVES)
+        bm = retrieval.Bm25(corpus, get_config())
+        return corpus, bm, retrieval.coverage(corpus, bm, query)
+
+    def wave(self, found, name):
+        return next(w for w in found["waves"] if w["wave"] == name)
+
+    def test_every_wave_is_reported_including_empty_ones(self):
+        _, _, found = self.coverage()
+        self.assertEqual([w["wave"] for w in found["waves"]], list(self.WAVES))
+
+    def test_a_full_match_marks_the_wave_measured(self):
+        _, _, found = self.coverage()
+        w = self.wave(found, "42y")
+        self.assertTrue(w["measured"])
+        self.assertEqual({m["name"] for m in w["matches"]}, {"h1", "h3"})
+
+    def test_a_partial_match_is_shown_but_not_claimed(self):
+        # The case the tool exists for: "How is your health generally" does
+        # not match the term "general", so a strict floor would hide it.
+        _, _, found = self.coverage()
+        w = self.wave(found, "26y")
+        self.assertFalse(w["measured"])
+        self.assertIn("h2", {m["name"] for m in w["matches"]})
+
+    def test_a_wave_with_nothing_says_nothing(self):
+        _, _, found = self.coverage()
+        w = self.wave(found, "0y")
+        self.assertFalse(w["measured"])
+        self.assertEqual(w["matches"], [])
+
+    def test_weak_matches_are_dropped_once_a_wave_is_confirmed(self):
+        rows = self.ROWS + [("junk", "General reading and writing", 0, 3)]
+        corpus = StubCorpus(rows, self.WAVES)
+        bm = retrieval.Bm25(corpus, get_config())
+        found = retrieval.coverage(corpus, bm, "general health")
+        w = self.wave(found, "42y")
+        self.assertNotIn("junk", {m["name"] for m in w["matches"]},
+                         "a confirmed wave should not also list its noise")
+
+    def test_one_term_of_three_is_below_the_floor(self):
+        rows = [
+            ("c1", "Number of cigarettes smoked a day", 0, 3),
+            ("c2", "Cups of tea per day",               0, 2),
+            ("c3", "Cigarette advertising should stop", 0, 1),
+        ]
+        corpus = StubCorpus(rows, self.WAVES)
+        bm = retrieval.Bm25(corpus, get_config())
+        found = retrieval.coverage(corpus, bm, "cigarettes per day")
+        shown = {m["name"] for w in found["waves"] for m in w["matches"]}
+        self.assertIn("c1", shown)
+        self.assertNotIn("c3", shown, "one term of three is not evidence")
+
+    def test_terms_absent_from_the_index_are_reported(self):
+        _, _, found = self.coverage("zzzz qqqq")
+        self.assertTrue(found["unknown_terms"])
+        self.assertEqual(found["waves"], [])
+
+    def test_the_tool_summarises_before_it_lists(self):
+        corpus, bm, _ = self.coverage()
+        text, display = tools.run(corpus, bm, get_config(), tools.COVERAGE,
+                                  {"concept": "general health"})
+        head = text.splitlines()[0]
+        self.assertIn("measured at: 42y", head)
+        self.assertIn("10y, 26y", head)
+        # The summary must not let an unconfirmed wave be read as an empty one.
+        self.assertIn("Never fold these in", head)
+        self.assertIn("0y: nothing found", text)
+        self.assertEqual(len(display["coverage"]), len(self.WAVES))
+
+    def test_the_tool_needs_a_concept(self):
+        corpus, bm, _ = self.coverage()
+        text, _ = tools.run(corpus, bm, get_config(), tools.COVERAGE, {})
+        self.assertIn("No concept given", text)
+
+
 class NearMisses(unittest.TestCase):
     """Suggestions on a failed lookup: structure, never edit distance."""
 
