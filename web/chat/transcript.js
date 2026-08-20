@@ -3,7 +3,7 @@
 
 import { $ } from "./dom.js";
 import { esc, md } from "./markup.js";
-import { A, chat, modelUsesTools, waveTerm } from "./state.js";
+import { A, chat, modelUsesTools, wavePlural, waveTerm } from "./state.js";
 
 export function groupRows(groups) {
   return groups.map((g) => {
@@ -28,20 +28,46 @@ export function groupRows(groups) {
 /* What the model went and looked at, shown as it happens. The arguments
    are on display, not just the fact of a search: "it searched" tells you
    nothing, "it searched for cigarettes at 16y and found none" is the thing
+   you might disagree with.
 
-   you might disagree with. */
-export const TOOL_VERB = {
-  search_variables: "searched the dictionaries",
-  inspect_variable: "read the coding for",
-  list_harmonised: "checked this repository's harmonised variables",
-  list_derived: "checked this repository's harmonised variables",
-};
+   A function rather than a lookup table because coverage's verb names the
+   wave term, which belongs to the dataset and not to this file. */
+export function toolVerb(name) {
+  return {
+    search_variables: "searched the dictionaries",
+    inspect_variable: "read the coding for",
+    coverage: `checked which ${wavePlural()} have`,
+    list_harmonised: "checked this repository's harmonised variables",
+  }[name] || name;
+}
+
+/* One row per wave, in the study's own order, saying which of the three
+   answers this wave got. Coverage reports all of them including the empty
+   ones — that is the whole reason the tool exists — so the card has to draw
+   the empty ones too, or it becomes a search with worse formatting. */
+function coverageRows(waves) {
+  return waves.map((w) => {
+    const names = (w.matches || []).map((m) => `<button class="varlink"
+        data-open='${esc(JSON.stringify({ name: m.name, wave: w.wave }))}'
+        title="Open ${esc(m.name)} in the atlas">${esc(m.name)}</button>`).join(", ");
+    const state = w.measured ? "is-measured"
+      : (w.matches || []).length ? "is-possible" : "is-nothing";
+    const verdict = w.measured ? "measured"
+      : (w.matches || []).length ? "possible" : "nothing";
+    return `<li class="cov ${state}">
+      <span class="cov-wave">${esc(w.wave)}</span>
+      <span class="cov-verdict">${verdict}</span>
+      <span class="cov-names">${names || "—"}</span>
+      <span class="cov-label">${esc((w.matches || [])[0]?.label || "")}</span>
+    </li>`;
+  }).join("");
+}
 
 export function toolCard(m) {
   const d = m.display || {};
   const arg = m.name === "inspect_variable"
     ? m.args?.name
-    : [m.args?.query, m.args?.[waveTerm()]].filter(Boolean).join(" · ");
+    : [m.args?.query, m.args?.concept, m.args?.[waveTerm()]].filter(Boolean).join(" · ");
 
   let body;
   if (!m.display) {
@@ -66,6 +92,8 @@ export function toolCard(m) {
       }).join("")}
       ${vals.length > 12 ? `<tr><td class="val">…</td><td>${vals.length - 12} more</td></tr>` : ""}
     </tbody></table>`;
+  } else if (d.coverage?.length) {
+    body = `<ol class="coverage">${coverageRows(d.coverage)}</ol>`;
   } else if (d.derived?.length) {
     body = `<ol class="hits">${d.derived.map((x) => `
       <li class="hit"><span class="hit-names"><button class="varlink"
@@ -81,7 +109,7 @@ export function toolCard(m) {
   return `<div class="msg msg-tool${m.display ? "" : " is-running"}">
     <div class="msg-head">
       <span class="tool-mark">⌕</span>
-      ${esc(TOOL_VERB[m.name] || m.name)}${arg ? ` <code>${esc(arg)}</code>` : ""}
+      ${esc(toolVerb(m.name))}${arg ? ` <code>${esc(arg)}</code>` : ""}
       ${m.display?.note ? `<span class="msg-note">${esc(m.display.note)}</span>` : ""}
     </div>
     ${body}

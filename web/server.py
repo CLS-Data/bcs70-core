@@ -39,7 +39,7 @@ from assistant import vectors                           # noqa: E402
 from assistant.retrieval import (                       # noqa: E402
     Bm25, Retriever, Settings, search_grouped,
 )
-from config import Config, ConfigError, get as get_config  # noqa: E402
+from config import Config, ConfigError, get as get_config, use as use_config  # noqa: E402
 
 MAX_BODY = 8 * 1024 * 1024
 
@@ -242,7 +242,10 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        cfg = Config.load(args.config) if args.config else get_config()
+        # Seeded rather than just held: `ollama.py` and anything else that
+        # falls back to a default reads the process-wide config, so a chosen
+        # one has to become that or `--config` is only half in force.
+        cfg = use_config(Config.load(args.config)) if args.config else get_config()
         app = build_app(cfg, args.verbose)
     except (ConfigError, CorpusMissing) as err:
         print(f"error: {err}", file=sys.stderr)

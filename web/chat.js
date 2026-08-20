@@ -163,9 +163,15 @@ function handleEvent(ev, openReply, closeReply) {
         function: { name: ev.name, arguments: ev.args },
       });
       closeReply();
+      // `content` is what the MODEL read, and it is posted back next turn so
+      // the conversation's own history says what each lookup returned.
+      // Without it every tool call in the history was paired with an empty
+      // result, and a model reading that searches the same thing again — or
+      // reports a concept as absent because its record of finding it is blank.
+      // `display` is the same result drawn for the reader.
       chat.messages.push({
         role: "tool", name: ev.name, args: ev.args,
-        content: "", display: ev.display,
+        content: ev.text || "", display: ev.display,
       });
       chat.phase = "thinking";
       renderTranscript();

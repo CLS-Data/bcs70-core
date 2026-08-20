@@ -496,6 +496,19 @@ class Config:
                 return i
         return len(self.steps) - 1
 
+    def hops_spent(self, hops: int) -> bool:
+        """Has this turn used every lookup it is allowed?
+
+        `hops` counts COMPLETED rounds of lookups, so the budget is spent once
+        it reaches `max_hops` — not one before. Here rather than in `graph.py`
+        because it was off by one there and nothing could show you: `>=
+        max_hops - 1` ran four of the five configured rounds, and made the
+        final "that was your last lookup" warning unreachable. `graph.py`
+        imports LangGraph, so a test for it could not run in a checkout
+        without the extra; this one can.
+        """
+        return hops >= self.max_hops
+
     # -- for the browser -------------------------------------------------
 
     def for_browser(self) -> dict:
@@ -554,3 +567,18 @@ def get() -> Config:
     if _cached is None:
         _cached = Config.load()
     return _cached
+
+
+def use(cfg: Config) -> Config:
+    """Make `cfg` the process-wide config, before anything else reads one.
+
+    Without this, `server.py --config other.toml` was only half honoured: it
+    held the chosen config itself, while every default inside `ollama.py`
+    still resolved through `get()` and loaded `dataset.toml`. The path that
+    reached it is real — `/api/search` leaves `base_url` unset, so a semantic
+    query embedded against the DEFAULT dataset's Ollama address, and a
+    checkout carrying only a second config raised from inside a request.
+    """
+    global _cached
+    _cached = cfg
+    return cfg
