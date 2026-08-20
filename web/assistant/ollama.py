@@ -62,3 +62,55 @@ def list_models(base: str | None = None, timeout: float = 10) -> list[dict]:
     return out
 
 
+def _post(base: str, path: str, payload: dict, timeout: float) -> dict:
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base.rstrip('/')}{path}", data=body,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as err:
+        raise OllamaError(f"Ollama {path}: {err.code}", err.code) from None
+    except (urllib.error.URLError, TimeoutError) as err:
+        raise OllamaError(f"Could not reach Ollama at {base}: {err}") from None
+
+
+def embed(texts: list[str], model: str, base: str | None = None,
+          timeout: float = 300) -> list[list[float]]:
+    """Embed a batch of strings.
+
+    Here rather than in `llm.py` because both callers must work without the
+    assistant extra: the index is built by a standalone script, and the atlas
+    itself has to be able to search semantically with nothing installed.
+    """
+    base = (base or _config().ollama).rstrip("/")
+    out = _post(base, "/api/embed", {"model": model, "input": texts}, timeout)
+    vectors = out.get("embeddings")
+    if not vectors or len(vectors) != len(texts):
+        raise OllamaError(
+            f"{model} returned {len(vectors or [])} embeddings for {len(texts)} inputs"
+        )
+    return vectors
+
+
+def complete(prompt: str, model: str, base: str | None = None,
+             timeout: float = 60, temperature: float = 0.0) -> str:
+    """One non-streaming completion, no tools, no history.
+
+    Query expansion needs a model but nothing LangChain provides, and making
+    it depend on the extra would mean the atlas's own search silently loses a
+    feature the assistant has.
+    """
+    base = (base or _config().ollama).rstrip("/")
+    out = _post(base, "/api/chat", {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "think": False,
+        "options": {"temperature": temperature},
+    }, timeout)
+    return ((out.get("message") or {}).get("content") or "").strip()
+
+

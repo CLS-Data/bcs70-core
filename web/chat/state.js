@@ -15,9 +15,15 @@ export const chat = {
     helperModel: "",
     temperature: 0.4,
     think: false,
+    // Retrieval. Left null until /api/health reports the configured
+    // defaults, so there is no second copy of them to drift from
+    // dataset.toml — the same reason the interview is fetched rather than
+    // written out here.
+    retrieval: null,
   },
   models: [],
   connection: "unknown",   // unknown | ok | down
+  semantic: null,          // {available, model, dims, reason} from /api/health
   interview: null,         // {steps, categories} from /api/interview
 
   messages: [],

@@ -142,12 +142,61 @@ in as many words, because a model told only "unconfirmed at 29y" folds that in
 with the waves that have nothing and reports a real variable as absent. That
 happened, and the wording is the fix.
 
-**What it does not fix is vocabulary.** Every extra word raises the idf mass a
-label must account for, so a more precise-sounding concept scores worse:
-`general health` confirms five waves, `self rated general health` confirms
-none. The tool says as much when nothing clears the bar, and its description
-asks for the fewest plain words — but this is a mitigation, not a solution.
-Query expansion is the real answer and is not built.
+## Words, meaning, and other wordings
+
+BM25 matches words. The dictionaries are transcribed questionnaires, so they
+say *"How is your health generally"* where a researcher says *"self-rated
+health"* — the two vocabularies share no content word, and no lexical tuning
+joins them. Two things now sit over BM25, both optional, both configurable in
+`dataset.toml` and adjustable per conversation in the drawer.
+
+**Semantic search** (`vectors.py`) embeds every label once, offline, and scans
+the lot per query. **Query expansion** (`expansion.py`) asks the helper model
+to rephrase the search the way a questionnaire would and retrieves each
+wording. Results are combined by **reciprocal rank fusion** — a document
+scores `1/(k + rank)` in each list it appears in, summed. Scores are never
+added directly: a BM25 score and a cosine are not on one scale, and
+normalising them invents a relationship that changes with every query. RRF
+reads only position, so a variable two methods agree on beats one that a
+single method liked loudly.
+
+Measured on this corpus, finding the eight variables that record self-rated
+health:
+
+| | found | cost |
+|---|---|---|
+| lexical only | **2 of 8** | ~1 ms |
+| + semantic | **6 of 8** | ~325 ms |
+| + expansion | **7 of 8** | ~2 s |
+
+**The index is optional and is not in the repository.** It is built locally by
+`python3 web/build_embeddings.py` against a local embedding model, takes about
+four minutes, and lands in the gitignored `web/data/`. CI has neither Ollama
+nor the file, so everything degrades to lexical search and says so — in the
+server's first line, in `/api/health`, and as a disabled switch in the drawer
+carrying the reason.
+
+**No numpy, and none wanted.** The vectors live in an `array('f')` and a dot
+product over a slice of one is C-backed: a full scan of 32,454 variables costs
+about 150 ms at 256 dimensions. Truncating `nomic-embed-text` from 768 to 256
+still agrees with the full vector on 95% of the top ten while being 2.8×
+faster and a third the size, so 256 is the default — and only safe because
+that model is trained for it.
+
+**Vectors are positional, so a stale index is refused rather than used.** Row
+8,000 of the file is row 8,000 of `variables.json`; rebuild the site with one
+variable inserted and every vector after it describes something else, with
+plausible scores and real names and nothing that looks wrong. The index
+therefore carries a fingerprint of the names it was built from, and a mismatch
+disables semantic search with the rebuild command. Refusing to search is
+recoverable; silently searching the wrong corpus is not.
+
+**What none of this fixes is `coverage`'s confirmation bar.** A semantically
+found variable has, by definition, a poor lexical share, so it skips the floor
+that keeps coincidences out — but it never counts as *measured*, because the
+thresholds are calibrated on idf mass and mean nothing against a cosine. It
+surfaces as a candidate for the reader to judge, which is what the middle tier
+is for.
 
 `inspect_variable` **never resolves a name it was not given.** Where a lookup
 misses, it suggests names differing only in their digits — the same question at
@@ -204,10 +253,12 @@ standard library — these work with nothing installed
   router.py      which intent is this message? model, with a rule behind it
   prompts.py     the system prompt, schemas, extraction instructions
   choices.py     TagSpan: pulls tagged spans out of a live stream
-  retrieval.py   BM25 over the variable descriptions — meaning only
+  retrieval.py   BM25, coverage, rank fusion, and the per-turn settings
+  vectors.py     the semantic index: load it, scan it, refuse a stale one
+  expansion.py   other wordings of the same search, from the helper model
   corpus.py      the metadata build_site.py emits, and its shape
-  tools.py       the three lookups: schemas, and executors
-  ollama.py      listing models for the picker
+  tools.py       the four lookups: schemas, and executors
+  ollama.py      listing models, embedding, and one-shot completions
 
 needs `uv sync --extra assistant`
   graph.py       the diagram above
@@ -278,6 +329,8 @@ tooltip. The usual reason is an older `server.py` still holding the port.
 
 | to change | edit |
 |---|---|
+| how the dictionaries are searched | `../dataset.toml` → `[retrieval]`, or the drawer's settings for one conversation |
+| the embedding model, or its dimensions | `../dataset.toml` → `[retrieval] embed_model`, `embed_dims`, then rebuild the index |
 | what it knows about the study | `../dataset.toml` → `[dataset] about`, `cautions` |
 | what it asks, or the answers it offers | `../dataset.toml` → `[[interview.step]]` |
 | what it can be asked to do | `../dataset.toml` → `[[intent]]` |

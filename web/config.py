@@ -368,6 +368,82 @@ class Config:
     def pool(self) -> int:
         return int(self._retrieval("pool", 150))
 
+    # -- semantic search and expansion -------------------------------------
+    # All optional. With no index built and expansion off, retrieval is the
+    # BM25 it has always been.
+
+    @property
+    def embed_model(self) -> str:
+        return self._retrieval("embed_model", "nomic-embed-text:latest")
+
+    @property
+    def embed_timeout(self) -> float:
+        return float(self._retrieval("embed_timeout", 300))
+
+    @property
+    def embed_dims(self) -> int:
+        """Dimensions kept per vector, or 0 for whatever the model returns.
+
+        The scan is linear in this and nothing else: 768 dimensions cost about
+        430 ms over 32,000 variables, 256 about 150 ms. Truncating only works
+        on a model trained to allow it (nomic-embed-text is), which is why it
+        is a setting rather than a default someone might carry to another
+        model.
+        """
+        return int(self._retrieval("embed_dims", 0))
+
+    @property
+    def semantic(self) -> bool:
+        """Whether to use the index when one is present."""
+        return bool(self._retrieval("semantic", True))
+
+    @property
+    def semantic_pool(self) -> int:
+        """Nearest neighbours fetched before fusion."""
+        return int(self._retrieval("semantic_pool", 60))
+
+    @property
+    def fusion_k(self) -> float:
+        """Reciprocal-rank-fusion constant: larger flattens the weighting."""
+        return float(self._retrieval("fusion_k", 60))
+
+    @property
+    def lexical_weight(self) -> float:
+        return float(self._retrieval("lexical_weight", 1.0))
+
+    @property
+    def semantic_weight(self) -> float:
+        return float(self._retrieval("semantic_weight", 1.0))
+
+    @property
+    def expand(self) -> bool:
+        return bool(self._retrieval("expand", True))
+
+    @property
+    def expansions(self) -> int:
+        """Alternative phrasings asked of the model, beyond the original."""
+        return int(self._retrieval("expansions", 3))
+
+    @property
+    def expand_timeout(self) -> float:
+        return float(self._retrieval("expand_timeout", 30))
+
+    def retrieval_defaults(self) -> dict:
+        """What the drawer's controls start at.
+
+        Sent rather than duplicated in JavaScript, for the same reason the
+        interview is: two copies of a default drift, and the one you are
+        reading is never the one in force.
+        """
+        return {
+            "semantic": self.semantic,
+            "expand": self.expand,
+            "expansions": self.expansions,
+            "candidates": self.candidates,
+            "lexicalWeight": self.lexical_weight,
+            "semanticWeight": self.semantic_weight,
+        }
+
     # -- coverage ----------------------------------------------------------
     # How much of a query's idf mass a label must account for before the
     # coverage tool will say a wave measured something, and before it will
