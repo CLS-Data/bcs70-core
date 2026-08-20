@@ -8,6 +8,7 @@ on:
       - "templates/**"
       - "scripts/**"
       - "registry/**"
+      - "web/**"
       - ".lintr"
       - ".github/workflows/r-ci.yml"
 
@@ -54,6 +55,21 @@ jobs:
       - name: Run tests (synthetic fixtures only - no real data exists in this repo)
         run: testthat::test_dir("tests/testthat")
         shell: Rscript {0}
+
+  # The atlas and the assistant. Standard library only, so there is nothing
+  # to install - which is also what this job quietly checks: if a dependency
+  # ever crept into web/, this is where it fails.
+  web-tests:
+    name: Atlas and assistant tests (no install)
+    runs-on: ubuntu-latest
+    needs: guard-bcs70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run tests
+        run: python3 -m unittest discover -s web/tests -v
 
   registry-up-to-date:
     name: Registry matches R/variables/*/*/*.R

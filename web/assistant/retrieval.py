@@ -35,7 +35,6 @@ class Bm25:
         self.cfg = cfg
         self.postings: dict[str, list[tuple[int, int]]] = {}
         self.doc_len: list[int] = []
-        self.by_name: dict[str, list[int]] = defaultdict(list)
         self._build()
 
     def tokenize(self, text: str) -> list[str]:
@@ -55,10 +54,12 @@ class Bm25:
         for doc, row in enumerate(self.corpus.vars):
             name, label = row[0], row[1]
             key = str(name).lower()
-            self.by_name[key].append(doc)
 
             # The name is indexed whole as well as split, so `c6.8` survives
             # as a searchable term instead of only ever becoming "c6" and "8".
+            # This is also what makes a name searchable *at all*: a whole-name
+            # token occurs in exactly one document, so its idf is maximal and
+            # BM25 alone ranks an exact name first. See the note in search().
             tokens = self.tokenize(label)
             tokens.append(key)
             tokens.extend(self.tokenize(name))
@@ -100,22 +101,26 @@ class Bm25:
                 norm = 1 - b + b * (self.doc_len[doc] / self.avg_len)
                 scores[doc] += idf * (tf * (k1 + 1)) / (tf + k1 * norm)
 
-        # A query that *is* a variable name should return that variable
-        # first. The lift has to be earned twice over, though: some variables
-        # are named after ordinary English words — there is one called `day`
-        # and one called `height` — so a flat bonus puts "DAY NUMBER" at the
-        # top of a search for cigarettes per day. Scaling by idf makes a rare
-        # code decisive and a common word nearly free, and dividing by how
-        # many variables share the name stops one word lifting a crowd.
-        for word in (query or "").lower().split():
-            bucket = self.by_name.get(word)
-            if not bucket:
-                continue
-            lift = (self._idf(word) * self.cfg.name_lift) / math.sqrt(len(bucket))
-            for doc in bucket:
-                if in_scope(doc):
-                    scores[doc] += lift
-
+        # There is deliberately no bonus for an exact variable name here.
+        #
+        # There used to be, on the reasoning that a bare code is a poor match
+        # against label text. It is not: because _build() indexes each name
+        # whole, a name is a term occurring in exactly one document, so its
+        # idf is the highest in the index and BM25 already ranks it first.
+        # The bonus was redundant, and not harmlessly so — it was applied per
+        # WORD, so any phrase containing a word that happens to be a variable
+        # name lifted that variable. Searching "cigarettes per day" returned
+        # `day` ("DAY NUMBER") above every cigarette variable.
+        #
+        # The guard against that was to scale the bonus by the word's idf, so
+        # that a common word earned almost nothing. It could not work: names
+        # are indexed unstemmed and labels stemmed, so the name `periods` is a
+        # term in one document while the 379 labels saying "period" are a
+        # different term. The guard asked "is this word rare?", was told
+        # "one document", and awarded the maximum.
+        #
+        # Looking a variable up by name is `inspect_variable`'s job. This
+        # function is about meaning.
         ranked = sorted(scores.items(), key=lambda kv: -kv[1])
         return [doc for doc, _ in ranked[:limit]]
 

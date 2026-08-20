@@ -14,6 +14,8 @@ calls these directly rather than going through a prebuilt ToolNode.
 
 from __future__ import annotations
 
+import re
+
 from config import Config
 
 from . import retrieval
@@ -37,13 +39,14 @@ def schemas(cfg: Config) -> list[dict]:
             "function": {
                 "name": SEARCH,
                 "description": (
-                    f"Search the {cfg.name} data dictionaries for raw variables, "
-                    f"by meaning or by exact name. Returns matches grouped by "
-                    f"description with the {waves} each appears in. Use this "
-                    f"whenever you need to know whether something was measured, "
-                    f"what it was called, or at which {cfg.wave_indexed_by}s — "
-                    f"never guess, and never ask the researcher something you "
-                    f"can look up."
+                    f"Search the {cfg.name} data dictionaries for raw variables "
+                    f"BY MEANING. Returns matches grouped by description with "
+                    f"the {waves} each appears in. Use this whenever you need to "
+                    f"know whether something was measured, what it was called, "
+                    f"or at which {cfg.wave_indexed_by}s — never guess, and "
+                    f"never ask the researcher something you can look up. If "
+                    f"you already have an exact variable name, use {INSPECT} "
+                    f"instead: it answers about that one variable directly."
                 ),
                 "parameters": {
                     "type": "object",
@@ -51,9 +54,10 @@ def schemas(cfg: Config) -> list[dict]:
                         "query": {
                             "type": "string",
                             "description": (
-                                "Plain words describing what to find (e.g. "
-                                "'weight in kilograms'), or an exact variable "
-                                f"name such as {example}."
+                                "Plain words describing what to find, e.g. "
+                                "'weight in kilograms'. Use the language a "
+                                "questionnaire would use. To look up a known "
+                                f"name such as {example}, call {INSPECT}."
                             ),
                         },
                         # Named from the dataset's own term, so the model is
@@ -76,11 +80,17 @@ def schemas(cfg: Config) -> list[dict]:
             "function": {
                 "name": INSPECT,
                 "description": (
-                    "Read one raw variable's full dictionary entry: label, type, "
-                    "declared missing values and every value label with its code. "
-                    "Use this before deciding what the missing-value codes mean "
-                    "and how they should be handled — the schemes are not "
-                    "consistent between variables."
+                    "Look up ONE variable by its exact name and read its full "
+                    "dictionary entry: label, type, declared missing values and "
+                    "every value label with its code. This is the tool to use "
+                    f"whenever you already have a name — {SEARCH} is for when "
+                    "you have a concept and need to find out what it was "
+                    "called. Use this before deciding what the missing-value "
+                    "codes mean and how they should be handled: the schemes are "
+                    "not consistent between variables. Names are matched "
+                    "exactly and never guessed at; if the name does not exist "
+                    "you are told so, sometimes with similar names to choose "
+                    "from — pick one deliberately rather than assuming."
                 ),
                 "parameters": {
                     "type": "object",
@@ -181,16 +191,71 @@ def _search(corpus, bm25, cfg: Config, args: dict) -> tuple[str, dict]:
     return f"{head}:\n{lines}", {"groups": groups, "note": "lexical"}
 
 
+# Names that differ from this one only in their digits.
+#
+# Deliberately NOT edit distance. In a corpus of codes the digits carry the
+# meaning: b960433/b960434/b960436 are height in feet, inches and metres, all
+# one edit apart, so a fuzzy match returns a plausible and wrong variable that
+# nothing downstream can catch. Stripping the digits instead asks a different
+# question - "is this the same question asked elsewhere?" - which is the miss
+# that actually happens, a half-remembered wave prefix (b8hlthgn/b9hlthgn).
+#
+# The alphabetic remainder has to be substantial: a core of "b" means the
+# digits ARE the name, and everything with that core is unrelated.
+MIN_CORE = 3
+MAX_SUGGESTIONS = 12
+
+
+def _digit_core(name: str) -> str:
+    return re.sub(r"\d+", "", str(name).lower())
+
+
+def _near_misses(corpus, name: str) -> tuple[list[str], int]:
+    """Real names that might be what was meant. Never a substitute for one."""
+    core = _digit_core(name)
+    if len(core) < MIN_CORE:
+        return [], 0
+
+    seen, out = set(), []
+    for row in corpus.vars:
+        other = str(row[0])
+        key = other.lower()
+        if key in seen or key == name.lower():
+            continue
+        if _digit_core(other) == core:
+            seen.add(key)
+            out.append(other)
+
+    out.sort()
+    return out[:MAX_SUGGESTIONS], len(out)
+
+
 def _inspect(corpus, cfg: Config, args: dict) -> tuple[str, dict]:
     name = str(args.get("name") or "").strip()
     wave = args.get(cfg.wave_term) or None
 
     rows = corpus.rows_named(name)
     if not rows:
+        # Offer candidates; never resolve to one. A wrong identifier that the
+        # model was handed confidently is worse than no answer, because the
+        # variable it names is real and its label will read plausibly.
+        near, total = _near_misses(corpus, name)
+        if total > MAX_SUGGESTIONS:
+            hint = (
+                f" {total} variables share the stem, too many to list - "
+                f"search for the concept instead, or give an exact name."
+            )
+        elif near:
+            hint = (
+                f" These exist and may be what you meant: {', '.join(near)}. "
+                f"Ask for one of them by name - do not assume which is right."
+            )
+        else:
+            hint = " Search for the concept instead."
         return (
             f'No variable called "{name}" exists in any dictionary. Do not use '
-            f"this name. Search for the concept instead.",
-            {"note": f'"{name}" not found'},
+            f"this name.{hint}",
+            {"note": f'"{name}" not found', "suggestions": near},
         )
 
     doc = rows[0]

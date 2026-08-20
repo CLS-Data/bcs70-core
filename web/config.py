@@ -368,10 +368,6 @@ class Config:
     def pool(self) -> int:
         return int(self._retrieval("pool", 150))
 
-    @property
-    def name_lift(self) -> float:
-        return float(self._retrieval("name_lift", 2.5))
-
     @cached_property
     def stopwords(self) -> frozenset[str]:
         return frozenset(self._retrieval("stopwords", ()))

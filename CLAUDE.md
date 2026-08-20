@@ -69,6 +69,8 @@ web/                              the variable atlas: search the metadata, read 
   config.py                       loads it; the one place defaults live
   chat.js + chat/                 draw the assistant; contain no prompts, tools or model calls
   server.py                       serves the site and /api — `python3 web/server.py` (standard library)
+  tests/                          stdlib unittest over retrieval and the tools, on a synthetic corpus -
+                                  `python3 -m unittest discover -s web/tests`; no install, no built data/
   assistant/                      the assistant's actual logic: router.py, prompts.py, tools.py (search/inspect/
                                   list_harmonised over the dictionaries), retrieval.py (BM25), choices.py,
                                   corpus.py, ollama.py — all standard library — plus graph.py (the LangGraph),
