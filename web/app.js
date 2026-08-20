@@ -36,6 +36,8 @@ const state = {
   derivedQuery: "",
   derivedCategory: null, // category slug, or null
   derivedSelected: null,
+  picked: new Set(),  // ids ticked for download; survives a reload
+  pipeline: null,     // data/pipeline.json, fetched at first download
   basket: [],
   view: "metadata",
 };
@@ -115,6 +117,7 @@ async function boot() {
   $("#foot-repo").href = `https://github.com/${state.dataset.issue.repo}`;
 
   restoreDraft();
+  restorePicked();
   buildCategorySelect();
   wireUp();
   renderSpine();
@@ -421,6 +424,7 @@ function renderDerivedList() {
     $("#derived-list").innerHTML =
       `<li><p class="basket-empty">No derived variables in the registry yet.
        Once a variable script is merged, it appears here with its source.</p></li>`;
+    renderPicked();
     return;
   }
 
@@ -429,6 +433,7 @@ function renderDerivedList() {
       `<li><p class="basket-empty">Nothing matches. ${state.derivedCategory !== null
         ? `No ${esc(categoryName(state.derivedCategory).toLowerCase())} variable matches this search.`
         : ""}</p></li>`;
+    renderPicked();
     return;
   }
 
@@ -446,15 +451,149 @@ function renderDerivedList() {
       kind: "derived", name: d.id, label: d.label || "",
       file: d.file || "", wave: d.family || "",
     };
-    return head + `<li><button class="row${cur}" data-id="${esc(d.id)}"
-      draggable="true" data-drag="${esc(JSON.stringify(payload))}">
-      <span class="row-top">
-        <span class="row-name">${esc(d.id)}</span>
-        <span class="row-wave">${statusPill(d.status)}</span>
-      </span>
-      <span class="row-label">${esc(d.label)}</span>
-    </button></li>`;
+    // A real checkbox beside the row rather than inside it: a button cannot
+    // legally contain one, and the native control brings its own keyboard
+    // handling and screen-reader semantics. The open-row marker goes on the
+    // <li> rather than the button, so it runs down the whole line with the
+    // checkbox inside it instead of starting after it.
+    return head + `<li class="pickable${cur}">
+      <input type="checkbox" class="pick" data-pick="${esc(d.id)}"
+             ${state.picked.has(d.id) ? "checked" : ""}
+             aria-label="Include ${esc(d.id)} in the download">
+      <button class="row" data-id="${esc(d.id)}"
+        draggable="true" data-drag="${esc(JSON.stringify(payload))}">
+        <span class="row-top">
+          <span class="row-name">${esc(d.id)}</span>
+          <span class="row-wave">${statusPill(d.status)}</span>
+        </span>
+        <span class="row-label">${esc(d.label)}</span>
+      </button></li>`;
   }).join("");
+
+  renderPicked();
+}
+
+/* ── Selecting variables to download ─────────────────────────────────────
+
+   The selection is by id and independent of the filters, so narrowing to a
+   category to tick two more variables does not silently drop what was
+   already chosen. "Select all" therefore says how many it will add and
+   applies only to what is on screen. */
+
+// Ids that no longer exist are dropped on load: a saved selection can outlive
+// a variable being renamed, and a bundle cannot include what is not there.
+function restorePicked() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storeKey("picked")) || "[]");
+    const known = new Set(state.derived.map((d) => d.id));
+    state.picked = new Set(saved.filter((id) => known.has(id)));
+  } catch {
+    state.picked = new Set();
+  }
+}
+
+function savePicked() {
+  localStorage.setItem(storeKey("picked"), JSON.stringify([...state.picked]));
+}
+
+function togglePick(id, on) {
+  if (on) state.picked.add(id);
+  else state.picked.delete(id);
+  savePicked();
+  renderPicked();
+  if (state.derivedSelected?.id === id) showDerived(state.derivedSelected);
+}
+
+function visibleDerived() {
+  const q = state.derivedQuery.trim().toLowerCase();
+  return state.derived.filter((d) => matchesDerivedQuery(d, q) &&
+    (state.derivedCategory === null || d.category === state.derivedCategory));
+}
+
+function renderPicked() {
+  const n = state.picked.size;
+  const visible = visibleDerived();
+  const unpicked = visible.filter((d) => !state.picked.has(d.id)).length;
+  const drafts = state.derived.filter((d) =>
+    state.picked.has(d.id) && d.status !== "verified").length;
+
+  $("#picked-count").innerHTML = n
+    ? `<strong>${n}</strong> selected${drafts
+        ? ` · <span class="picked-warn">${drafts} unverified</span>` : ""}`
+    : "Nothing selected";
+
+  const all = $("#pick-all");
+  all.hidden = unpicked === 0;
+  all.textContent = `Select all ${unpicked}`;
+  $("#pick-none").hidden = n === 0;
+  $("#pick-download").disabled = n === 0;
+  $("#pick-download").textContent = n
+    ? `Download ${n} variable${n === 1 ? "" : "s"}`
+    : "Download R code";
+
+  $$("#derived-list [data-pick]").forEach((box) => {
+    box.checked = state.picked.has(box.dataset.pick);
+  });
+}
+
+function pickStatus(msg) {
+  $("#picked-status").textContent = msg;
+}
+
+/* Build the archive in the browser. Everything it needs — each script's
+   source, and the runner around it — is already static JSON, so this works on
+   a deploy with no server behind it. */
+async function downloadBundle() {
+  const picked = state.derived.filter((d) => state.picked.has(d.id));
+  if (!picked.length) return;
+
+  const button = $("#pick-download");
+  button.disabled = true;
+  pickStatus("Packaging…");
+
+  try {
+    // Both fetched only now: the zip writer and ~17 KB of pipeline source are
+    // dead weight for the majority who never download anything.
+    const [{ build }, pipeline] = await Promise.all([
+      import("./bundle.js"),
+      state.pipeline ? Promise.resolve(state.pipeline) : loadPipeline(),
+    ]);
+    state.pipeline = pipeline;
+
+    const { name, blob } = await build(picked, pipeline, {
+      dataset: state.dataset,
+      repo: state.manifest.repo,
+      built: state.manifest.built,
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Revoked late rather than immediately: some browsers have not finished
+    // reading the blob when click() returns.
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+    pickStatus(`${name} — ${(blob.size / 1024).toFixed(0)} KB. Its README says how to run it.`);
+  } catch (err) {
+    console.error(err);
+    pickStatus(`Could not build the download: ${err.message}`);
+  } finally {
+    button.disabled = state.picked.size === 0;
+  }
+}
+
+async function loadPipeline() {
+  const res = await fetch("data/pipeline.json");
+  if (!res.ok) {
+    throw new Error("pipeline.json is missing — rebuild with python3 web/build_site.py");
+  }
+  const pipeline = await res.json();
+  if (!pipeline?.files || !Object.keys(pipeline.files).length) {
+    throw new Error("pipeline.json has no runner in it — rebuild the site");
+  }
+  return pipeline;
 }
 
 function statusPill(status) {
@@ -516,8 +655,14 @@ function showDerived(d) {
     <pre class="code">${esc(d.source || "Source not available.")}</pre>
 
     <div class="detail-actions">
+      <button class="btn ${state.picked.has(d.id) ? "" : "btn-primary"}" id="pick-this">
+        ${state.picked.has(d.id) ? "Remove from download" : "Add to download"}
+      </button>
       <a class="btn" href="${repoUrl}/blob/main/${esc(d.file)}" target="_blank" rel="noopener">View on GitHub</a>
     </div>`;
+
+  $("#pick-this").addEventListener("click", () =>
+    togglePick(d.id, !state.picked.has(d.id)));
 
   $$("#derived-detail [data-file]").forEach((b) =>
     b.addEventListener("click", () => {
@@ -703,6 +848,29 @@ function wireUp() {
     if (btn) showDerived(state.derived.find((d) => d.id === btn.dataset.id));
   });
 
+  // "change", not "click": a checkbox is also toggled by the keyboard, and
+  // clicking its label counts too.
+  $("#derived-list").addEventListener("change", (e) => {
+    const box = e.target.closest("[data-pick]");
+    if (box) togglePick(box.dataset.pick, box.checked);
+  });
+
+  $("#pick-all").addEventListener("click", () => {
+    visibleDerived().forEach((d) => state.picked.add(d.id));
+    savePicked();
+    renderPicked();
+    if (state.derivedSelected) showDerived(state.derivedSelected);
+  });
+
+  $("#pick-none").addEventListener("click", () => {
+    state.picked.clear();
+    savePicked();
+    renderPicked();
+    if (state.derivedSelected) showDerived(state.derivedSelected);
+  });
+
+  $("#pick-download").addEventListener("click", downloadBundle);
+
   $("#category-facets").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-category]");
     if (!btn) return;
@@ -823,44 +991,6 @@ function fillDraft(fields) {
   refreshSubmit();
 }
 
-/* Open one raw variable from outside the metadata view — the assistant's
-   transcript links every name it surfaces through to here, so a lookup is a
-   way into the atlas rather than a dead end. Filters are cleared and the
-   search set to the name, so the variable is in the list beside its detail
-   rather than selected out of nowhere. */
-function openVariable(name, wave) {
-  const wanted = String(name || "").toLowerCase();
-  const rows = state.vars.filter((r) => String(r[0]).toLowerCase() === wanted);
-  const row = (wave && rows.find((r) => state.manifest.waves[r[3]] === wave)) || rows[0];
-  if (!row) return false;
-
-  switchView("metadata");
-  state.waveFilter = null;
-  state.fileFilter = null;
-  state.levelFilter = null;
-  state.query = row[0];
-  $("#q").value = row[0];
-  runSearch();
-  showVariable(row);
-  return true;
-}
-
-/* The same, for something already harmonised. */
-function openDerived(id) {
-  const entry = state.derived.find((d) => d.id === id);
-  if (!entry) return false;
-  switchView("derived");
-  state.derivedCategory = null;
-  state.derivedQuery = "";
-  $("#dq").value = "";
-  renderDerivedList();
-  showDerived(entry);
-  return true;
-}
-
-/* The one surface other scripts on this page use. Everything here is
-   already a top-level binding, but naming the contract explicitly is what
-   stops the assistant from quietly depending on an internal. */
 /* Open one raw variable from outside the metadata view — the assistant's
    transcript links every name it surfaces through to here, so a lookup is a
    way into the atlas rather than a dead end. Filters are cleared and the

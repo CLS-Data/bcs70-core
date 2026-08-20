@@ -220,10 +220,37 @@ def collect_derived() -> list[dict]:
     return derived
 
 
+# The pipeline a downloaded bundle needs around the variable scripts. These
+# are shipped verbatim rather than regenerated into a bundle-specific runner:
+# the code a researcher runs on real data is then byte-identical to the code
+# CI lints and tests here, and there is no second implementation of the join,
+# the identifier cleaning or the duplicate resolution to drift out of step.
+PIPELINE = ("R/runner.R", "R/lib/discovery.R", "R/lib/io.R", "R/lib/utils.R")
+
+
+def collect_pipeline() -> dict[str, str]:
+    """The runner and its libraries, by repo path.
+
+    A missing one is a build failure rather than a smaller bundle: the atlas
+    would go on offering a download that cannot run.
+    """
+    out = {}
+    for rel in PIPELINE:
+        path = REPO / rel
+        if not path.exists():
+            raise ConfigError(
+                f"{rel} is missing, so a downloaded bundle could not run. "
+                f"Update PIPELINE in build_site.py if the pipeline moved."
+            )
+        out[rel] = path.read_text("utf-8")
+    return out
+
+
 def main() -> int:
     try:
         cfg = get_config()
         lookup = read_lookup(cfg)
+        pipeline = collect_pipeline()
     except ConfigError as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
@@ -237,6 +264,10 @@ def main() -> int:
 
     index_bytes = write_json(DATA / "variables.json", index)
     write_json(DATA / "derived.json", derived)
+    # Fetched only when someone downloads a bundle, so it stays out of the
+    # initial load.
+    write_json(DATA / "pipeline.json",
+               {"root": cfg.root.name, "env": cfg.data_env, "files": pipeline})
     write_json(DATA / "manifest.json", {
         # The browser's copy of dataset.toml. One source of truth: nothing in
         # the front end hard-codes a category, a wave or an issue field.

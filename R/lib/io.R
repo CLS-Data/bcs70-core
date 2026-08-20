@@ -6,6 +6,24 @@
 # and the runner resolves + loads it via load_tab() below.
 
 .bcs70_lookup_cache <- NULL
+.bcs70_lookup_root <- NULL
+
+# Where the deposits are. Defaults to "bcs70" in the working directory, which
+# is the layout CONTRIBUTING.md documents: drop this R/ folder beside the
+# real bcs70/ and run. A code bundle downloaded from the atlas is run exactly
+# the same way - but on a machine where the deposits already live somewhere
+# else, and moving multi-GB licensed microdata to satisfy a relative path is
+# the wrong way round. So the root can be pointed elsewhere without editing
+# any script:
+#
+#     BCS70_DATA=/path/to/deposits Rscript R/runner.R
+#
+# Read on each call rather than resolved once at load, so a session that
+# changes it does not have to be restarted.
+data_root <- function() {
+  root <- Sys.getenv("BCS70_DATA", unset = "")
+  if (nzchar(root)) root else "bcs70"
+}
 
 # The cohort member identifier is "B"-prefixed in every deposited file, but
 # some files (sn3723 and bcs21yearsample are the known cases) carry rows
@@ -111,12 +129,24 @@ resolve_duplicate_ids <- function(data, file_name) {
   data
 }
 
+# The cache is keyed by the root it was read from, so pointing BCS70_DATA at
+# a different directory mid-session re-reads rather than silently serving the
+# previous study's index.
 get_lookup <- function() {
-  if (is.null(.bcs70_lookup_cache)) {
-    .bcs70_lookup_cache <<- read.csv(
-      "bcs70/master_file_info_lookup.csv",
-      stringsAsFactors = FALSE
-    )
+  root <- data_root()
+  if (is.null(.bcs70_lookup_cache) || !identical(.bcs70_lookup_root, root)) {
+    path <- file.path(root, "master_file_info_lookup.csv")
+    if (!file.exists(path)) {
+      stop(sprintf(
+        paste(
+          "No lookup at %s. Run this from the directory that holds %s/,",
+          "or set BCS70_DATA to where the deposits are."
+        ),
+        path, root
+      ), call. = FALSE)
+    }
+    .bcs70_lookup_cache <<- read.csv(path, stringsAsFactors = FALSE)
+    .bcs70_lookup_root <<- root
   }
   .bcs70_lookup_cache
 }
@@ -141,7 +171,7 @@ load_tab <- function(file_name) {
       file_name
     ))
   }
-  path <- file.path("bcs70", row$sweep[1], row$path[1])
+  path <- file.path(data_root(), row$sweep[1], row$path[1])
   data <- read.delim(path, stringsAsFactors = FALSE, check.names = FALSE)
 
   id_col <- which(tolower(names(data)) == "bcsid")
