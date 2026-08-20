@@ -58,12 +58,13 @@ registry/
 web/                              the variable atlas: search the metadata, read derived variables and their source,
                                   draft a variable request, or talk to an assistant that builds the request with you.
                                   build_site.py generates web/data/ from bcs70/ and registry/; that output is gitignored
-                                  and built by CI at publish time, so adding a variable needs no rebuild step — run it
-                                  only to preview locally. See web/README.md.
+                                  and NOT built by CI, so run it yourself after adding a variable or the atlas will not
+                                  show it. The site is local-only — server.py must be running, because the search runs
+                                  there. See web/README.md.
   index.html, styles.css, app.js  the atlas front end (no framework, no build step)
   bundle.js                       packages selected harmonised variables as a runnable zip -
                                   the R/ tree verbatim, so a download runs the tested code;
-                                  written in the browser, so it works on a static deploy
+                                  written in the browser, so no server round-trip is needed to build it
   dataset.toml                    everything dataset-specific — the study, its sweeps, categories, issue fields,
                                   the assistant's capabilities and its whole interview. Change behaviour here first.
   config.py                       loads it; the one place defaults live

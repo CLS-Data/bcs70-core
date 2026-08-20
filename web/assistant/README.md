@@ -142,13 +142,29 @@ in as many words, because a model told only "unconfirmed at 29y" folds that in
 with the waves that have nothing and reports a real variable as absent. That
 happened, and the wording is the fix.
 
-## Words, meaning, and other wordings
+## Words, names, meaning, and other wordings
 
 BM25 matches words. The dictionaries are transcribed questionnaires, so they
 say *"How is your health generally"* where a researcher says *"self-rated
 health"* — the two vocabularies share no content word, and no lexical tuning
-joins them. Two things now sit over BM25, both optional, both configurable in
+joins them. Three things now sit over BM25, all optional, all configurable in
 `dataset.toml` and adjustable per conversation in the drawer.
+
+**Literal matching** (`retrieval.substring`) answers the question BM25
+structurally cannot: *I half-remember the name*. Names are indexed as whole
+tokens, so a fragment of one is not a term and scores nothing at all —
+`b960` finds 299 variables literally and none by words, and `hlth` finds 9
+against none, while *cigarettes per day* is the exact reverse. Ranked by how
+much of the field the query accounts for: the name exactly, then the name
+from its start, then anywhere in it, then the label. Only the query as typed
+is matched this way; an expansion is the model's paraphrase and has no claim
+to be a fragment of a code.
+
+**This is the same engine the atlas's search box runs on.** One retrieval,
+reached over `/api/search`, in two shapes: `search_rows` for a view that
+draws a line per variable and tallies its own facets, `search_grouped` for a
+model that should see one fact per concept rather than the same question
+restated at six waves.
 
 **Semantic search** (`vectors.py`) embeds every label once, offline, and scans
 the lot per query. **Query expansion** (`expansion.py`) asks the helper model
@@ -168,6 +184,12 @@ health:
 | lexical only | **2 of 8** | ~1 ms |
 | + semantic | **6 of 8** | ~325 ms |
 | + expansion | **7 of 8** | ~2 s |
+
+Literal matching does not appear in that table because it finds none of them,
+which is the point: it is not a weaker version of the others, it answers a
+different question. Lexical and literal together cost about 4 ms over the
+whole corpus, which is why both run on every keystroke of the atlas's search
+box and semantic waits for Enter.
 
 **The index is optional and is not in the repository.** It is built locally by
 `python3 web/build_embeddings.py` against a local embedding model, takes about
@@ -253,7 +275,7 @@ standard library — these work with nothing installed
   router.py      which intent is this message? model, with a rule behind it
   prompts.py     the system prompt, schemas, extraction instructions
   choices.py     TagSpan: pulls tagged spans out of a live stream
-  retrieval.py   BM25, coverage, rank fusion, and the per-turn settings
+  retrieval.py   BM25, literal matching, coverage, rank fusion, the settings
   vectors.py     the semantic index: load it, scan it, refuse a stale one
   expansion.py   other wordings of the same search, from the helper model
   corpus.py      the metadata build_site.py emits, and its shape

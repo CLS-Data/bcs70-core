@@ -62,8 +62,13 @@
         </div>
         <div class="finder-meta">
           <span id="result-count">—</span>
+          <span class="search-note" id="search-note" hidden></span>
           <button class="link-btn" id="clear-filters" hidden>Clear filters</button>
         </div>
+        <!-- Names and words match as you type. Meaning costs an embedding
+             call, so it is asked for rather than run on every keystroke. -->
+        <p class="finder-help" id="search-hint">Matches names and labels as you type.
+          Press <kbd>⏎</kbd> to also search by meaning.</p>
         <div class="chips" id="active-filters"></div>
       </div>
       <ol class="results" id="results"></ol>
