@@ -180,6 +180,10 @@ function handleEvent(ev, openReply, closeReply) {
 
     case "mode":
       chat.mode = ev.mode;
+      chat.modeLabel = ev.label || "";
+      // Absent means "assume it advanced", so an older server that does not
+      // send this marks nothing rather than marking every turn.
+      chat.modeAdvances = ev.advances !== false;
       renderTranscript();
       break;
 
@@ -247,7 +251,6 @@ async function runSearch(query) {
 /* Two kinds of thing can be pinned, and conflating them would be a real
    error: a raw variable is a candidate SOURCE for the new derivation, a
    harmonised one is a PRECEDENT to follow. Only the first belongs in the
-
    issue's source-variable list. */
 function pin(item) {
   if (!item?.name) return;
@@ -401,10 +404,31 @@ function wireResize() {
 
 /* ── Wiring ────────────────────────────────────────────────────────── */
 
+/* A transient line beside Send, for the one thing that happens without a
+   message in the transcript: a send refused because the last turn is still
+   running. */
+let noteTimer;
+function note(text) {
+  const el = $("#chat-note");
+  if (!el) return;
+  el.textContent = text;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { el.textContent = ""; }, 4000);
+}
+
 function submit() {
   const input = $("#chat-input");
   const text = input.value.trim();
   if (!text) return;
+
+  // A turn that has not yet spoken will refuse this. Find that out BEFORE
+  // clearing the box: it used to empty it either way, so a message typed
+  // while the model was still thinking vanished with nothing to say why.
+  if (chat.busy && !chat.answered) {
+    note("Still working on the last message — press Send again when it replies.");
+    return;
+  }
+
   input.value = "";
   input.style.height = "auto";
 
@@ -609,11 +633,6 @@ async function start() {
   try { wasOpen = localStorage.getItem(key("chat-open")) || ""; } catch { /* fine */ }
   if (wasOpen) setOpen(true);
 }
-
-window.addEventListener("atlas:chat-reset", resetSession);
-
-window.AtlasChat = { start, pin, open: () => setOpen(true), DRAG_MIME };
-
 
 window.addEventListener("atlas:chat-reset", resetSession);
 

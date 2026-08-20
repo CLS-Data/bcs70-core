@@ -7,10 +7,12 @@ import { A, chat, modelUsesTools, wavePlural, waveTerm } from "./state.js";
 
 export function groupRows(groups) {
   return groups.map((g) => {
-    const payload = JSON.stringify({
-      kind: "variable", name: g.names[0], label: g.label || "",
-      file: (g.files || [])[0] || "", wave: (g.waves || [])[0] || "",
-    });
+    // The atlas's own shape, so a hit dragged out of the transcript is
+    // indistinguishable from one dragged out of the search results.
+    const payload = JSON.stringify(A().payload({
+      name: g.names[0], label: g.label,
+      file: (g.files || [])[0], wave: (g.waves || [])[0],
+    }));
     const waveOf = g.wave_of || {};
     const names = g.names.slice(0, 5).map((n) =>
       `<button class="varlink" data-open='${esc(JSON.stringify({ name: n, wave: waveOf[n] || null }))}'
@@ -119,7 +121,6 @@ export function toolCard(m) {
 /* Ollama's failures are not interchangeable and the useful next step
    differs completely between them. A retired hosted model in particular
    still appears in /api/tags and only fails when you talk to it, which
-
    looks like a bug in this page unless it is named. */
 export function errorTitle(msg, status) {
   if (status === 410 || /\b410\b|retired/i.test(msg)) return "That model is no longer available.";
@@ -185,12 +186,13 @@ export function renderTranscript() {
   box.innerHTML = chat.messages.map((m, i) => {
     if (m.role === "tool") return toolCard(m);
     if (m.role === "user") {
-      // The last question gets a marker when the server read it as a
-      // question about the data rather than an answer — otherwise a turn
-      // that ticks nothing off looks like a turn that went wrong.
-      const asking = chat.mode === "explore" && i === lastUserIndex();
+      // The last message gets a marker when the server read it as something
+      // that does not advance the checklist — otherwise a turn that ticks
+      // nothing off looks like a turn that went wrong. Which intents those
+      // are, and what to call them, comes from the server with the mode.
+      const asking = chat.mode && !chat.modeAdvances && i === lastUserIndex();
       return `<div class="msg msg-user">${asking
-        ? `<span class="msg-mode">asking about the data</span>` : ""}
+        ? `<span class="msg-mode">${esc(chat.modeLabel)}</span>` : ""}
         <div class="msg-body">${md(m.content)}</div></div>`;
     }
 
@@ -224,7 +226,6 @@ export function renderTranscript() {
 
 /* One line at the foot of the transcript saying what is happening, with
    dots that actually move. Only while there is nothing else to look at:
-
    once words are streaming, the words are the progress. */
 export function workingRow() {
   const label = {

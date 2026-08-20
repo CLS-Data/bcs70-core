@@ -60,19 +60,40 @@ const categories = () => state.dataset?.categories || [];
 const categoryName = (slug) =>
   (categories().find((c) => c.slug === slug) || { label: slug }).label;
 
-/* What a dragged variable carries. The assistant drawer reads this off
+/* What a dragged thing carries. The assistant drawer reads this off
    dataTransfer, so anything draggable anywhere in the site describes itself
-   the same way and there is one shape to keep in step. */
-function dragPayload(row) {
-  const file = state.manifest.files[row[2]];
+   the same way and there is one shape to keep in step.
+
+   Two kinds, and the difference is a real claim rather than a label: a raw
+   variable is a candidate SOURCE for a derivation, a harmonised one is a
+   PRECEDENT to follow. Only the first belongs in an issue's source list.
+
+   Everything goes through here — the result rows, the derived list, the
+   scratchpad, and the assistant's own search hits — because four hand-built
+   copies of one shape is four places for it to drift. */
+function payload({ kind = "variable", name, label, file, wave }) {
   return {
-    kind: "variable",
-    name: row[0],
-    label: row[1] || "",
-    file: file ? file.name : "",
-    wave: state.manifest.waves[row[3]] || "",
+    kind,
+    name: name || "",
+    label: label || "",
+    file: file || "",
+    wave: wave || "",
   };
 }
+
+/* The same, for a row of the variables index. */
+function rowPayload(row) {
+  const file = state.manifest.files[row[2]];
+  return payload({
+    name: row[0],
+    label: row[1],
+    file: file ? file.name : "",
+    wave: state.manifest.waves[row[3]],
+  });
+}
+
+/* Serialised into a data-drag attribute, ready to be escaped into markup. */
+const dragAttr = (item) => esc(JSON.stringify(payload(item)));
 
 function highlight(text, term) {
   const t = String(text ?? "");
@@ -245,7 +266,7 @@ function renderResults() {
     const file = state.manifest.files[row[2]];
     const cur = state.selected === row ? " is-current" : "";
     return `<li><button class="row${cur}" data-i="${i}" draggable="true"
-      data-drag="${esc(JSON.stringify(dragPayload(row)))}">
+      data-drag="${esc(JSON.stringify(rowPayload(row)))}">
       <span class="row-top">
         <span class="row-name">${highlight(row[0], q)}</span>
         <span class="row-wave">${esc(state.manifest.waves[row[3]])}</span>
@@ -262,7 +283,6 @@ function renderResults() {
   } else {
     more.hidden = true;
   }
-  $("#results").dataset.rows = JSON.stringify(shown.map((r) => state.matches.indexOf(r)));
 }
 
 function renderFilters() {
@@ -362,7 +382,7 @@ async function showVariable(row) {
     </div>`;
 
   $("#pin-chat")?.addEventListener("click", () => {
-    window.AtlasChat?.pin({ kind: "variable", name, label, file: file.name, wave });
+    window.AtlasChat?.pin(payload({ name, label, file: file.name, wave }));
     window.AtlasChat?.open();
   });
 
@@ -409,10 +429,17 @@ function renderCategoryFacets() {
   $("#clear-category").hidden = state.derivedCategory === null;
 }
 
-function renderDerivedList() {
+/* What the derived list is currently showing: the search box and the
+   category facet, combined. Used by the list itself and by "Select all",
+   which applies to what is on screen rather than to the whole registry. */
+function visibleDerived() {
   const q = state.derivedQuery.trim().toLowerCase();
-  const list = state.derived.filter((d) => matchesDerivedQuery(d, q) &&
+  return state.derived.filter((d) => matchesDerivedQuery(d, q) &&
     (state.derivedCategory === null || d.category === state.derivedCategory));
+}
+
+function renderDerivedList() {
+  const list = visibleDerived();
 
   renderCategoryFacets();
 
@@ -447,10 +474,10 @@ function renderDerivedList() {
     // Draggable too. Dropping a harmonised variable into the assistant is
     // how you say "follow this one's precedent" - a different claim from
     // dropping a raw variable, so the payload says which it is.
-    const payload = {
-      kind: "derived", name: d.id, label: d.label || "",
-      file: d.file || "", wave: d.family || "",
-    };
+    const drag = dragAttr({
+      kind: "derived", name: d.id, label: d.label,
+      file: d.file, wave: d.family,
+    });
     // A real checkbox beside the row rather than inside it: a button cannot
     // legally contain one, and the native control brings its own keyboard
     // handling and screen-reader semantics. The open-row marker goes on the
@@ -461,7 +488,7 @@ function renderDerivedList() {
              ${state.picked.has(d.id) ? "checked" : ""}
              aria-label="Include ${esc(d.id)} in the download">
       <button class="row" data-id="${esc(d.id)}"
-        draggable="true" data-drag="${esc(JSON.stringify(payload))}">
+        draggable="true" data-drag="${drag}">
         <span class="row-top">
           <span class="row-name">${esc(d.id)}</span>
           <span class="row-wave">${statusPill(d.status)}</span>
@@ -502,12 +529,6 @@ function togglePick(id, on) {
   savePicked();
   renderPicked();
   if (state.derivedSelected?.id === id) showDerived(state.derivedSelected);
-}
-
-function visibleDerived() {
-  const q = state.derivedQuery.trim().toLowerCase();
-  return state.derived.filter((d) => matchesDerivedQuery(d, q) &&
-    (state.derivedCategory === null || d.category === state.derivedCategory));
 }
 
 function renderPicked() {
@@ -700,10 +721,7 @@ function renderBasket() {
   $("#basket-empty").hidden = state.basket.length > 0;
   $("#basket").innerHTML = state.basket.map((b, i) => `
     <li><div class="row" style="cursor:grab;display:flex;align-items:flex-start;gap:8px"
-        draggable="true" data-drag="${esc(JSON.stringify({
-          kind: "variable", name: b.name, label: b.label || "",
-          file: b.file || "", wave: b.wave || "",
-        }))}">
+        draggable="true" data-drag="${dragAttr(b)}">
       <div style="flex:1;min-width:0">
         <span class="row-top">
           <span class="row-name">${esc(b.name)}</span>
@@ -780,13 +798,29 @@ function issueUrl(values) {
   return `https://github.com/${repo}/issues/new?${params}`;
 }
 
+/* Which fields an issue cannot be filed without, from the config — the
+   assistant's draft panel gates on the same list. */
+const requiredFields = () =>
+  state.dataset?.issue?.required || ["name", "waves", "category", "description"];
+
+/* The field's own label, so a message about what is missing uses the word on
+   screen — "sweeps", not "waves" — whatever the dataset calls it. */
+const fieldName = (key) =>
+  key === "waves" ? state.dataset.wave.plural : key;
+
+function missingFields(values) {
+  return requiredFields().filter((k) => !String(values[k] || "").trim());
+}
+
 function refreshSubmit() {
   const v = draftValues();
-  const ready = v.name && v.waves && v.category && v.description;
+  const missing = missingFields(v);
   const btn = $("#submit");
-  btn.href = ready ? issueUrl(v) : "#";
-  btn.setAttribute("aria-disabled", String(!ready));
-  btn.title = ready ? "" : `Fill in name, ${state.dataset.wave.plural}, category and description first`;
+  btn.href = missing.length ? "#" : issueUrl(v);
+  btn.setAttribute("aria-disabled", String(missing.length > 0));
+  btn.title = missing.length
+    ? `Fill in ${missing.map(fieldName).join(", ")} first`
+    : "";
   saveDraft();
 }
 
@@ -1031,10 +1065,13 @@ function openDerived(id) {
 /* The one surface other scripts on this page use. Everything here is already
    a top-level binding, but naming the contract explicitly is what stops the
    assistant from quietly depending on an internal. */
+/* Exactly what `chat/` uses, and nothing else. It carried five more —
+   `esc`, `categoryName`, `showVariable`, `runSearch`, `loadDict` — that no
+   consumer ever called; a surface with unused members stops describing the
+   contract and starts describing the file. */
 window.Atlas = {
-  state, esc, categories, categoryName, issueUrl, storeKey,
-  switchView, addToBasket, fillDraft, showVariable, runSearch, loadDict,
-  openVariable, openDerived,
+  state, categories, issueUrl, storeKey, payload, requiredFields,
+  switchView, addToBasket, fillDraft, openVariable, openDerived,
 };
 
 /* The assistant is an ES module and therefore deferred, so it may load before

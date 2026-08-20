@@ -90,11 +90,6 @@ reason to guess.
         joined = "\n".join(f"- {c}" for c in cfg.cautions)
         cautions_block = f"\nKNOWN TRAPS IN THIS DATA\n{joined}\n"
 
-    # Concrete and plainly about something else, so a model that copies it
-    # produces visible nonsense rather than a plausible-looking answer. A
-    # generic "First answer | Second answer" got parroted verbatim.
-    example_choices = f"Every {wave} that asked it | Only the adult {waves}"
-
     # With every step settled there is nothing left to ask, and a model told
     # to ask anyway invents a seventh question. Say so instead.
     if all(covered.get(s.id) for s in cfg.steps):
@@ -111,9 +106,9 @@ reason to guess.
         )
 
     intent = cfg.intent(mode)
-    if intent.id == "interview":
-        # The only intent that needs live state woven in: which steps are
-        # settled, and which one is open.
+    if intent.shows_checklist:
+        # Declared by the intent, not compared against its name: an intent
+        # added to the config should get the behaviour it asks for.
         job_block = f"""YOUR JOB RIGHT NOW — {intent.label}
 {intent.instructions}
 
@@ -153,7 +148,7 @@ RULES
   concepts, say so plainly and propose splitting before going further.
 - British spelling. Plain sentences. No emoji, no "Great question!".
 
-{"" if cfg.intent(mode).id != "interview" else f"""OFFERING CHOICES
+{"" if not intent.offers_choices else f"""OFFERING CHOICES
 When your question has a small set of likely answers, end the message with
 them on one final line wrapped in {cfg.choices_open}…{cfg.choices_close},
 separated by | — so a question about which {waves} to cover would end:

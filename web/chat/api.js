@@ -35,5 +35,3 @@ export async function* streamTurn(payload, signal) {
     }
   }
 }
-
-/* ── One turn ──────────────────────────────────────────────────────── */
