@@ -15,7 +15,8 @@ web/
   server.py       serves the site and the assistant's /api        [stdlib]
   index.html
   styles.css
-  app.js          search, detail, scratchpad, selecting variables
+  atlas/          the atlas itself — one module per view
+                  boot, state, dom, spine, views, metadata, derived, scratchpad
   bundle.js       packages selected variables as a runnable zip [loaded on demand]
   chat.js         the assistant's turn loop and wiring
   chat/           one module per panel — state, api, transcript, steps,
@@ -24,8 +25,8 @@ web/
   data/           generated, gitignored
 ```
 
-No bundler and no build step: `chat.js` is an ES module, `app.js` is a plain
-script, and the Python is standard library. The one exception is the
+No bundler and no build step: both halves are ES modules loaded straight by
+the browser, and the Python is standard library. The one exception is the
 assistant, which is an optional extra.
 
 ## Running it locally

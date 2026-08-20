@@ -60,7 +60,9 @@ web/                              the variable atlas: search the metadata, read 
                                   build_site.py generates web/data/ from bcs70/ and registry/; that output is gitignored
                                   and built by CI at publish time, so adding a variable needs no rebuild step — run it
                                   only to preview locally. See web/README.md.
-  index.html, styles.css, app.js  the atlas front end (no framework, no build step)
+  index.html, styles.css          the atlas front end (no framework, no build step)
+  atlas/                          one module per view: boot, state, dom, spine, views,
+                                  metadata, derived, scratchpad — mirrors chat/
   bundle.js                       packages selected harmonised variables as a runnable zip -
                                   the R/ tree verbatim, so a download runs the tested code;
                                   written in the browser, so it works on a static deploy

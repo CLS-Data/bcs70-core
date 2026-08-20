@@ -10,7 +10,7 @@
    It is built in the browser rather than by the server so it still works on a
    static deploy, where there is no server to ask.
 
-   Loaded on demand — see downloadBundle() in app.js. */
+   Loaded on demand — see downloadBundle() in atlas/derived.js. */
 
 const ZIP_VERSION = 20;         // 2.0: the floor for deflate
 const UTF8_NAMES = 0x0800;      // filenames below are ASCII, but say so anyway

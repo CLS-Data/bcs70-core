@@ -638,7 +638,7 @@ window.addEventListener("atlas:chat-reset", resetSession);
 
 window.AtlasChat = { start, pin, open: () => setOpen(true), DRAG_MIME };
 
-// app.js finishes booting on its own schedule, and this module is deferred,
+// The atlas finishes booting on its own schedule, and this module is deferred,
 // so whichever lands second starts the drawer.
 if (window.Atlas?.ready) start();
 else window.addEventListener("atlas:ready", start, { once: true });
