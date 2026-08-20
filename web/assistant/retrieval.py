@@ -369,30 +369,8 @@ def coverage(corpus, bm25: Bm25, query: str, retriever=None, settings=None) -> d
     else:
         ranked, how = bm25.search(query, len(bm25.doc_len)), {}
 
-    # A label is judged against the BEST of the wordings searched, not against
-    # the one the model happened to type. Every extra word raises the idf mass
-    # a label has to account for, so "self rated general health" confirms
-    # nothing while "general health" confirms five waves — and when expansion
-    # has already produced the second, insisting on the first would throw away
-    # the evidence it just gathered. Only wordings count here, never the
-    # embedding: a share is a share, and this stays comparable to the
-    # thresholds it is measured against.
     wordings = [query] + [q for q in (how.get("queries") or []) if q != query]
-    measures = []
-    for wording in wordings:
-        its_terms = [t for t in set(bm25.tokenize(wording)) if bm25._idf(t) > 0]
-        if not its_terms:
-            continue
-        its_total = sum(bm25._idf(t) for t in its_terms) or 1.0
-        its_postings = {t: {d for d, _ in bm25.postings.get(t, ())} for t in its_terms}
-        measures.append((its_terms, its_total, its_postings))
-
-    def share(doc: int) -> float:
-        return max(
-            (sum(idf for t, idf in ((t, bm25._idf(t)) for t in ts) if doc in ps[t]) / tot
-             for ts, tot, ps in measures),
-            default=0.0,
-        )
+    share = _share_of(bm25, wordings)
 
     # A variable found by meaning rather than by words has, almost by
     # definition, a poor lexical share - "How is your health generally" does
@@ -404,6 +382,55 @@ def coverage(corpus, bm25: Bm25, query: str, retriever=None, settings=None) -> d
     # it, which is what the middle tier is for.
     by_meaning = how.get("semantic_rows") or set()
 
+    waves = _bucket(corpus, bm25, ranked, share, by_meaning)
+    return {"terms": sorted(terms), "waves": waves, "unknown_terms": False,
+            "how": how}
+
+
+def _share_of(bm25: Bm25, wordings: list[str]):
+    """How much of a query a label accounts for, by idf mass.
+
+    A label is judged against the BEST of the wordings searched, not against
+    the one the model happened to type. Every extra word raises the mass a
+    label has to account for, so "self rated general health" confirms nothing
+    while "general health" confirms five waves — and when expansion has
+    already produced the second, insisting on the first would throw away the
+    evidence it just gathered.
+
+    Only wordings count here, never the embedding: a share is a share, and
+    this has to stay comparable to the thresholds it is measured against.
+
+    The postings are turned into sets once, up front, because the returned
+    function is called for every document that scored.
+    """
+    measures = []
+    for wording in wordings:
+        terms = [t for t in set(bm25.tokenize(wording)) if bm25._idf(t) > 0]
+        if not terms:
+            continue
+        total = sum(bm25._idf(t) for t in terms) or 1.0
+        postings = {t: {d for d, _ in bm25.postings.get(t, ())} for t in terms}
+        measures.append((terms, total, postings))
+
+    def share(doc: int) -> float:
+        return max(
+            (sum(idf for t, idf in ((t, bm25._idf(t)) for t in ts) if doc in ps[t]) / tot
+             for ts, tot, ps in measures),
+            default=0.0,
+        )
+
+    return share
+
+
+def _bucket(corpus, bm25: Bm25, ranked: list[int], share, by_meaning: set) -> list[dict]:
+    """One ranked pass, reported wave by wave instead of cut globally.
+
+    Every wave appears, including the ones with nothing, because "not
+    measured here" is the answer as often as a variable name is. Ordering
+    inside a wave stays the ranking's, not the idf share: the share says how
+    much of the query a label touches, which is a filter, while the rank says
+    how well it matches, which is what should be read first.
+    """
     found: dict[str, list[tuple[float, int]]] = {}
     for doc in ranked:
         got = share(doc)
@@ -413,16 +440,15 @@ def coverage(corpus, bm25: Bm25, query: str, retriever=None, settings=None) -> d
 
     waves = []
     for wave in corpus.waves:
-        ranked = found.get(wave, [])
-        strong = [c for c in ranked if c[0] >= bm25.cfg.coverage_strong]
+        scored = found.get(wave, [])
+        strong = [c for c in scored if c[0] >= bm25.cfg.coverage_strong]
         # Once a wave has a confirmed match, its weaker ones are noise beside
         # it - listing "GENERAL READING OR WRITING" under a wave that plainly
         # measured general health only invites the model to hedge.
-        candidates = (strong or ranked)[:bm25.cfg.coverage_examples]
-        measured = bool(strong)
+        candidates = (strong or scored)[:bm25.cfg.coverage_examples]
         waves.append({
             "wave": wave,
-            "measured": measured,
+            "measured": bool(strong),
             "matches": [
                 {
                     "name": corpus.vars[doc][0],
@@ -433,9 +459,7 @@ def coverage(corpus, bm25: Bm25, query: str, retriever=None, settings=None) -> d
                 for got, doc in candidates
             ],
         })
-
-    return {"terms": sorted(terms), "waves": waves, "unknown_terms": False,
-            "how": how}
+    return waves
 
 
 def search_grouped(corpus, bm25: Bm25, query: str, *, limit: int,
