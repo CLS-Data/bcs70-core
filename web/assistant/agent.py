@@ -27,7 +27,7 @@ from typing import Any
 from config import Config
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 
-from . import retrieval
+from . import retrieval, transcript
 from .graph import build
 
 # A tool hop is two nodes, so the hop cap alone cannot bound the graph. This
@@ -75,44 +75,20 @@ class TurnRequest:
 def to_messages(raw: list[dict]) -> list[AnyMessage]:
     """Client transcript -> LangChain messages.
 
-    The client stores tool calls without ids, because it never needed them.
-    LangChain pairs a call to its result by id, so ids are minted here and
-    matched positionally: the client appends each tool result directly after
-    the assistant turn that asked for it, in order, which is enough to pair
-    them exactly. An unpaired result is dropped rather than sent — a
-    ToolMessage with no matching call is rejected outright by some models.
+    All the deciding — minting ids, pairing a result to its call, dropping an
+    orphan — is `transcript.plan`, which is standard library so it can be
+    tested in a checkout that installed nothing. This is the mapping and
+    nothing else.
     """
-    out: list[AnyMessage] = []
-    pending: list[str] = []
-
-    for i, message in enumerate(raw):
-        role = message.get("role")
-        content = message.get("content") or ""
-
-        if role == "user":
-            out.append(HumanMessage(content))
-            pending = []
-
-        elif role == "assistant":
-            calls = []
-            for j, call in enumerate(message.get("tool_calls") or []):
-                fn = call.get("function") or call
-                args = fn.get("arguments")
-                calls.append({
-                    "name": fn.get("name") or "",
-                    "args": args if isinstance(args, dict) else {},
-                    "id": call.get("id") or f"call_{i}_{j}",
-                })
-            pending = [c["id"] for c in calls]
-            if content.strip() or calls:
-                out.append(AIMessage(content=content, tool_calls=calls))
-
-        elif role == "tool" and pending:
-            out.append(ToolMessage(content=content,
-                                   name=message.get("name") or "",
-                                   tool_call_id=pending.pop(0)))
-
-    return out
+    build = {
+        transcript.HUMAN: lambda m: HumanMessage(m["content"]),
+        transcript.AI: lambda m: AIMessage(content=m["content"],
+                                           tool_calls=m["tool_calls"]),
+        transcript.TOOL: lambda m: ToolMessage(content=m["content"],
+                                               name=m["name"],
+                                               tool_call_id=m["tool_call_id"]),
+    }
+    return [build[m["kind"]](m) for m in transcript.plan(raw)]
 
 
 class Agent:
