@@ -257,6 +257,8 @@ standard library — these work with nothing installed
   vectors.py     the semantic index: load it, scan it, refuse a stale one
   expansion.py   other wordings of the same search, from the helper model
   corpus.py      the metadata build_site.py emits, and its shape
+  transcript.py  the conversation the browser posts back, planned into
+                 messages: ids minted, results paired, orphans dropped
   tools.py       the four lookups: schemas, and executors
   ollama.py      listing models, embedding, and one-shot completions
 
@@ -270,6 +272,13 @@ The split is deliberate: the atlas, the metadata search and the model picker
 depend on the top half and must keep working in a checkout that installed
 nothing. Importing this package does not pull in LangGraph; `assistant.load()`
 does, and names the fix when it cannot.
+
+It also decides what can be tested. CI installs nothing, so a test that
+imports `graph.py` or `agent.py` cannot run there — which is why the rules
+worth guarding have been moved out of them: the hop budget to
+`Config.hops_spent`, and the message pairing to `transcript.plan`. Both were
+wrong once, in ways nothing downstream could show you. What is left in the
+bottom half is a graph, two model builders and a mapping.
 
 ## Seven things that are not what you would write first
 
