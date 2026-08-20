@@ -13,7 +13,7 @@
 import { $, $$ } from "./chat/dom.js";
 import { api, streamTurn } from "./chat/api.js";
 import { esc } from "./chat/markup.js";
-import { A, DRAG_MIME, chat, creditStep, defaultBase, emptyDraft, helperName, helperThinks, key, modelThinks, modelUsesTools, restore, saveSession, saveSettings } from "./chat/state.js";
+import { A, DRAG_MIME, chat, creditStep, defaultBase, emptyDraft, helperThinks, key, modelThinks, modelUsesTools, restore, saveSession, saveSettings } from "./chat/state.js";
 import { renderStreaming, renderTranscript } from "./chat/transcript.js";
 import { applyProgress, moveChoice, renderChecklist, renderReplies } from "./chat/steps.js";
 import { renderComposer, renderPinned, renderStatus, renderThinkToggle } from "./chat/composer.js";
@@ -233,45 +233,13 @@ async function runSearch(query) {
   chat.messages.push(msg);
   renderTranscript();
   try {
-    // The same settings the assistant's own lookups use, including the
-    // helper model — without it the server cannot paraphrase the query, so
-    // "also search other wordings" was a switch that did nothing here.
-    const found = await api("/api/search", {
-      query,
-      limit: chat.settings.retrieval?.candidates || 15,
-      retrieval: chat.settings.retrieval || undefined,
-      helperModel: helperName(),
-      baseUrl: chat.settings.baseUrl,
-    });
-    const how = found.how || {};
-    msg.display = {
-      groups: found.groups || [],
-      // Read back from what the server actually did. This used to say
-      // "lexical" unconditionally, so a hybrid result was labelled as one.
-      note: how.semantic ? "hybrid" : "lexical",
-      queries: how.queries || [query],
-      semantic: Boolean(how.semantic),
-    };
-    // What the model reads, for the same reason a tool result carries it:
-    // a search the researcher ran by hand is part of the conversation, and
-    // an empty one tells the model the dictionaries hold nothing.
-    msg.content = summarise(query, found.groups || []);
+    const found = await api("/api/search", { query, limit: 15 });
+    msg.display = { groups: found.groups || [], note: "lexical" };
   } catch (err) {
     msg.display = { groups: [], note: `search failed: ${err.message || err}` };
-    msg.content = `The search for "${query}" failed and returned nothing.`;
   }
   renderTranscript();
   saveSession();
-}
-
-/* The terse rendering the server gives its own tool results, so a manual
-   search reads to the model exactly like one the assistant ran itself. */
-function summarise(query, groups) {
-  if (!groups.length) return `No variable matches "${query}".`;
-  const lines = groups.map((g) =>
-    `${g.names.join(", ")} | ${(g.waves || []).join(" ")} | ${g.label || "no label"}`);
-  return `${groups.length} match${groups.length === 1 ? "" : "es"} for `
-    + `"${query}":\n${lines.join("\n")}`;
 }
 
 /* ── Pinning ───────────────────────────────────────────────────────── */

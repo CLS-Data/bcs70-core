@@ -270,18 +270,9 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 
 .finder-meta {
   display: flex; justify-content: space-between; align-items: baseline;
-  gap: 10px;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
 }
-/* How the answer was reached, beside how many there were. Sits between the
-   count and the clear button, and takes the slack so neither moves. */
-.search-note { flex: 1; text-align: right; color: var(--ink-3); }
-#result-count.is-error { color: var(--ochre); }
 .finder-help { margin: 4px 0 0; font-size: 12px; color: var(--ink-3); }
-#search-hint kbd {
-  border: 1px solid var(--rule); border-radius: 2px;
-  padding: 0 3px; background: var(--paper-2);
-}
 
 .link-btn {
   border: 0; background: none; padding: 0;

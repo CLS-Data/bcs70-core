@@ -20,15 +20,6 @@ function renderRetrieval(s) {
 
   return `
     <label class="field check">
-      <input id="cs-substring" type="checkbox"${r.substring ? " checked" : ""}>
-      <span>Match names and labels literally</span>
-      <span class="field-help">Finds a fragment of a name — <code>b960</code>,
-        <code>hlth</code> — which matching by words cannot do at all, because
-        it indexes whole tokens and half a code is not one. Costs a few
-        milliseconds. Turn it off only to see what the words alone find.</span>
-    </label>
-
-    <label class="field check">
       <input id="cs-semantic" type="checkbox"${r.semantic ? " checked" : ""}
              ${sem.available ? "" : "disabled"}>
       <span>Search by meaning as well as by words</span>
@@ -182,9 +173,6 @@ export function renderSettings() {
   // the sliders under them; the sliders update their own label in place, so
   // that dragging one does not rebuild the panel under the cursor.
   const r = s.retrieval;
-  $("#cs-substring")?.addEventListener("change", (e) => {
-    r.substring = e.target.checked; saveSettings();
-  });
   $("#cs-semantic")?.addEventListener("change", (e) => {
     r.semantic = e.target.checked; saveSettings(); renderSettings();
   });
