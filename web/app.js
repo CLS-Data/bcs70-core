@@ -27,9 +27,6 @@ const state = {
   derived: [],
   dictCache: new Map(),
   query: "",
-  ranked: null,      // row indices from /api/search, best first; null = all rows
-  searchHow: null,   // what the server did to get them
-  searchError: "",
   waveFilter: null,  // wave index, or null
   fileFilter: null,  // file index, or null
   levelFilter: null, // measurement level index, LEVEL_UNRECORDED, or null
@@ -192,26 +189,16 @@ function renderSpine() {
 
 /* ── Metadata search ─────────────────────────────────────────────────── */
 
-/* Ranking comes from the server; filtering stays here.
-
-   The three filters are applied to whatever the search returned rather than
-   sent with it, because the server's answer for a query is the complete set
-   of rows that match it — checked, not assumed: a wave-scoped search and a
-   client-side wave filter return the same set every time. Keeping them local
-   means toggling a wave, a file or a level is instant and costs no request,
-   and only typing goes to the network. */
 function runSearch() {
+  const q = state.query.trim().toLowerCase();
   const out = [];
   // Level counts are tallied BEFORE the level filter is applied, so each
   // facet shows what choosing it would give rather than what is on screen.
   const counts = new Map();
-  const source = state.ranked
-    ? state.ranked.map((i) => state.vars[i]).filter(Boolean)
-    : state.vars;
-
-  for (const row of source) {
+  for (const row of state.vars) {
     if (state.waveFilter !== null && row[3] !== state.waveFilter) continue;
     if (state.fileFilter !== null && row[2] !== state.fileFilter) continue;
+    if (q && !row[0].toLowerCase().includes(q) && !row[1].toLowerCase().includes(q)) continue;
     const level = row[4] ?? LEVEL_UNRECORDED;
     counts.set(level, (counts.get(level) || 0) + 1);
     if (state.levelFilter !== null && level !== state.levelFilter) continue;
@@ -223,56 +210,6 @@ function runSearch() {
   renderSpine();
   renderLevelFacets();
   renderFilters();
-}
-
-/* The one search in this project, reached over /api.
-
-   The atlas used to scan for a literal substring in the browser, which found
-   `b960` and `hlth` — half-remembered names — and could not find "cigarettes
-   per day", because no label contains that phrase. The server matches both
-   ways and fuses them, so neither question is the one you have to have asked.
-
-   Semantic search is the exception: it needs an embedding call, so it runs
-   when you press Enter rather than on every keystroke. */
-const SEARCH_LIMIT = 5000;
-let searchToken = 0;
-
-async function search({ semantic = false } = {}) {
-  const query = state.query.trim();
-  if (!query) {
-    state.ranked = null;
-    state.searchHow = null;
-    state.searchError = "";
-    runSearch();
-    return;
-  }
-
-  // A slow answer for "hea" must never overwrite the answer for "health".
-  const mine = ++searchToken;
-  try {
-    const res = await fetch("/api/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query, shape: "rows", limit: SEARCH_LIMIT,
-        retrieval: { semantic },
-      }),
-    });
-    if (!res.ok) throw new Error(`the search returned ${res.status}`);
-    const found = await res.json();
-    if (mine !== searchToken) return;
-    state.ranked = found.rows || [];
-    state.searchHow = found.how || null;
-    state.searchError = "";
-  } catch (err) {
-    if (mine !== searchToken) return;
-    state.ranked = [];
-    state.searchHow = null;
-    state.searchError = /fetch|NetworkError|Load failed/i.test(String(err))
-      ? "Can't reach the search. Is python3 web/server.py still running?"
-      : String(err.message || err);
-  }
-  runSearch();
 }
 
 /* Measurement level — the dictionaries' one discriminating type field.
@@ -299,24 +236,9 @@ function renderLevelFacets() {
 function renderResults() {
   const q = state.query.trim();
   const total = state.matches.length;
-  $("#result-count").textContent = state.searchError
-    ? state.searchError
-    : total
-      ? `${total.toLocaleString()} ${total === 1 ? "match" : "matches"}`
-      : "no matches";
-  $("#result-count").classList.toggle("is-error", Boolean(state.searchError));
-
-  // How the answer was reached is part of the answer — the same reason the
-  // assistant's search results say it. Without this, pressing Enter looks
-  // like it did nothing on a query the words alone already answered.
-  const how = state.searchHow;
-  const note = $("#search-note");
-  const method = [];
-  if (how?.semantic) method.push("by meaning too");
-  if (how?.substring) method.push(`${how.substring} by name`);
-  if (how?.note) method.push(how.note);
-  note.textContent = q && method.length ? method.join(" · ") : "";
-  note.hidden = !note.textContent;
+  $("#result-count").textContent = total
+    ? `${total.toLocaleString()} ${total === 1 ? "match" : "matches"}`
+    : "no matches";
 
   const shown = state.matches.slice(0, MAX_ROWS);
   $("#results").innerHTML = shown.map((row, i) => {
@@ -454,7 +376,7 @@ async function showVariable(row) {
     state.levelFilter = null;
     state.query = "";
     $("#q").value = "";
-    search();
+    runSearch();
   });
 }
 
@@ -749,7 +671,7 @@ function showDerived(d) {
       switchView("metadata");
       state.fileFilter = idx; state.waveFilter = null; state.levelFilter = null;
       state.query = "";
-      $("#q").value = ""; search();
+      $("#q").value = ""; runSearch();
     }));
 
   $$("#derived-detail [data-var]").forEach((b) =>
@@ -757,7 +679,7 @@ function showDerived(d) {
       switchView("metadata");
       state.fileFilter = null; state.waveFilter = null; state.levelFilter = null;
       state.query = b.dataset.var; $("#q").value = b.dataset.var;
-      search();
+      runSearch();
     }));
 }
 
@@ -910,18 +832,7 @@ function wireUp() {
   let timer;
   $("#q").addEventListener("input", (e) => {
     clearTimeout(timer);
-    // Words and names on every keystroke: both are local to the server and
-    // answer in about four milliseconds.
-    timer = setTimeout(() => { state.query = e.target.value; search(); }, 120);
-  });
-
-  // Meaning costs an embedding call, so it is asked for rather than assumed.
-  $("#q").addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    clearTimeout(timer);
-    state.query = e.target.value;
-    search({ semantic: true });
+    timer = setTimeout(() => { state.query = e.target.value; runSearch(); }, 120);
   });
 
   $("#dq").addEventListener("input", (e) => {
@@ -1004,7 +915,7 @@ function wireUp() {
   $("#clear-filters").addEventListener("click", () => {
     state.waveFilter = null; state.fileFilter = null; state.levelFilter = null;
     state.query = ""; $("#q").value = "";
-    search();
+    runSearch();
   });
 
   ["#f-name", "#f-waves", "#f-category", "#f-description", "#f-sources", "#f-notes"]
@@ -1099,9 +1010,7 @@ function openVariable(name, wave) {
   state.levelFilter = null;
   state.query = row[0];
   $("#q").value = row[0];
-  // Not awaited: the caller needs a synchronous yes/no about whether the
-  // variable exists, which is answered above from rows already in hand.
-  search();
+  runSearch();
   showVariable(row);
   return true;
 }

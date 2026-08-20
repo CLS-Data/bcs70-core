@@ -37,10 +37,8 @@ python3 web/build_site.py        # after any metadata or registry change
 python3 web/server.py            # then open http://localhost:8000
 ```
 
-One process serves the site and the API. **`server.py` is required, not
-optional** — the search runs there, so a plain static file server gives you a
-site whose search box cannot answer. Browsing still needs **no install at
-all**; the assistant needs one:
+One process serves the site and the API. Browsing needs **no install at all**;
+the assistant needs one:
 
 ```
 uv sync --extra assistant        # langgraph, langchain-ollama
@@ -117,25 +115,6 @@ the file and study it came from. Filter by **measurement level**, by wave from
 the spine, or by file from a variable's detail pane; the three combine, and
 each shows as a clearable chip.
 
-The box runs the **same retrieval the assistant's own lookups use** — one
-engine, over `/api/search`. Three matchers, fused by rank:
-
-| | finds | misses |
-|---|---|---|
-| literal | `b960`, `hlth` — a fragment of a half-remembered name | *cigarettes per day*, whose words are not in that order in any label |
-| words (BM25) | *cigarettes per day*, *self-rated health* | `b960` — it indexes whole tokens, so half a code is not a term |
-| meaning | *self-rated health* → "How is your health generally" | nothing, but it costs an embedding call |
-
-Literal and words run on every keystroke, together in about four
-milliseconds. **Meaning runs when you press Enter**, because it needs Ollama
-and a fifth of a second; the line under the count says when it was used.
-Filters are applied to the result in the browser, so changing one is instant
-and costs no request.
-
-That the three are complementary is measured, not assumed: `b960` returns 299
-variables literally and none by words; *cigarettes per day* is the exact
-reverse. Neither matcher is the better one, so the answer is not to choose.
-
 **Derived** — the harmonised variables, filterable by **category**. Each shows
 the source that produces it, the files it draws on, and the raw variables it
 needs, all clickable back into the metadata. Tick any of them and **download
@@ -184,11 +163,11 @@ Three things about this are deliberate:
   duplicate resolution, and the day it drifted from the tested one, the
   researcher's numbers would quietly stop matching this repository's. The
   bundle's `R/` is this repository's `R/`, minus the variables you did not pick.
-- **The zip is written in the browser.** `bundle.js` writes the archive format
-  itself rather than taking a dependency, and compresses through
-  `CompressionStream` where the browser has it. The pipeline source is fetched
-  from `data/pipeline.json` only when someone actually downloads something, so
-  it stays out of the initial load.
+- **The zip is written in the browser.** No server is involved, so this works on
+  a static deploy; `bundle.js` writes the archive format itself rather than
+  taking a dependency, and compresses through `CompressionStream` where the
+  browser has it. The pipeline source is fetched from `data/pipeline.json` only
+  when someone actually downloads something.
 - **The README names what is unverified.** A `draft` variable has passed
   synthetic tests, which cannot tell you that the codes it recodes are the codes
   your deposit uses. The selection bar counts them too, so it is visible before
@@ -216,28 +195,56 @@ the detail pane, rather than being hidden.
 Everything here is keyed by wave *and* name, never name alone, so the two stay
 distinct.
 
-## This is a local tool, not a published site
+## Deploying to GitHub Pages
 
-There is no static deployment, and the GitHub Pages workflow that used to
-publish one has been removed. The site needs `web/server.py` behind it,
-because the search runs there.
+**Currently unavailable, and the local route above is the supported one.**
+GitHub Pages does not serve from a private account, so while the repository
+is private the workflow below cannot publish. It is kept intact rather than
+deleted: nothing about it has been made wrong by the account change, and it
+works again the moment the repository is public. Note that the assistant is
+local-only by construction — it talks to Ollama on `localhost` — so a
+published copy of this site would carry the drawer but never connect.
 
-That is a deliberate trade rather than a regression. The atlas's search was
-once a substring scan in the browser, which is what made a static host
-viable — and it could not find *cigarettes per day*, because no label
-contains that phrase. Moving to the shared engine means the search box
-answers the same questions the assistant's lookups do; the cost is a Python
-process, which anyone running this already needs for `build_site.py`. The
-assistant was local-only by construction anyway, since it talks to Ollama on
-`localhost`, so a published copy would always have carried a drawer that
-never connected.
+
+`.github/workflows/pages.yml` runs `build_site.py` and uploads this directory
+on every push to `main` touching `web/`, `registry/`, or `bcs70/`. The site is
+live at <https://cls-data.github.io/bcs70-core/>.
+
+**`data/` is generated by that workflow, not committed.** This is the single
+most important thing about the setup, and it exists because the alternative
+failed in practice. When `data/` was committed, publishing correct data
+depended on whoever added a variable also remembering to run `build_site.py`
+and commit the result. Nothing enforced it: the freshness check lived in this
+workflow, which only triggered on `web/**`, so a change to `registry/` — the
+exact change that invalidates the data — could never trigger the check that
+would have caught it. Building at publish time removes the failure mode
+instead of guarding against it, and drops ~88 files of generated JSON out of
+every variable PR's diff.
 
 Two consequences worth knowing:
 
-- **`data/` is built locally and is not committed.** After adding a variable
-  or changing the metadata, run `python3 web/build_site.py` — nothing does it
-  for you now. Rebuild the semantic index too if you use one; it is refused
-  rather than used when it no longer lines up.
+- **The published site is built from the commit being published**, so it can
+  never disagree with that commit's `registry/` and `bcs70/`. There is no
+  "stale data" state to detect, and no rebuild step for contributors to forget.
+- **`registry/**` and `bcs70/**` are in the trigger paths deliberately.** They
+  are the workflow's real inputs; leaving them out is what made merges publish
+  nothing.
+
+### Source must be set to GitHub Actions
+
+In **Settings → Pages → Source**, this must be **GitHub Actions**, not a
+branch. With a branch selected, `actions/configure-pages` fails, `upload` and
+`deploy` are skipped, and the run goes red without publishing — while the old
+branch-served copy stays up, so the site looks fine and is silently frozen.
+That is precisely what happened between the merge of PR #16 and this change.
+
+### Two other things to know
+
+- **This repository is public, and so is the site.** The published data
+  dictionaries — variable names, labels, value labels, missing-value codes —
+  are readable by anyone. No row of study data is ever included (see above),
+  but the metadata's licensing is a decision to make deliberately rather than
+  by default.
 - **`data/` is ~21 MB**, most of it the per-file dictionaries, which are
   fetched lazily and only when a variable is opened. The initial load is the
-  2.0 MB search index (about 350 KB gzipped) plus the manifest.
+  1.9 MB search index (about 350 KB gzipped) plus the manifest.

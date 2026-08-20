@@ -7,9 +7,8 @@
    the duplicate resolution, and the day it drifted from the tested one the
    researcher's numbers would quietly stop matching this repository's.
 
-   It is built in the browser rather than by the server because everything it
-   needs is already static JSON the page has, or can fetch: no round trip, no
-   endpoint to keep in step with the archive format.
+   It is built in the browser rather than by the server so it still works on a
+   static deploy, where there is no server to ask.
 
    Loaded on demand — see downloadBundle() in app.js. */
 

@@ -37,17 +37,11 @@ from assistant import Corpus, CorpusMissing             # noqa: E402
 from assistant import ollama                            # noqa: E402
 from assistant import vectors                           # noqa: E402
 from assistant.retrieval import (                       # noqa: E402
-    Bm25, Retriever, Settings, search_grouped, search_rows,
+    Bm25, Retriever, Settings, search_grouped,
 )
 from config import Config, ConfigError, get as get_config, use as use_config  # noqa: E402
 
 MAX_BODY = 8 * 1024 * 1024
-
-# Ranked rows returned to the atlas when it does not ask for fewer. Generous
-# on purpose: the list renders a few hundred, but the spine and the facet
-# counts are tallied over every match, so truncating here would quietly turn
-# "1,240 matches across 9 sweeps" into a statement about the top 300.
-MAX_ROWS = 5000
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -164,35 +158,16 @@ class Handler(SimpleHTTPRequestHandler):
             return self._models((body.get("baseUrl") or cfg.ollama).rstrip("/"))
 
         if route == "/api/search":
-            # One engine for every search in this project. The atlas asks for
-            # rows because it draws one line per variable and tallies its own
-            # facets; the assistant asks for groups because a model reading
-            # ten candidates should see one fact per concept, not the same
-            # question restated at six waves. Same corpus, same ranking, same
-            # settings — only the shape of the answer differs.
-            settings = Settings.from_json(body.get("retrieval"), cfg)
-            # Expansion needs a model to paraphrase with, and only the client
-            # knows which one this conversation is using.
-            if body.get("helperModel"):
-                settings = settings.but(
-                    helper_model=str(body["helperModel"]),
-                    base_url=(body.get("baseUrl") or cfg.ollama).rstrip("/"),
-                )
-            common = dict(
-                wave=body.get("wave") or None,
-                retriever=self.app["retriever"],
-                settings=settings,
-            )
-            if body.get("shape") == "rows":
-                return self._json(search_rows(
-                    self.app["corpus"], self.app["bm25"],
-                    str(body.get("query") or ""),
-                    limit=int(body.get("limit") or MAX_ROWS), **common,
-                ))
+            cfg = self.app["cfg"]
+            # The atlas's own search gets the same retrieval the assistant
+            # does - it is the same corpus and the same question.
             return self._json(search_grouped(
                 self.app["corpus"], self.app["bm25"],
                 str(body.get("query") or ""),
-                limit=int(body.get("limit") or 15), **common,
+                limit=int(body.get("limit") or 15),
+                wave=body.get("wave") or None,
+                retriever=self.app["retriever"],
+                settings=Settings.from_json(body.get("retrieval"), cfg),
             ))
 
         if route == "/api/chat":

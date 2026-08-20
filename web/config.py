@@ -416,20 +416,6 @@ class Config:
         return float(self._retrieval("semantic_weight", 1.0))
 
     @property
-    def substring(self) -> bool:
-        """Match the query literally against names and labels, as well.
-
-        On by default and cheap. It is what answers "I half-remember the
-        name" — a question BM25 cannot answer at all, because it indexes
-        whole tokens and a fragment of a code is not one of them.
-        """
-        return bool(self._retrieval("substring", True))
-
-    @property
-    def substring_weight(self) -> float:
-        return float(self._retrieval("substring_weight", 1.0))
-
-    @property
     def expand(self) -> bool:
         return bool(self._retrieval("expand", True))
 
@@ -452,12 +438,10 @@ class Config:
         return {
             "semantic": self.semantic,
             "expand": self.expand,
-            "substring": self.substring,
             "expansions": self.expansions,
             "candidates": self.candidates,
             "lexicalWeight": self.lexical_weight,
             "semanticWeight": self.semantic_weight,
-            "substringWeight": self.substring_weight,
         }
 
     # -- coverage ----------------------------------------------------------

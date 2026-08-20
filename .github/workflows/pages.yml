@@ -1,0 +1,55 @@
+name: Publish variable atlas
+
+# Publishes web/ to GitHub Pages.
+#
+# Requires Settings -> Pages -> Source -> GitHub Actions. With the source set
+# to a branch instead, configure-pages below fails and nothing is published -
+# which is exactly how the site silently went stale before.
+#
+# data/ is generated here rather than committed, so the published site is
+# always built from the registry and metadata of the commit being published
+# and cannot drift from them.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "registry/**"
+      - "bcs70/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a run midway: a half-finished deploy would leave the published
+# site inconsistent with the branch.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # build_site.py is stdlib-only and deterministic, and reads only
+      # committed inputs (bcs70/ metadata and registry/variables.json), so this
+      # reproduces exactly the data the published commit describes. It never
+      # opens a .tab file, so no row of study data can reach the artifact.
+      - name: Build site data
+        run: python3 web/build_site.py
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -225,20 +225,6 @@ k1        = 1.2     # BM25 term-frequency saturation
 b         = 0.75    # BM25 length normalisation
 pool      = 150     # documents scored before grouping
 
-# Matching the query literally against names and labels, fused with the rest.
-#
-# This is the run that answers "I half-remember the name", and BM25 cannot:
-# it indexes whole tokens, so a fragment of a code is not a term and scores
-# nothing. Measured on this corpus, "b960" finds 299 variables this way and
-# none by words, and "hlth" finds 9 against none — while "cigarettes per day"
-# is the exact reverse, since no label contains that phrase. Neither matcher
-# is the better one; they answer different questions, so both run.
-#
-# Only the query as typed is matched literally. An expansion is the model's
-# paraphrase and has no claim to be a fragment of a name.
-substring        = true
-substring_weight = 1.0
-
 # Semantic search. Optional: the index is built locally by
 # `python3 web/build_embeddings.py` against a local embedding model, and
 # without it retrieval is BM25 alone and says so. `semantic_pool` is how many
