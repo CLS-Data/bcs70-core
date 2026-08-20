@@ -36,7 +36,9 @@ R/
                                   always present even for a lone variable; <id> must equal spec$id
   lib/discovery.R                 single definition of that layout - finds variable scripts and validates
                                   their placement; shared by runner.R and scripts/build_registry.R
-  lib/io.R                        read-only helpers (load_tab()) that resolve files via master_file_info_lookup.csv
+  lib/io.R                        read-only helpers (load_tab()) that resolve files via master_file_info_lookup.csv.
+                                  data_root() looks for the deposits in bcs70/ unless BCS70_DATA names
+                                  somewhere else - the atlas's downloadable bundles rely on that
   lib/utils.R                     small shared recoding helpers, reused across variable scripts
   runner.R                        discovers R/variables/*/*/*.R, joins each one's declared source data, writes output/
 
@@ -59,6 +61,9 @@ web/                              the variable atlas: search the metadata, read 
                                   and built by CI at publish time, so adding a variable needs no rebuild step — run it
                                   only to preview locally. See web/README.md.
   index.html, styles.css, app.js  the atlas front end (no framework, no build step)
+  bundle.js                       packages selected harmonised variables as a runnable zip -
+                                  the R/ tree verbatim, so a download runs the tested code;
+                                  written in the browser, so it works on a static deploy
   dataset.toml                    everything dataset-specific — the study, its sweeps, categories, issue fields,
                                   the assistant's capabilities and its whole interview. Change behaviour here first.
   config.py                       loads it; the one place defaults live

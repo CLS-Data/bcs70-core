@@ -195,3 +195,46 @@ test_that("resolve_duplicate_ids names the file in its conflict warning", {
 
   expect_warning(env$resolve_duplicate_ids(synthetic, "sn3723"), "sn3723")
 })
+
+# --------------------------------------------------------------------------
+# data_root(): where the deposits are looked for. A downloaded code bundle is
+# run against deposits that already exist somewhere on the researcher's
+# machine, so the path has to be steerable without editing any script.
+# Nothing here reads a deposit - only the resolved path is checked.
+# --------------------------------------------------------------------------
+
+# Base R only - withr is not among this repo's declared packages. The
+# variable is always restored, so a failing expectation cannot leak a root
+# into the tests that follow.
+with_data_root <- function(value, code) {
+  before <- Sys.getenv("BCS70_DATA", unset = NA)
+  on.exit(
+    if (is.na(before)) Sys.unsetenv("BCS70_DATA") else Sys.setenv(BCS70_DATA = before),
+    add = TRUE
+  )
+  if (is.na(value)) Sys.unsetenv("BCS70_DATA") else Sys.setenv(BCS70_DATA = value)
+  force(code)
+}
+
+test_that("data_root defaults to bcs70 in the working directory", {
+  with_data_root(NA, expect_equal(env$data_root(), "bcs70"))
+})
+
+test_that("data_root follows BCS70_DATA when it is set", {
+  with_data_root("/mnt/ukds/deposits", expect_equal(env$data_root(), "/mnt/ukds/deposits"))
+})
+
+test_that("data_root ignores an empty BCS70_DATA rather than reading /", {
+  # Sys.getenv() cannot tell "unset" from "set to the empty string", and an
+  # empty root would resolve the lookup to "/master_file_info_lookup.csv".
+  with_data_root("", expect_equal(env$data_root(), "bcs70"))
+})
+
+test_that("get_lookup says where it looked and how to steer it", {
+  # The likely first-run failure for anyone using a downloaded bundle, so the
+  # message has to carry the fix rather than just the missing path.
+  with_data_root(
+    file.path(tempdir(), "no-such-root"),
+    expect_error(env$get_lookup(), "set BCS70_DATA")
+  )
+})

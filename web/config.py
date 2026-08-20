@@ -163,6 +163,17 @@ class Config:
         return REPO / self._section("dataset").get("root", "data")
 
     @property
+    def data_env(self) -> str:
+        """Environment variable the R pipeline reads its data root from.
+
+        Named here rather than in `build_site.py` so the instructions in a
+        downloaded bundle stay a property of the dataset, like everything
+        else in this file. Empty means the pipeline has no such override, and
+        the bundle's README then documents only the relative layout.
+        """
+        return self._section("dataset").get("data_env", "")
+
+    @property
     def identifier(self) -> str:
         return self._section("dataset").get("identifier", "id")
 

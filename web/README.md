@@ -14,7 +14,8 @@ web/
   server.py       serves the site and the assistant's /api        [stdlib]
   index.html
   styles.css
-  app.js          search, detail, scratchpad
+  app.js          search, detail, scratchpad, selecting variables
+  bundle.js       packages selected variables as a runnable zip [loaded on demand]
   chat.js         the assistant's turn loop and wiring
   chat/           one module per panel — state, api, transcript, steps,
                   composer, draft, settings
@@ -85,7 +86,8 @@ each shows as a clearable chip.
 
 **Derived** — the harmonised variables, filterable by **category**. Each shows
 the source that produces it, the files it draws on, and the raw variables it
-needs, all clickable back into the metadata.
+needs, all clickable back into the metadata. Tick any of them and **download
+the R code** that produces them (below).
 
 **Scratchpad** — collect candidates while browsing, describe what you want, and
 open a prefilled GitHub issue. Nothing is submitted until you review it.
@@ -100,6 +102,49 @@ for the reason the spine draws empty waves: knowing a search contains no scale
 variables is the answer, not a reason to hide the control. Counts beside each
 option are tallied *before* that filter is applied, so a count says what
 choosing it would give, not what is already on screen.
+
+## Downloading variables as R code
+
+Tick variables in the Derived view and the bar under the filters offers them as
+a zip: a README, the runner and its libraries, and one script per variable at
+the path the runner expects.
+
+```
+bcs70-variables-<date>/
+  README.md                  what it is, how to run it, what is unverified
+  R/runner.R                 \  the pipeline, verbatim
+  R/lib/{io,utils,discovery}.R  /
+  R/variables/<category>/<family>/<id>.R
+```
+
+Run it with base R against your own licensed copy of the deposits — no packages,
+no repository checkout:
+
+```
+BCS70_DATA=/path/to/bcs70 Rscript R/runner.R      # or all of them, from beside bcs70/
+Rscript R/runner.R bmi_10y                        # or just one
+```
+
+Three things about this are deliberate:
+
+- **The R is shipped verbatim, never regenerated.** A bundle-specific runner
+  would be a second implementation of the join, the identifier cleaning and the
+  duplicate resolution, and the day it drifted from the tested one, the
+  researcher's numbers would quietly stop matching this repository's. The
+  bundle's `R/` is this repository's `R/`, minus the variables you did not pick.
+- **The zip is written in the browser.** No server is involved, so this works on
+  a static deploy; `bundle.js` writes the archive format itself rather than
+  taking a dependency, and compresses through `CompressionStream` where the
+  browser has it. The pipeline source is fetched from `data/pipeline.json` only
+  when someone actually downloads something.
+- **The README names what is unverified.** A `draft` variable has passed
+  synthetic tests, which cannot tell you that the codes it recodes are the codes
+  your deposit uses. The selection bar counts them too, so it is visible before
+  the download rather than only after.
+
+The environment variable is named in `dataset.toml` (`[dataset] data_env`) and
+read by `R/lib/io.R`; leave it empty for a pipeline with no such override and
+the README documents only the alongside layout.
 
 ## The sweep spine
 

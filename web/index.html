@@ -94,6 +94,16 @@
           <span id="derived-count">—</span>
           <button class="link-btn" id="clear-category" hidden>Clear category</button>
         </div>
+        <!-- Tick variables in the list to build a runnable R bundle of them. -->
+        <div class="picked" id="picked-bar">
+          <p class="picked-count" id="picked-count">Nothing selected</p>
+          <div class="picked-actions">
+            <button class="link-btn" id="pick-all">Select all</button>
+            <button class="link-btn" id="pick-none" hidden>Clear</button>
+          </div>
+          <button class="btn btn-primary" id="pick-download" disabled>Download R code</button>
+          <p class="picked-status" id="picked-status" role="status"></p>
+        </div>
       </div>
       <ol class="results" id="derived-list"></ol>
     </div>
@@ -101,6 +111,7 @@
       <div class="empty">
         <h2>What has been harmonised</h2>
         <p>Each entry is one script that turns raw variables into a single harmonised column. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
+        <p>Tick the ones you want and download them as R you can run on your own copy of the data — the runner, its libraries and one script per variable, with a README.</p>
         <p class="empty-hint">Status matters: <em>draft</em> means it has only been checked against fabricated data.</p>
       </div>
     </div>

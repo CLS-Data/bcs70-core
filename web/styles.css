@@ -318,6 +318,33 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
   cursor: pointer;
 }
 
+/* ── Selecting variables to download ──────────────────────────────────
+   Sits under the derived view's filters. Present even with nothing ticked,
+   because otherwise the feature is invisible until you find the checkboxes
+   that are the only thing announcing it. */
+
+.picked {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center; gap: 6px 10px;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.picked-count {
+  margin: 0;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+}
+.picked-count strong { color: var(--ink); }
+.picked-warn { color: var(--ochre); }
+.picked-actions { display: flex; gap: 10px; grid-row: 1; grid-column: 2; justify-self: end; }
+.picked .btn { grid-column: 1 / -1; width: 100%; }
+.picked-status {
+  grid-column: 1 / -1;
+  margin: 0; min-height: 1em;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
 /* ── Result list ──────────────────────────────────────────────────── */
 
 .results { list-style: none; margin: 0; padding: 0; }
@@ -330,6 +357,21 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 }
 .row:hover { background: var(--paper-3); }
 .row.is-current { background: var(--paper); box-shadow: inset 3px 0 0 var(--contour); }
+
+/* A checkbox beside the row, sharing its bottom rule so the two read as one
+   line rather than as a control floating over a list. */
+.pickable { display: flex; align-items: stretch; }
+.pickable .row { border-bottom: 0; }
+.pickable { border-bottom: 1px solid var(--rule); }
+.pickable:hover { background: var(--paper-3); }
+.pickable .pick {
+  flex: 0 0 auto; align-self: center;
+  margin: 0 0 0 14px;
+  width: 13px; height: 13px;
+  accent-color: var(--contour);
+  cursor: pointer;
+}
+.pickable .pick:focus-visible { outline: 2px solid var(--contour); outline-offset: 2px; }
 
 .row-top { display: flex; align-items: baseline; gap: 8px; }
 .row-name {

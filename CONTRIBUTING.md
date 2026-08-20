@@ -339,6 +339,15 @@ from this repo sitting alongside it.
    Output lands at `output/derived_variables.csv`, entirely on the real-data
    machine - it never needs to leave it.
 
+   If the deposits are not in a `bcs70/` directory beside `R/` - a mounted
+   volume, say, or a shared read-only copy - point `BCS70_DATA` at them
+   instead of moving anything:
+
+       BCS70_DATA=/mnt/ukds/bcs70 Rscript R/runner.R
+
+   This is the same override the atlas's downloadable code bundles document,
+   so a bundle and a checkout are run the same way.
+
 4. **Check the result without exposing raw values.** Confirm it ran without
    error (a wrong/missing column shows up immediately as an R error from
    `build_variable()`), then look at *aggregate* diagnostics only - `summary()`

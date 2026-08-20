@@ -51,6 +51,12 @@ cautions = [
 # nothing in this project may write to it.
 root = "bcs70"
 
+# Environment variable the R pipeline reads its data root from, so a
+# downloaded code bundle can be pointed at deposits that already live
+# elsewhere on a researcher's machine (see R/lib/io.R). Leave empty if the
+# pipeline offers no such override.
+data_env = "BCS70_DATA"
+
 # The column that links a person across every file.
 identifier = "bcsid"
 
