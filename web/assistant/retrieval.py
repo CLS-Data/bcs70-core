@@ -196,12 +196,70 @@ def fuse(runs: list[list[int]], k: float, weights: list[float] | None = None) ->
     return [doc for doc, _ in sorted(scores.items(), key=lambda kv: -kv[1])]
 
 
-class Retriever:
-    """BM25, optionally with semantic search and query expansion over it.
+# Below this, a substring is too common to mean anything: "a" appears in
+# most labels in the corpus, and a run of 30,000 rows contributes nothing to
+# a fusion except noise and time.
+MIN_SUBSTRING = 2
 
-    Everything above this is unchanged when both are off: one BM25 pass, same
-    ranking, same results. That is deliberate — the lexical path is what runs
-    when there is no index, no Ollama, or no time.
+
+def substring(corpus, query: str, limit: int, wave_idx: int = -1) -> list[int]:
+    """Rows whose name or label literally contains `query`.
+
+    BM25 indexes whole tokens, so it cannot answer the question a researcher
+    asks most often about this corpus: "I half-remember the name". Measured
+    here, `b960` returns 299 rows by substring and none at all by BM25, and
+    `hlth` returns 9 against none — while `cigarettes per day` is the exact
+    reverse. The two are complementary, not better and worse, which is why
+    this is a run to be fused rather than a mode to switch between.
+
+    Ranked by how much of the field the query accounts for, because rank is
+    all that reciprocal-rank fusion reads:
+
+      1. the name, exactly
+      2. the name, from its start   — shortest first
+      3. the name, anywhere         — shortest first
+      4. the label                  — in corpus order
+
+    Sorting by length within a tier is what puts `sex` above `sexpart2` for
+    "sex": in a corpus of codes, a shorter name containing the query is more
+    likely to BE the thing than to merely mention it.
+    """
+    q = (query or "").strip().lower()
+    if len(q) < MIN_SUBSTRING:
+        return []
+
+    exact: list[int] = []
+    starts: list[tuple[int, int]] = []
+    inside: list[tuple[int, int]] = []
+    labelled: list[int] = []
+
+    for doc, row in enumerate(corpus.vars):
+        if wave_idx >= 0 and row[3] != wave_idx:
+            continue
+        name = str(row[0]).lower()
+        if q in name:
+            if name == q:
+                exact.append(doc)
+            elif name.startswith(q):
+                starts.append((len(name), doc))
+            else:
+                inside.append((len(name), doc))
+        elif q in str(row[1] or "").lower():
+            labelled.append(doc)
+
+    starts.sort()
+    inside.sort()
+    ranked = exact + [d for _, d in starts] + [d for _, d in inside] + labelled
+    return ranked[:limit]
+
+
+class Retriever:
+    """BM25 and substring, optionally with semantic search and expansion.
+
+    Everything above this is unchanged when the optional halves are off: one
+    BM25 pass, one substring pass, same ranking, same results. That is
+    deliberate — the lexical path is what runs when there is no index, no
+    Ollama, or no time.
     """
 
     def __init__(self, corpus, bm25: Bm25, cfg, vectors=None):
@@ -214,17 +272,25 @@ class Retriever:
         return self.corpus.waves.index(wave) if wave else -1
 
     def run(self, query: str, *, limit: int, wave: str | None = None,
-            settings=None) -> tuple[list[int], dict]:
+            settings=None, pool: int | None = None) -> tuple[list[int], dict]:
         """Ranked rows, plus what was actually done to get them.
 
         The second return value is not diagnostics for its own sake: the
         transcript tells the researcher every lookup the assistant made, and
         "searched for three other phrasings as well" is part of that.
+
+        `pool` is how deep each individual run goes before fusion, and it is
+        separate from `limit` because the two answer to different needs. A
+        model wants the best ten of a considered 150. The atlas counts its
+        matches per wave and per measurement level, so a pool of 150 would
+        not truncate its list — it would silently make "1,240 matches across
+        9 sweeps" a statement about the top 150 instead.
         """
         s = settings or Settings.from_config(self.cfg)
+        pool = pool or self.cfg.pool
         wave_idx = self._wave_index(wave)
         report = {"queries": [query], "semantic": False, "expanded": False,
-                  "note": None, "semantic_rows": set()}
+                  "substring": 0, "note": None, "semantic_rows": set()}
         found_by_meaning: set[int] = set()
 
         queries = [query]
@@ -238,8 +304,20 @@ class Retriever:
 
         runs, weights = [], []
         for phrasing in queries:
-            runs.append(self.bm25.search(phrasing, self.cfg.pool, wave_idx))
+            runs.append(self.bm25.search(phrasing, pool, wave_idx))
             weights.append(s.lexical_weight)
+
+        # Only the query as typed is matched literally. An expansion is the
+        # model's paraphrase, and a paraphrase has no claim to be a fragment
+        # of a name — matching "general health" as a substring would find
+        # labels that happen to contain it while adding nothing to the case
+        # that a half-typed code is what was meant.
+        if s.substring:
+            found = substring(self.corpus, query, pool, wave_idx)
+            if found:
+                runs.append(found)
+                weights.append(s.substring_weight)
+                report["substring"] = len(found)
 
         if s.semantic and self.vectors is not None:
             try:
@@ -271,7 +349,8 @@ class Settings:
     """
 
     __slots__ = ("semantic", "expand", "expansions", "lexical_weight",
-                 "semantic_weight", "candidates", "helper_model", "base_url")
+                 "semantic_weight", "substring", "substring_weight",
+                 "candidates", "helper_model", "base_url")
 
     def __init__(self, **kw):
         for name in self.__slots__:
@@ -285,6 +364,8 @@ class Settings:
             "expansions": cfg.expansions,
             "lexical_weight": cfg.lexical_weight,
             "semantic_weight": cfg.semantic_weight,
+            "substring": cfg.substring,
+            "substring_weight": cfg.substring_weight,
             "candidates": cfg.candidates,
             "helper_model": "",
             "base_url": None,
@@ -319,9 +400,11 @@ class Settings:
             cfg,
             semantic=body.get("semantic"),
             expand=body.get("expand"),
+            substring=body.get("substring"),
             expansions=number("expansions", int, 0, expansion.CEILING, None),
             lexical_weight=number("lexicalWeight", float, 0.0, 5.0, None),
             semantic_weight=number("semanticWeight", float, 0.0, 5.0, None),
+            substring_weight=number("substringWeight", float, 0.0, 5.0, None),
             candidates=number("candidates", int, 1, 50, None),
         )
 
@@ -438,9 +521,52 @@ def coverage(corpus, bm25: Bm25, query: str, retriever=None, settings=None) -> d
             "how": how}
 
 
+def search_rows(corpus, bm25: Bm25, query: str, *, limit: int,
+                wave: str | None = None, retriever=None, settings=None) -> dict:
+    """Ranked ROW INDICES, for a caller that already holds the corpus.
+
+    The atlas draws one line per variable and tallies its own facets, so
+    collapsing by label — right for a model reading ten candidates — throws
+    away exactly what it needs. It also already has every row in memory from
+    `variables.json`, so sending positions rather than records keeps a
+    thousand-hit search to a few kilobytes.
+
+    Those positions are only meaningful against the build they came from.
+    That is safe by construction here and nowhere else: the page fetched
+    `variables.json` and `manifest.json` from this same process at boot. It
+    is the assumption `vectors.py` makes about its index, and it fails the
+    same way — silently — so nothing else should adopt it.
+    """
+    if wave and wave not in corpus.waves:
+        return {"rows": [], "unknown_wave": wave, "how": {}}
+
+    # Pool as deep as the answer asked for: the caller counts what comes back.
+    docs, how = _ranked(corpus, bm25, query, limit, wave, retriever, settings,
+                        pool=limit)
+    return {
+        "rows": docs,
+        "unknown_wave": None,
+        "how": {k: v for k, v in how.items() if k != "semantic_rows"},
+    }
+
+
+def _ranked(corpus, bm25: Bm25, query: str, limit: int, wave: str | None,
+            retriever, settings, pool: int | None = None) -> tuple[list[int], dict]:
+    """One ranked pass, however much of the machinery is available.
+
+    `retriever` is optional so every existing caller - and any checkout with
+    no index and no Ollama - keeps the plain lexical path it had.
+    """
+    if retriever is not None:
+        return retriever.run(query, limit=limit, wave=wave, settings=settings,
+                             pool=pool)
+    wave_idx = corpus.waves.index(wave) if wave else -1
+    return bm25.search(query, limit, wave_idx), {}
+
+
 def search_grouped(corpus, bm25: Bm25, query: str, *, limit: int,
                    wave: str | None = None, retriever=None, settings=None) -> dict:
-    """The one entry point. Returns groups, or names an unknown wave.
+    """The entry point for a reader of ten candidates. Groups by description.
 
     `retriever` is optional so every existing caller - and any checkout with
     no index and no Ollama - keeps the plain lexical path it had.
@@ -448,12 +574,8 @@ def search_grouped(corpus, bm25: Bm25, query: str, *, limit: int,
     if wave and wave not in corpus.waves:
         return {"groups": [], "unknown_wave": wave, "how": {}}
 
-    if retriever is not None:
-        docs, how = retriever.run(query, limit=bm25.cfg.pool, wave=wave,
-                                  settings=settings)
-    else:
-        wave_idx = corpus.waves.index(wave) if wave else -1
-        docs, how = bm25.search(query, bm25.cfg.pool, wave_idx), {}
+    docs, how = _ranked(corpus, bm25, query, bm25.cfg.pool, wave,
+                        retriever, settings)
 
     # `semantic_rows` is a set of row indices for coverage() to consult, and
     # this result is serialised straight to JSON by /api/search. Dropping it
