@@ -225,6 +225,22 @@ k1        = 1.2     # BM25 term-frequency saturation
 b         = 0.75    # BM25 length normalisation
 pool      = 150     # documents scored before grouping
 
+# The coverage tool, which reports a concept sweep by sweep. Both thresholds
+# are a share of the query's idf mass that a label has to account for: at or
+# above `strong` the sweep is reported as measuring the concept, at or above
+# `weak` its candidates are listed without a claim, and below it nothing is
+# shown. `examples` is how many candidates a sweep may list.
+#
+# Calibrated on this corpus: "general health" scores 1.00 on a genuine match
+# and 0.58 on a variable that only matches the word "general", so 0.7 splits
+# them; "cigarettes per day" tops out at 0.73, because the real labels say
+# "a day" rather than "per day", which is why the bar is not higher. The weak
+# tier is what surfaces "How is your health generally", which does not match
+# the term "general" at all.
+coverage_strong   = 0.7
+coverage_weak     = 0.4
+coverage_examples = 3
+
 # There is no exact-name weighting here on purpose. Each variable's name is
 # indexed whole, so it is a term in exactly one document and BM25 ranks it
 # first unaided. Looking a variable up by name is `inspect_variable`'s job;

@@ -22,8 +22,9 @@ from . import retrieval
 
 SEARCH = "search_variables"
 INSPECT = "inspect_variable"
+COVERAGE = "coverage"
 HARMONISED = "list_harmonised"
-NAMES = (SEARCH, INSPECT, HARMONISED)
+NAMES = (SEARCH, INSPECT, COVERAGE, HARMONISED)
 
 
 # ── Declarations ────────────────────────────────────────────────────────
@@ -102,6 +103,43 @@ def schemas(cfg: Config) -> list[dict]:
                         },
                     },
                     "required": ["name"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": COVERAGE,
+                "description": (
+                    f"Report a concept {wave} by {wave}: which {waves} measured "
+                    f"it, what the variable is called in each, and which have "
+                    f"nothing. Use this for any question about coverage across "
+                    f"{waves} — 'which {waves} have X', 'is X available "
+                    f"throughout', 'can I follow X over time' — and before "
+                    f"proposing a longitudinal variable. {SEARCH} ranks all "
+                    f"{waves} against each other and returns only the best few "
+                    f"overall, so it cannot answer this: a {wave} whose variable "
+                    f"scores lower looks like a {wave} with nothing."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "concept": {
+                            "type": "string",
+                            "description": (
+                                "The concept in the fewest plain words that "
+                                "identify it — 'general health', 'cigarettes "
+                                "per day'. Not a variable name, and not a "
+                                "qualified phrase: every extra word narrows "
+                                "the match, so 'self-rated general health' "
+                                f"finds fewer {waves} than 'general health' "
+                                "does. Use the words a questionnaire would "
+                                "print, and call again with a different "
+                                "wording if the result looks thin."
+                            ),
+                        },
+                    },
+                    "required": ["concept"],
                 },
             },
         },
@@ -230,6 +268,83 @@ def _near_misses(corpus, name: str) -> tuple[list[str], int]:
     return out[:MAX_SUGGESTIONS], len(out)
 
 
+def _coverage(corpus, bm25, cfg: Config, args: dict) -> tuple[str, dict]:
+    concept = str(args.get("concept") or args.get("query") or "").strip()
+    if not concept:
+        return "No concept given. Call this with what to look for.", {"note": "empty query"}
+
+    found = retrieval.coverage(corpus, bm25, concept)
+    if found["unknown_terms"]:
+        return (
+            f'Nothing in "{concept}" appears in any dictionary. Try the wording '
+            f"a questionnaire would use.",
+            {"waves": [], "note": "no usable terms"},
+        )
+
+    lines, measured, weak = [], [], []
+    for entry in found["waves"]:
+        wave = entry["wave"]
+        if not entry["matches"]:
+            lines.append(f"{wave}: nothing found")
+            continue
+        shown = ", ".join(
+            f'{m["name"]} ({m["label"] or "no label"})' for m in entry["matches"]
+        )
+        if entry["measured"]:
+            measured.append(wave)
+            lines.append(f"{wave}: MEASURED — {shown}")
+        else:
+            weak.append(wave)
+            lines.append(f"{wave}: possible, unconfirmed — {shown}")
+
+    # The summary goes first because it is the answer; the per-wave detail is
+    # the evidence for it. A model given only the detail tends to restate it.
+    head = (
+        f'"{concept}" is measured at: {", ".join(measured) or "no " + cfg.wave_plural}.'
+    )
+    if weak:
+        # Naming the unconfirmed waves and stopping there reads as "nothing
+        # here", and a model asked to summarise will fold them in with the
+        # waves that genuinely have nothing - which is how a real variable
+        # like "How is your health generally" gets reported as absent. The
+        # instruction has to be explicit that these are a third answer.
+        head += (
+            f' {len(weak)} more {cfg.wave_plural} have candidates that need '
+            f'judging, listed below as "possible": {", ".join(weak)}. Read each '
+            f"label. Some will be the concept under different wording and some "
+            f"will be a coincidence of vocabulary; decide which, and report "
+            f'them separately. Never fold these in with "nothing found" - that '
+            f"is a different finding, and reporting it as absent is wrong."
+        )
+    if not measured:
+        # Every extra word raises the total idf mass a label has to account
+        # for, so a precise-sounding concept scores worse than a plain one:
+        # "self rated general health" confirms nothing, while "general health"
+        # confirms five waves. The model cannot see that from the result, so
+        # the result has to say it.
+        head += (
+            f" Nothing reached confirmation for this wording. If the concept "
+            f"carries qualifiers, try again with the plainest two or three "
+            f"words a questionnaire would print — extra words narrow this and "
+            f"can hide {cfg.wave_plural} that do have the variable."
+        )
+
+    # This result is wide, and a wide result invites a verifying lookup per
+    # candidate - which is how a turn spends its whole hop budget confirming
+    # what it was already told and ends with nothing said. Every label needed
+    # to answer is already here.
+    head += (
+        f" Every candidate's label is below: that is enough to answer which "
+        f"{cfg.wave_plural} have this. Look a variable up individually only if "
+        f"its codes or missing values matter to the answer."
+    )
+
+    return f"{head}\n" + "\n".join(lines), {
+        "coverage": found["waves"],
+        "note": f'{len(measured)} {cfg.wave_plural} measured, {len(weak)} unconfirmed',
+    }
+
+
 def _inspect(corpus, cfg: Config, args: dict) -> tuple[str, dict]:
     name = str(args.get("name") or "").strip()
     wave = args.get(cfg.wave_term) or None
@@ -348,6 +463,8 @@ def run(corpus, bm25, cfg: Config, name: str, args: dict) -> tuple[str, dict]:
         return _search(corpus, bm25, cfg, args)
     if name == INSPECT:
         return _inspect(corpus, cfg, args)
+    if name == COVERAGE:
+        return _coverage(corpus, bm25, cfg, args)
     if name == HARMONISED:
         return _harmonised(corpus, args)
     return (

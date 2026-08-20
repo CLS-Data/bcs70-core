@@ -368,6 +368,23 @@ class Config:
     def pool(self) -> int:
         return int(self._retrieval("pool", 150))
 
+    # -- coverage ----------------------------------------------------------
+    # How much of a query's idf mass a label must account for before the
+    # coverage tool will say a wave measured something, and before it will
+    # show the label at all. See retrieval.coverage().
+
+    @property
+    def coverage_strong(self) -> float:
+        return float(self._retrieval("coverage_strong", 0.7))
+
+    @property
+    def coverage_weak(self) -> float:
+        return float(self._retrieval("coverage_weak", 0.4))
+
+    @property
+    def coverage_examples(self) -> int:
+        return int(self._retrieval("coverage_examples", 3))
+
     @cached_property
     def stopwords(self) -> frozenset[str]:
         return frozenset(self._retrieval("stopwords", ()))

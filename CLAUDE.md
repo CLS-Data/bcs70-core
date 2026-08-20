@@ -72,7 +72,8 @@ web/                              the variable atlas: search the metadata, read 
   tests/                          stdlib unittest over retrieval and the tools, on a synthetic corpus -
                                   `python3 -m unittest discover -s web/tests`; no install, no built data/
   assistant/                      the assistant's actual logic: router.py, prompts.py, tools.py (search/inspect/
-                                  list_harmonised over the dictionaries), retrieval.py (BM25), choices.py,
+                                  coverage/list_harmonised over the dictionaries), retrieval.py (BM25
+                                  by meaning, plus per-sweep coverage), choices.py,
                                   corpus.py, ollama.py — all standard library — plus graph.py (the LangGraph),
                                   llm.py and agent.py, which need the `assistant` extra. See its README.
 

@@ -171,6 +171,83 @@ def group(corpus, docs: list[int], limit: int) -> list[dict]:
     return out
 
 
+def coverage(corpus, bm25: Bm25, query: str) -> dict:
+    """Where a concept was measured, wave by wave.
+
+    `search_grouped` ranks every wave against every other and returns the best
+    handful overall, so a concept carried through the whole study is reported
+    from wherever it happens to rank — and a wave with a real but
+    lower-scoring variable looks like a wave with nothing. The information is
+    not missing, only truncated: for "general health" the 29y and 38y
+    variables sit at rank 72 and 76 of a 150-document pool.
+
+    So this scores once, exactly as a search does, and then buckets by wave
+    instead of cutting globally. Every wave is reported, including the ones
+    with nothing, because "not measured here" is the answer as often as the
+    variable name is.
+
+    Two thresholds, both from `dataset.toml`, over the share of the query's
+    idf mass a match actually accounts for:
+
+    - at or above `coverage_strong`, the wave is reported as measured;
+    - at or above `coverage_weak`, candidates are listed but nothing is
+      claimed - the label is shown so the reader can judge;
+    - below it, nothing is shown, because a match on one common word is not
+      evidence of anything.
+
+    The weak tier is not a hedge, it is the point. `hlthgen` ("How is your
+    health generally") does not match the term "general" at all, since
+    "generally" does not stem to it - so a strict floor would drop the very
+    wave this tool exists to surface. It ranks second within its own wave,
+    and second within a wave is visible in a way that rank 72 overall is not.
+    """
+    terms = [t for t in set(bm25.tokenize(query)) if bm25._idf(t) > 0]
+    if not terms:
+        return {"terms": [], "waves": [], "unknown_terms": True}
+
+    total = sum(bm25._idf(t) for t in terms) or 1.0
+    postings = {t: {doc for doc, _ in bm25.postings.get(t, ())} for t in terms}
+
+    def share(doc: int) -> float:
+        return sum(bm25._idf(t) for t in terms if doc in postings[t]) / total
+
+    # One ranked pass over everything scored, then bucketed. Ordering inside a
+    # wave stays BM25's, not the idf share: the share says how much of the
+    # query a label touches, which is a filter, while the score says how well
+    # it matches, which is what should be read first.
+    found: dict[str, list[tuple[float, int]]] = {}
+    for doc in bm25.search(query, len(bm25.doc_len)):
+        got = share(doc)
+        if got < bm25.cfg.coverage_weak:
+            continue
+        found.setdefault(corpus.wave_of(doc), []).append((got, doc))
+
+    waves = []
+    for wave in corpus.waves:
+        ranked = found.get(wave, [])
+        strong = [c for c in ranked if c[0] >= bm25.cfg.coverage_strong]
+        # Once a wave has a confirmed match, its weaker ones are noise beside
+        # it - listing "GENERAL READING OR WRITING" under a wave that plainly
+        # measured general health only invites the model to hedge.
+        candidates = (strong or ranked)[:bm25.cfg.coverage_examples]
+        measured = bool(strong)
+        waves.append({
+            "wave": wave,
+            "measured": measured,
+            "matches": [
+                {
+                    "name": corpus.vars[doc][0],
+                    "label": corpus.vars[doc][1] or None,
+                    "file": corpus.file_of(doc).get("name"),
+                    "strong": got >= bm25.cfg.coverage_strong,
+                }
+                for got, doc in candidates
+            ],
+        })
+
+    return {"terms": sorted(terms), "waves": waves, "unknown_terms": False}
+
+
 def search_grouped(corpus, bm25: Bm25, query: str, *, limit: int,
                    wave: str | None = None) -> dict:
     """The one entry point. Returns groups, or names an unknown wave."""
