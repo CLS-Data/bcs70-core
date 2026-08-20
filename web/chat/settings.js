@@ -7,6 +7,75 @@ import { A, chat, defaultBase, modelThinks, saveSettings, wavePlural } from "./s
 import { renderComposer, renderStatus } from "./composer.js";
 import { renderTranscript } from "./transcript.js";
 
+/* How the dictionaries are searched.
+
+   Every control here trades breadth against time, and which way to trade
+   depends on the question rather than on a good default — looking for a
+   concept nobody has named consistently is worth two seconds, and checking a
+   variable you already know is not. */
+function renderRetrieval(s) {
+  const r = s.retrieval;
+  if (!r) return `<p class="note">Retrieval settings didn't load.</p>`;
+  const sem = chat.semantic || {};
+
+  return `
+    <label class="field check">
+      <input id="cs-semantic" type="checkbox"${r.semantic ? " checked" : ""}
+             ${sem.available ? "" : "disabled"}>
+      <span>Search by meaning as well as by words</span>
+      <span class="field-help">${sem.available
+        ? `Finds variables whose wording shares nothing with the question —
+           “How is your health generally” for <em>self-rated health</em>.
+           Adds about a fifth of a second.
+           <code>${esc(sem.model || "")}</code>, ${esc(String(sem.dims || ""))} dimensions.`
+        : `Unavailable. ${esc(sem.reason || "No index has been built.")}`}</span>
+    </label>
+
+    <label class="field check">
+      <input id="cs-expand" type="checkbox"${r.expand ? " checked" : ""}>
+      <span>Also search other wordings of the same thing</span>
+      <span class="field-help">Asks the helper model to rephrase the search the
+        way a questionnaire would, and searches each. One extra model call per
+        lookup — the slowest setting here, and the one that helps most when a
+        concept has no standard name.</span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Wordings to try <em>${esc(String(r.expansions))}</em></span>
+      <input id="cs-expansions" type="range" min="1" max="6" step="1"
+             value="${esc(String(r.expansions))}"${r.expand ? "" : " disabled"}>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Variables per lookup <em>${esc(String(r.candidates))}</em></span>
+      <input id="cs-candidates" type="range" min="3" max="30" step="1"
+             value="${esc(String(r.candidates))}">
+      <span class="field-help">How many the model is shown. More is not
+        automatically better: a model handed thirty variables summarises them
+        instead of asking you the next question.</span>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Words vs meaning
+        <em>${esc(balance(r))}</em></span>
+      <input id="cs-balance" type="range" min="0" max="100" step="5"
+             value="${esc(String(Math.round(100 * r.semanticWeight /
+               ((r.lexicalWeight + r.semanticWeight) || 1))))}"
+             ${sem.available && r.semantic ? "" : " disabled"}>
+      <span class="field-help">Which side wins when the two disagree. Exact
+        names and codes come from words; concepts come from meaning.</span>
+    </label>`;
+}
+
+function balance(r) {
+  const total = (r.lexicalWeight + r.semanticWeight) || 1;
+  const pct = Math.round(100 * r.semanticWeight / total);
+  if (pct <= 20) return "mostly words";
+  if (pct >= 80) return "mostly meaning";
+  if (pct === 50) return "even";
+  return pct > 50 ? "leaning meaning" : "leaning words";
+}
+
 export function renderSettings() {
   const el = $("#chat-settings");
   if (!el) return;
@@ -71,6 +140,9 @@ export function renderSettings() {
         deliberation, and the wait is per turn.</span>
     </label>` : ""}
 
+    <h3 class="section-title">Searching the dictionaries</h3>
+    ${renderRetrieval(s)}
+
     <h3 class="section-title">This conversation</h3>
     <div class="draft-actions">
       <button class="btn btn-quiet" id="cs-reset" type="button">Start over</button>
@@ -97,6 +169,29 @@ export function renderSettings() {
   $("#cs-think")?.addEventListener("change", (e) => {
     s.think = e.target.checked; saveSettings();
   });
+  // Retrieval. The two checkboxes re-render because they enable and disable
+  // the sliders under them; the sliders update their own label in place, so
+  // that dragging one does not rebuild the panel under the cursor.
+  const r = s.retrieval;
+  $("#cs-semantic")?.addEventListener("change", (e) => {
+    r.semantic = e.target.checked; saveSettings(); renderSettings();
+  });
+  $("#cs-expand")?.addEventListener("change", (e) => {
+    r.expand = e.target.checked; saveSettings(); renderSettings();
+  });
+  const slider = (id, apply, show) => $(id)?.addEventListener("input", (e) => {
+    apply(Number(e.target.value));
+    saveSettings();
+    e.target.previousElementSibling.querySelector("em").textContent = show(r);
+  });
+  slider("#cs-expansions", (v) => { r.expansions = v; }, (r) => String(r.expansions));
+  slider("#cs-candidates", (v) => { r.candidates = v; }, (r) => String(r.candidates));
+  slider("#cs-balance", (v) => {
+    // One control, two weights: the slider is the share given to meaning.
+    r.semanticWeight = v / 50;
+    r.lexicalWeight = (100 - v) / 50;
+  }, balance);
+
   $("#cs-refresh").addEventListener("click", connect);
   // Owned by the orchestrator; asked for by event so this module
   // never has to import back from chat.js.

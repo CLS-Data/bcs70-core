@@ -15,6 +15,8 @@ from collections import defaultdict
 
 from config import Config
 
+from . import expansion
+
 TOKEN = re.compile(r"[a-z0-9]+")
 
 
@@ -171,7 +173,160 @@ def group(corpus, docs: list[int], limit: int) -> list[dict]:
     return out
 
 
-def coverage(corpus, bm25: Bm25, query: str) -> dict:
+def fuse(runs: list[list[int]], k: float, weights: list[float] | None = None) -> list[int]:
+    """Reciprocal rank fusion over several ranked lists.
+
+    BM25 scores and cosine similarities are not on one scale and cannot be
+    added, and normalising them means inventing a relationship between them
+    that changes with every query. RRF only reads position: a document scores
+    1/(k + rank) in each list it appears in, summed. A document found by two
+    different methods beats one found emphatically by a single method, which
+    is the behaviour worth having when the two methods fail in unrelated ways.
+
+    `k` flattens the curve - at 60 the difference between rank 1 and rank 10
+    is small, so a list has to agree repeatedly rather than loudly.
+    """
+    weights = weights or [1.0] * len(runs)
+    scores: dict[int, float] = defaultdict(float)
+    for run, weight in zip(runs, weights):
+        if not weight:
+            continue
+        for rank, doc in enumerate(run):
+            scores[doc] += weight / (k + rank + 1)
+    return [doc for doc, _ in sorted(scores.items(), key=lambda kv: -kv[1])]
+
+
+class Retriever:
+    """BM25, optionally with semantic search and query expansion over it.
+
+    Everything above this is unchanged when both are off: one BM25 pass, same
+    ranking, same results. That is deliberate — the lexical path is what runs
+    when there is no index, no Ollama, or no time.
+    """
+
+    def __init__(self, corpus, bm25: Bm25, cfg, vectors=None):
+        self.corpus = corpus
+        self.bm25 = bm25
+        self.cfg = cfg
+        self.vectors = vectors
+
+    def _wave_index(self, wave: str | None) -> int:
+        return self.corpus.waves.index(wave) if wave else -1
+
+    def run(self, query: str, *, limit: int, wave: str | None = None,
+            settings=None) -> tuple[list[int], dict]:
+        """Ranked rows, plus what was actually done to get them.
+
+        The second return value is not diagnostics for its own sake: the
+        transcript tells the researcher every lookup the assistant made, and
+        "searched for three other phrasings as well" is part of that.
+        """
+        s = settings or Settings.from_config(self.cfg)
+        wave_idx = self._wave_index(wave)
+        report = {"queries": [query], "semantic": False, "expanded": False,
+                  "note": None, "semantic_rows": set()}
+        found_by_meaning: set[int] = set()
+
+        queries = [query]
+        if s.expand and s.expansions and s.helper_model:
+            queries = expansion.phrasings(
+                self.cfg, query, count=s.expansions,
+                model=s.helper_model, base=s.base_url,
+            )
+            report["queries"] = queries
+            report["expanded"] = len(queries) > 1
+
+        runs, weights = [], []
+        for phrasing in queries:
+            runs.append(self.bm25.search(phrasing, self.cfg.pool, wave_idx))
+            weights.append(s.lexical_weight)
+
+        if s.semantic and self.vectors is not None:
+            try:
+                for phrasing in queries:
+                    hits = self.vectors.search(phrasing, self.cfg.semantic_pool,
+                                               s.base_url)
+                    rows = [row for row, _ in hits
+                            if wave_idx < 0 or self.corpus.vars[row][3] == wave_idx]
+                    runs.append(rows)
+                    weights.append(s.semantic_weight)
+                    found_by_meaning.update(rows)
+                report["semantic"] = True
+                report["semantic_rows"] = found_by_meaning
+            except Exception as err:                      # noqa: BLE001
+                # A missing model or a stopped Ollama must degrade the search,
+                # not end the turn. The lexical runs are already in hand.
+                report["note"] = f"semantic search unavailable ({err})"
+
+        if len(runs) == 1:
+            return runs[0][:limit], report
+        return fuse(runs, self.cfg.fusion_k, weights)[:limit], report
+
+
+class Settings:
+    """Per-turn retrieval settings: config defaults, overridable by the client.
+
+    The drawer exposes these so a researcher can trade breadth against speed
+    without editing a file, in the same way it already exposes the model.
+    """
+
+    __slots__ = ("semantic", "expand", "expansions", "lexical_weight",
+                 "semantic_weight", "candidates", "helper_model", "base_url")
+
+    def __init__(self, **kw):
+        for name in self.__slots__:
+            setattr(self, name, kw.get(name))
+
+    @classmethod
+    def from_config(cls, cfg, **over):
+        base = {
+            "semantic": cfg.semantic,
+            "expand": cfg.expand,
+            "expansions": cfg.expansions,
+            "lexical_weight": cfg.lexical_weight,
+            "semantic_weight": cfg.semantic_weight,
+            "candidates": cfg.candidates,
+            "helper_model": "",
+            "base_url": None,
+        }
+        base.update({k: v for k, v in over.items() if v is not None})
+        return cls(**base)
+
+    def but(self, **over):
+        """A copy with some fields replaced.
+
+        The server knows the researcher's preferences; only the agent knows
+        which model and host this turn is using. Neither should have to know
+        the other's fields.
+        """
+        current = {name: getattr(self, name) for name in self.__slots__}
+        current.update({k: v for k, v in over.items() if v is not None})
+        return type(self)(**current)
+
+    @classmethod
+    def from_json(cls, body: dict, cfg):
+        """What the browser sends. Absent keys keep the configured default."""
+        body = body or {}
+
+        def number(key, cast, low, high, default):
+            try:
+                value = cast(body[key])
+            except (KeyError, TypeError, ValueError):
+                return default
+            return max(low, min(high, value))
+
+        return cls.from_config(
+            cfg,
+            semantic=body.get("semantic"),
+            expand=body.get("expand"),
+            expansions=number("expansions", int, 0, expansion.CEILING, None),
+            lexical_weight=number("lexicalWeight", float, 0.0, 5.0, None),
+            semantic_weight=number("semanticWeight", float, 0.0, 5.0, None),
+            candidates=number("candidates", int, 1, 50, None),
+        )
+
+
+def coverage(corpus, bm25: Bm25, query: str, retriever=None, settings=None) -> dict:
     """Where a concept was measured, wave by wave.
 
     `search_grouped` ranks every wave against every other and returns the best
@@ -203,22 +358,56 @@ def coverage(corpus, bm25: Bm25, query: str) -> dict:
     """
     terms = [t for t in set(bm25.tokenize(query)) if bm25._idf(t) > 0]
     if not terms:
-        return {"terms": [], "waves": [], "unknown_terms": True}
-
-    total = sum(bm25._idf(t) for t in terms) or 1.0
-    postings = {t: {doc for doc, _ in bm25.postings.get(t, ())} for t in terms}
-
-    def share(doc: int) -> float:
-        return sum(bm25._idf(t) for t in terms if doc in postings[t]) / total
+        return {"terms": [], "waves": [], "unknown_terms": True, "how": {}}
 
     # One ranked pass over everything scored, then bucketed. Ordering inside a
     # wave stays BM25's, not the idf share: the share says how much of the
     # query a label touches, which is a filter, while the score says how well
     # it matches, which is what should be read first.
+    if retriever is not None:
+        ranked, how = retriever.run(query, limit=len(bm25.doc_len), settings=settings)
+    else:
+        ranked, how = bm25.search(query, len(bm25.doc_len)), {}
+
+    # A label is judged against the BEST of the wordings searched, not against
+    # the one the model happened to type. Every extra word raises the idf mass
+    # a label has to account for, so "self rated general health" confirms
+    # nothing while "general health" confirms five waves — and when expansion
+    # has already produced the second, insisting on the first would throw away
+    # the evidence it just gathered. Only wordings count here, never the
+    # embedding: a share is a share, and this stays comparable to the
+    # thresholds it is measured against.
+    wordings = [query] + [q for q in (how.get("queries") or []) if q != query]
+    measures = []
+    for wording in wordings:
+        its_terms = [t for t in set(bm25.tokenize(wording)) if bm25._idf(t) > 0]
+        if not its_terms:
+            continue
+        its_total = sum(bm25._idf(t) for t in its_terms) or 1.0
+        its_postings = {t: {d for d, _ in bm25.postings.get(t, ())} for t in its_terms}
+        measures.append((its_terms, its_total, its_postings))
+
+    def share(doc: int) -> float:
+        return max(
+            (sum(idf for t, idf in ((t, bm25._idf(t)) for t in ts) if doc in ps[t]) / tot
+             for ts, tot, ps in measures),
+            default=0.0,
+        )
+
+    # A variable found by meaning rather than by words has, almost by
+    # definition, a poor lexical share - "How is your health generally" does
+    # not contain "self" or "rated" - so the floor that keeps coincidences out
+    # would throw away exactly what the embedding just recovered. Those rows
+    # skip the floor. They never clear the confirmation bar either: the
+    # thresholds above are calibrated on idf mass and mean nothing against a
+    # cosine, so semantic evidence surfaces a candidate and the reader judges
+    # it, which is what the middle tier is for.
+    by_meaning = how.get("semantic_rows") or set()
+
     found: dict[str, list[tuple[float, int]]] = {}
-    for doc in bm25.search(query, len(bm25.doc_len)):
+    for doc in ranked:
         got = share(doc)
-        if got < bm25.cfg.coverage_weak:
+        if got < bm25.cfg.coverage_weak and doc not in by_meaning:
             continue
         found.setdefault(corpus.wave_of(doc), []).append((got, doc))
 
@@ -245,16 +434,34 @@ def coverage(corpus, bm25: Bm25, query: str) -> dict:
             ],
         })
 
-    return {"terms": sorted(terms), "waves": waves, "unknown_terms": False}
+    return {"terms": sorted(terms), "waves": waves, "unknown_terms": False,
+            "how": how}
 
 
 def search_grouped(corpus, bm25: Bm25, query: str, *, limit: int,
-                   wave: str | None = None) -> dict:
-    """The one entry point. Returns groups, or names an unknown wave."""
-    wave_idx = -1
-    if wave:
-        if wave not in corpus.waves:
-            return {"groups": [], "unknown_wave": wave}
-        wave_idx = corpus.waves.index(wave)
-    docs = bm25.search(query, bm25.cfg.pool, wave_idx)
-    return {"groups": group(corpus, docs, limit), "unknown_wave": None}
+                   wave: str | None = None, retriever=None, settings=None) -> dict:
+    """The one entry point. Returns groups, or names an unknown wave.
+
+    `retriever` is optional so every existing caller - and any checkout with
+    no index and no Ollama - keeps the plain lexical path it had.
+    """
+    if wave and wave not in corpus.waves:
+        return {"groups": [], "unknown_wave": wave, "how": {}}
+
+    if retriever is not None:
+        docs, how = retriever.run(query, limit=bm25.cfg.pool, wave=wave,
+                                  settings=settings)
+    else:
+        wave_idx = corpus.waves.index(wave) if wave else -1
+        docs, how = bm25.search(query, bm25.cfg.pool, wave_idx), {}
+
+    # `semantic_rows` is a set of row indices for coverage() to consult, and
+    # this result is serialised straight to JSON by /api/search. Dropping it
+    # here rather than converting it: nothing downstream of a grouped search
+    # wants row numbers, and shipping them would only invite a caller to
+    # depend on positions that a rebuild invalidates.
+    return {
+        "groups": group(corpus, docs, limit),
+        "unknown_wave": None,
+        "how": {k: v for k, v in how.items() if k != "semantic_rows"},
+    }

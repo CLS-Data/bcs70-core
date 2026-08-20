@@ -11,6 +11,7 @@ web/
   dataset.toml    EVERYTHING dataset-specific. Start here.
   config.py       loads it                                       [stdlib]
   build_site.py   generates data/ from the deposits and registry/ [stdlib]
+  build_embeddings.py  optional semantic index for the search     [stdlib + Ollama]
   server.py       serves the site and the assistant's /api        [stdlib]
   index.html
   styles.css
@@ -46,6 +47,24 @@ uv sync --extra assistant        # langgraph, langchain-ollama
 Without it, `server.py` prints a note, `/api/health` reports
 `assistant: false`, and the drawer disables itself with the install command in
 its tooltip. Everything else is unaffected.
+
+### Searching by meaning (optional)
+
+```
+python3 web/build_embeddings.py          # ~4 minutes, needs Ollama
+python3 web/build_embeddings.py --check  # is the existing index current?
+```
+
+This embeds every variable label with a local model so the search can match a
+concept whose wording it does not share — *"How is your health generally"* for
+**self-rated health**. It writes ~33 MB into the gitignored `data/`, so it is
+never committed and CI never builds it.
+
+Everything works without it: retrieval falls back to BM25 alone, `server.py`
+says which mode it is in on its first line, and the drawer's switch is
+disabled with the reason. Rebuild it after any `build_site.py` that changes
+which variables exist — the index is positional, and a stale one is **refused
+rather than used**.
 
 `build_site.py` reads the metadata CSVs under the configured `[dataset] root`
 and `registry/variables.json`. It never opens a data file, so no row of study

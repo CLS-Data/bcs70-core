@@ -35,7 +35,10 @@ sys.path.insert(0, str(WEB))
 import assistant                                        # noqa: E402
 from assistant import Corpus, CorpusMissing             # noqa: E402
 from assistant import ollama                            # noqa: E402
-from assistant.retrieval import Bm25, search_grouped    # noqa: E402
+from assistant import vectors                           # noqa: E402
+from assistant.retrieval import (                       # noqa: E402
+    Bm25, Retriever, Settings, search_grouped,
+)
 from config import Config, ConfigError, get as get_config  # noqa: E402
 
 MAX_BODY = 8 * 1024 * 1024
@@ -115,12 +118,24 @@ class Handler(SimpleHTTPRequestHandler):
         cfg, corpus = self.app["cfg"], self.app["corpus"]
 
         if route == "/api/health":
+            index = self.app["retriever"].vectors
             return self._json({
                 "ok": True,
                 "assistant": self.app["agent"] is not None,
                 "dataset": cfg.for_browser(),
                 "counts": corpus.counts,
                 "waves": corpus.waves,
+                # So the drawer can offer semantic search only where there is
+                # an index, and say why when there is not, rather than
+                # presenting a switch that silently does nothing.
+                "semantic": {
+                    "available": index is not None,
+                    "model": getattr(index, "model", None),
+                    "dims": getattr(index, "dim", None),
+                    "reason": None if index is not None
+                              else getattr(corpus, "vectors_unavailable", None),
+                },
+                "retrieval": cfg.retrieval_defaults(),
             })
 
         if route == "/api/interview":
@@ -143,11 +158,16 @@ class Handler(SimpleHTTPRequestHandler):
             return self._models((body.get("baseUrl") or cfg.ollama).rstrip("/"))
 
         if route == "/api/search":
+            cfg = self.app["cfg"]
+            # The atlas's own search gets the same retrieval the assistant
+            # does - it is the same corpus and the same question.
             return self._json(search_grouped(
                 self.app["corpus"], self.app["bm25"],
                 str(body.get("query") or ""),
                 limit=int(body.get("limit") or 15),
                 wave=body.get("wave") or None,
+                retriever=self.app["retriever"],
+                settings=Settings.from_json(body.get("retrieval"), cfg),
             ))
 
         if route == "/api/chat":
@@ -177,6 +197,18 @@ def build_app(cfg, verbose: bool) -> dict:
     print(f"Indexing {len(corpus.vars):,} variable descriptions…", flush=True)
     bm25 = Bm25(corpus, cfg)
 
+    # Semantic search is optional and its absence is normal: the index is
+    # built locally and is not in the repository. Say which mode this process
+    # is in, once, rather than letting it be inferred from the results.
+    index = vectors.load(WEB / "data", corpus, cfg) if cfg.semantic else None
+    if index is not None:
+        print(f"Semantic index: {index.count:,} × {index.dim} "
+              f"({index.model}).", flush=True)
+    elif cfg.semantic:
+        print(f"Lexical search only. "
+              f"{getattr(corpus, 'vectors_unavailable', '')}", flush=True)
+    retriever = Retriever(corpus, bm25, cfg, index)
+
     # The assistant is an optional extra. Without it the atlas, the metadata
     # search and the registry all still work, so this is a note rather than a
     # failure — and the drawer turns itself off and says the same thing.
@@ -185,7 +217,7 @@ def build_app(cfg, verbose: bool) -> dict:
     turn_request = None
     try:
         Agent, turn_request = assistant.load()
-        agent = Agent(corpus, bm25, cfg)
+        agent = Agent(corpus, bm25, cfg, retriever)
     except ImportError:
         print(f"\nAssistant disabled.\n{assistant.MISSING}\n",
               file=sys.stderr, flush=True)
@@ -194,6 +226,7 @@ def build_app(cfg, verbose: bool) -> dict:
         "cfg": cfg,
         "corpus": corpus,
         "bm25": bm25,
+        "retriever": retriever,
         "agent": agent,
         "TurnRequest": turn_request,
         "verbose": verbose,

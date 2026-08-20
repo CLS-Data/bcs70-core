@@ -73,7 +73,9 @@ web/                              the variable atlas: search the metadata, read 
                                   `python3 -m unittest discover -s web/tests`; no install, no built data/
   assistant/                      the assistant's actual logic: router.py, prompts.py, tools.py (search/inspect/
                                   coverage/list_harmonised over the dictionaries), retrieval.py (BM25
-                                  by meaning, plus per-sweep coverage), choices.py,
+                                  by meaning, per-sweep coverage, rank fusion), vectors.py +
+                                  build_embeddings.py (optional local semantic index, gitignored and
+                                  never built by CI), expansion.py (other wordings), choices.py,
                                   corpus.py, ollama.py — all standard library — plus graph.py (the LangGraph),
                                   llm.py and agent.py, which need the `assistant` extra. See its README.
 

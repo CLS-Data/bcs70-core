@@ -1,8 +1,8 @@
-"""The three tools the model can call over the corpus.
+"""The four tools the model can call over the corpus.
 
 One per thing the interview actually gets stuck on: whether a concept was
-measured at all, what a variable's codes mean, and whether the repository has
-already harmonised it.
+measured at all, where it was measured, what a variable's codes mean, and
+whether the repository has already harmonised it.
 
 Each executor returns `(text, display)`. `text` is what the model reads and
 is kept terse — an 8B model handed three screens of dictionary output stops
@@ -193,14 +193,16 @@ def lc_tools(cfg: Config):
 
 # ── Executors ───────────────────────────────────────────────────────────
 
-def _search(corpus, bm25, cfg: Config, args: dict) -> tuple[str, dict]:
+def _search(corpus, bm25, cfg: Config, args: dict,
+            retriever=None, settings=None) -> tuple[str, dict]:
     query = str(args.get("query") or "").strip()
     wave = args.get(cfg.wave_term) or None
     if not query:
         return "No query given. Call this with what you are looking for.", {"note": "empty query"}
 
-    found = retrieval.search_grouped(corpus, bm25, query,
-                                     limit=cfg.candidates, wave=wave)
+    limit = getattr(settings, "candidates", None) or cfg.candidates
+    found = retrieval.search_grouped(corpus, bm25, query, limit=limit, wave=wave,
+                                     retriever=retriever, settings=settings)
 
     if found["unknown_wave"]:
         return (
@@ -226,7 +228,29 @@ def _search(corpus, bm25, cfg: Config, args: dict) -> tuple[str, dict]:
     head = f'{len(groups)} match{"" if len(groups) == 1 else "es"}'
     if wave:
         head += f" in {wave}"
-    return f"{head}:\n{lines}", {"groups": groups, "note": "lexical"}
+
+    # How the answer was reached is part of the answer. The transcript shows
+    # every lookup, and "also tried these three wordings" is what tells a
+    # researcher whether a thin result means the study lacks the concept or
+    # only that the search missed it.
+    how = found.get("how") or {}
+    also = [q for q in (how.get("queries") or [])[1:]]
+    method = []
+    if how.get("semantic"):
+        method.append("by meaning as well as by words")
+    if also:
+        method.append(f'also searched: {", ".join(also)}')
+    if how.get("note"):
+        method.append(how["note"])
+    if method:
+        head += f' ({"; ".join(method)})'
+
+    return f"{head}:\n{lines}", {
+        "groups": groups,
+        "queries": how.get("queries") or [query],
+        "semantic": bool(how.get("semantic")),
+        "note": "hybrid" if how.get("semantic") else "lexical",
+    }
 
 
 # Names that differ from this one only in their digits.
@@ -268,12 +292,13 @@ def _near_misses(corpus, name: str) -> tuple[list[str], int]:
     return out[:MAX_SUGGESTIONS], len(out)
 
 
-def _coverage(corpus, bm25, cfg: Config, args: dict) -> tuple[str, dict]:
+def _coverage(corpus, bm25, cfg: Config, args: dict,
+              retriever=None, settings=None) -> tuple[str, dict]:
     concept = str(args.get("concept") or args.get("query") or "").strip()
     if not concept:
         return "No concept given. Call this with what to look for.", {"note": "empty query"}
 
-    found = retrieval.coverage(corpus, bm25, concept)
+    found = retrieval.coverage(corpus, bm25, concept, retriever, settings)
     if found["unknown_terms"]:
         return (
             f'Nothing in "{concept}" appears in any dictionary. Try the wording '
@@ -458,13 +483,14 @@ def _harmonised(corpus, args: dict) -> tuple[str, dict]:
                                             "note": f"{len(matches)} in the registry"}
 
 
-def run(corpus, bm25, cfg: Config, name: str, args: dict) -> tuple[str, dict]:
+def run(corpus, bm25, cfg: Config, name: str, args: dict,
+        retriever=None, settings=None) -> tuple[str, dict]:
     if name == SEARCH:
-        return _search(corpus, bm25, cfg, args)
+        return _search(corpus, bm25, cfg, args, retriever, settings)
     if name == INSPECT:
         return _inspect(corpus, cfg, args)
     if name == COVERAGE:
-        return _coverage(corpus, bm25, cfg, args)
+        return _coverage(corpus, bm25, cfg, args, retriever, settings)
     if name == HARMONISED:
         return _harmonised(corpus, args)
     return (

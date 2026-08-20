@@ -225,6 +225,37 @@ k1        = 1.2     # BM25 term-frequency saturation
 b         = 0.75    # BM25 length normalisation
 pool      = 150     # documents scored before grouping
 
+# Semantic search. Optional: the index is built locally by
+# `python3 web/build_embeddings.py` against a local embedding model, and
+# without it retrieval is BM25 alone and says so. `semantic_pool` is how many
+# nearest neighbours are fetched before fusion; the weights and `fusion_k`
+# control reciprocal rank fusion, where a larger k flattens the difference
+# between ranks.
+embed_model     = "nomic-embed-text:latest"
+embed_timeout   = 300
+
+# Dimensions kept per vector; 0 keeps whatever the model returns. The scan is
+# linear in this: 768 costs ~450 ms over 32,000 variables and 100 MB, 256
+# costs ~160 ms and 33 MB while still agreeing with the full vector on 95% of
+# the top ten. Only safe on a model trained to be truncated, which
+# nomic-embed-text is — reset this to 0 if you change embed_model.
+embed_dims      = 256
+semantic        = true
+semantic_pool   = 60
+fusion_k        = 60
+lexical_weight  = 1.0
+semantic_weight = 1.0
+
+# Query expansion. The dictionaries are written in questionnaire English and
+# researchers ask in concept English, so one phrasing reaches only some of
+# what exists: "general health" finds the 42y-51y variables, "self rated
+# health" finds the 34y and 38y ones, and neither finds both. The model is
+# asked for alternative phrasings and every one is retrieved, then fused.
+# One extra model call per lookup, so it is worth turning off for speed.
+expand          = true
+expansions      = 3
+expand_timeout  = 30
+
 # The coverage tool, which reports a concept sweep by sweep. Both thresholds
 # are a share of the query's idf mass that a label has to account for: at or
 # above `strong` the sweep is reported as measuring the concept, at or above

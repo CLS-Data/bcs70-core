@@ -82,6 +82,7 @@ async function send(text) {
       agentic: modelUsesTools(),
       modelThinks: modelThinks(),
       helperThinks: helperThinks(),
+      retrieval: chat.settings.retrieval || undefined,
     }, signal)) {
       // A superseded turn keeps only what ratchets: its draft was computed
       // from a real prefix of this conversation, so its checklist progress
@@ -569,6 +570,15 @@ async function start() {
       return off("The assistant's dependencies aren't installed. " +
                  "Run: uv sync --extra assistant");
     }
+    // Whether there is a semantic index, and what the configured retrieval
+    // defaults are. Both come from the server so the drawer never holds a
+    // second copy of dataset.toml.
+    chat.semantic = health.semantic || { available: false };
+    if (!chat.settings.retrieval && health.retrieval) {
+      chat.settings.retrieval = { ...health.retrieval };
+      saveSettings();
+    }
+
     chat.interview = await fetch("/api/interview").then((r) => r.json());
     // Checked here, once, rather than trusted. A payload without steps used
     // to surface as "cannot read properties of undefined" partway through a

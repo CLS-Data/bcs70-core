@@ -27,6 +27,7 @@ from typing import Any
 from config import Config
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 
+from . import retrieval
 from .graph import build
 
 # A tool hop is two nodes, so the hop cap alone cannot bound the graph. This
@@ -50,6 +51,7 @@ class TurnRequest:
     agentic: bool = True
     model_thinks: bool = False
     helper_thinks: bool = False
+    retrieval: Any = None      # retrieval.Settings for this turn
 
     @classmethod
     def from_json(cls, body: dict, cfg: Config) -> "TurnRequest":
@@ -66,6 +68,7 @@ class TurnRequest:
             agentic=bool(body.get("agentic", True)),
             model_thinks=bool(body.get("modelThinks")),
             helper_thinks=bool(body.get("helperThinks")),
+            retrieval=retrieval.Settings.from_json(body.get("retrieval"), cfg),
         )
 
 
@@ -113,10 +116,13 @@ def to_messages(raw: list[dict]) -> list[AnyMessage]:
 
 
 class Agent:
-    def __init__(self, corpus, bm25, cfg: Config):
+    def __init__(self, corpus, bm25, cfg: Config, retriever=None):
         self.corpus = corpus
         self.bm25 = bm25
         self.cfg = cfg
+        # Built once by the server, which owns the vector index; None here
+        # means lexical-only, which is a working assistant, not a broken one.
+        self.retriever = retriever or retrieval.Retriever(corpus, bm25, cfg)
         self.graph = build()
 
     def run(self, req: TurnRequest) -> Iterator[dict[str, Any]]:
@@ -140,6 +146,14 @@ class Agent:
                 "cfg": self.cfg,
                 "corpus": self.corpus,
                 "bm25": self.bm25,
+                "retriever": self.retriever,
+                # The expansion model is the helper, not the interviewer:
+                # rephrasing a search is exactly the small, cheap, structured
+                # job the helper exists for.
+                "retrieval": req.retrieval.but(
+                    helper_model=req.helper_model or req.model,
+                    base_url=req.base_url or self.cfg.ollama,
+                ),
                 "base_url": req.base_url or self.cfg.ollama,
                 "model": req.model,
                 "helper_model": req.helper_model,
