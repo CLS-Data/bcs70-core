@@ -728,8 +728,10 @@ function renderBasket() {
 function syncDerivedFields() {
   const wavesField = $("#f-waves");
   const sourcesField = $("#f-sources");
-  if (!state.basket.length) return;
 
+  // An empty basket clears the untouched fields rather than leaving them.
+  // Returning early here meant removing the last candidate left its variables
+  // sitting in the form — and those fields go straight into the issue URL.
   const waves = [...new Set(state.basket.map((b) => b.wave))]
     .sort((a, b) => state.manifest.waves.indexOf(a) - state.manifest.waves.indexOf(b));
   if (!wavesField.dataset.touched) wavesField.value = waves.join(", ");

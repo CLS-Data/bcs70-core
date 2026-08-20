@@ -374,17 +374,24 @@ def lookups(state: TurnState, config: RunnableConfig) -> dict:
             args = {"query": str(args)}
 
         write({"type": "tool_call", "name": name, "args": args})
-        text, display = toolkit.run(run["corpus"], run["bm25"], cfg, name, args,
-                                    run.get("retriever"), run.get("retrieval"))
+        found_text, display = toolkit.run(run["corpus"], run["bm25"], cfg, name, args,
+                                          run.get("retriever"), run.get("retrieval"))
         # Warned before the budget runs out, not only when it has. A model
         # told at the last moment has already wasted the turn.
+        text = found_text
         if spent:
             text += ("\n\nThat was the last lookup available this turn. Stop "
                      "searching and put your question to the researcher now.")
         elif left <= 2:
             text += (f"\n\n({left} lookup{'' if left == 1 else 's'} left this "
                      f"turn. Ask your question unless another is essential.)")
-        write({"type": "tool_result", "name": name, "args": args, "display": display})
+        # `text` carries what the model reads, so the browser can post it back
+        # next turn — without it, a conversation's own history says every
+        # lookup returned nothing, and the model searches the same thing again.
+        # The budget nudge is deliberately NOT included: it is true for this
+        # turn only, and a stale one read back later is a lie about the budget.
+        write({"type": "tool_result", "name": name, "args": args,
+               "display": display, "text": found_text})
         out.append(ToolMessage(content=text, name=name,
                                tool_call_id=call.get("id") or name))
         found.extend(_variables_in(display))
@@ -567,7 +574,7 @@ def _variables_in(display: dict) -> list[dict]:
 def route(state: TurnState, config: RunnableConfig) -> str:
     if not getattr(state["messages"][-1], "tool_calls", None):
         return DRAFT
-    return PRESS if state.get("hops", 0) >= _run(config)["cfg"].max_hops - 1 else LOOKUPS
+    return PRESS if _run(config)["cfg"].hops_spent(state.get("hops", 0)) else LOOKUPS
 
 
 def build():
