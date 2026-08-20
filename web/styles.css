@@ -359,11 +359,21 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 .row.is-current { background: var(--paper); box-shadow: inset 3px 0 0 var(--contour); }
 
 /* A checkbox beside the row, sharing its bottom rule so the two read as one
-   line rather than as a control floating over a list. */
-.pickable { display: flex; align-items: stretch; }
+   line rather than as a control floating over a list. The hover and the
+   open-row marker belong to the whole line for the same reason: anything
+   drawn on the button alone starts to the right of the checkbox and leaves
+   it stranded outside. */
+.pickable {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--rule);
+}
 .pickable .row { border-bottom: 0; }
-.pickable { border-bottom: 1px solid var(--rule); }
 .pickable:hover { background: var(--paper-3); }
+.pickable.is-current {
+  background: var(--paper);
+  box-shadow: inset 3px 0 0 var(--contour);
+}
+.pickable.is-current .row { background: none; }
 .pickable .pick {
   flex: 0 0 auto; align-self: center;
   margin: 0 0 0 14px;

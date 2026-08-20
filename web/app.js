@@ -453,12 +453,14 @@ function renderDerivedList() {
     };
     // A real checkbox beside the row rather than inside it: a button cannot
     // legally contain one, and the native control brings its own keyboard
-    // handling and screen-reader semantics.
-    return head + `<li class="pickable">
+    // handling and screen-reader semantics. The open-row marker goes on the
+    // <li> rather than the button, so it runs down the whole line with the
+    // checkbox inside it instead of starting after it.
+    return head + `<li class="pickable${cur}">
       <input type="checkbox" class="pick" data-pick="${esc(d.id)}"
              ${state.picked.has(d.id) ? "checked" : ""}
              aria-label="Include ${esc(d.id)} in the download">
-      <button class="row${cur}" data-id="${esc(d.id)}"
+      <button class="row" data-id="${esc(d.id)}"
         draggable="true" data-drag="${esc(JSON.stringify(payload))}">
         <span class="row-top">
           <span class="row-name">${esc(d.id)}</span>
