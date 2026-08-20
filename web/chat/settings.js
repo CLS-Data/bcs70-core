@@ -59,17 +59,21 @@ function renderRetrieval(s) {
       <span class="field-label">Words vs meaning
         <em>${esc(balance(r))}</em></span>
       <input id="cs-balance" type="range" min="0" max="100" step="5"
-             value="${esc(String(Math.round(100 * r.semanticWeight /
-               ((r.lexicalWeight + r.semanticWeight) || 1))))}"
+             value="${esc(String(meaningShare(r)))}"
              ${sem.available && r.semantic ? "" : " disabled"}>
       <span class="field-help">Which side wins when the two disagree. Exact
         names and codes come from words; concepts come from meaning.</span>
     </label>`;
 }
 
+/* The slider's position: the share of the fusion given to meaning. */
+function meaningShare(r) {
+  return Math.round(100 * r.semanticWeight /
+    ((r.lexicalWeight + r.semanticWeight) || 1));
+}
+
 function balance(r) {
-  const total = (r.lexicalWeight + r.semanticWeight) || 1;
-  const pct = Math.round(100 * r.semanticWeight / total);
+  const pct = meaningShare(r);
   if (pct <= 20) return "mostly words";
   if (pct >= 80) return "mostly meaning";
   if (pct === 50) return "even";
@@ -228,5 +232,3 @@ export async function connect() {
   if (!chat.messages.length) renderTranscript();
   if (chat.panel === "settings") renderSettings();
 }
-
-/* ── Persistence ───────────────────────────────────────────────────── */

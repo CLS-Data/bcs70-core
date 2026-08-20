@@ -37,7 +37,6 @@ export function renderChecklist() {
    there are none, fall back to the common answers for the step THE
    QUESTION was about, never the step the checklist has reached: those two
    drift apart routinely, and offering "a continuous number" in reply to
-
    "which waves?" is worse than offering nothing at all. */
 export function renderReplies() {
   const el = $("#chat-replies");

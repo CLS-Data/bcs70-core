@@ -60,14 +60,23 @@ class NoteSlot:
 
 @dataclass(frozen=True)
 class Intent:
-    """One thing the assistant can be asked to do."""
+    """One thing the assistant can be asked to do.
+
+    Everything an intent changes about a turn is declared here, so adding one
+    stays a config change. It did not use to be: `prompts.py` compared
+    `intent.id` against "interview" to decide two of these, and the browser
+    compared against "explore" to decide the third, so an intent added later
+    silently got the wrong behaviour whatever its config said.
+    """
 
     id: str
     label: str
     description: str
     instructions: str
-    advances: bool      # does answering this move the checklist on?
-    heuristic: str      # "question" marks where the fallback rule sends one
+    advances: bool          # does answering this move the checklist on?
+    shows_checklist: bool   # is the checklist's state woven into the prompt?
+    offers_choices: bool    # may the reply end with answer buttons?
+    heuristic: str          # "question" marks where the fallback rule sends one
 
 
 @dataclass(frozen=True)
@@ -261,6 +270,14 @@ class Config:
                 description=" ".join(i.get("description", "").split()),
                 instructions=i.get("instructions", "").strip(),
                 advances=bool(i.get("advances", False)),
+                # Both default to whatever `advances` says, so the two intents
+                # that existed when these were added keep their behaviour
+                # without restating it, and a new intent only declares what
+                # differs.
+                shows_checklist=bool(i.get("shows_checklist",
+                                           i.get("advances", False))),
+                offers_choices=bool(i.get("offers_choices",
+                                          i.get("advances", False))),
                 heuristic=str(i.get("heuristic", "")),
             )
             for i in self._raw.get("intent") or ()
@@ -308,6 +325,18 @@ class Config:
         section["fields"] = dict(section.get("fields") or {})
         section["repo"] = section.get("repo") or detect_repo()
         return section
+
+    @cached_property
+    def issue_required(self) -> list[str]:
+        """Field keys that must be filled in before an issue can be opened.
+
+        Both routes to an issue gate on this — the scratchpad form and the
+        assistant's draft panel — and each used to carry its own copy.
+        """
+        wanted = self.issue.get("required")
+        if not isinstance(wanted, list):
+            return ["name", "waves", "category", "description"]
+        return [str(k) for k in wanted if k in self.issue["fields"]]
 
     # -- assistant tuning ------------------------------------------------
 
@@ -537,6 +566,7 @@ class Config:
                 "template": self.issue.get("template", ""),
                 "titlePrefix": self.issue.get("title_prefix", ""),
                 "fields": self.issue["fields"],
+                "required": self.issue_required,
             },
             "assistant": {"ollama": self.ollama, "model": self.model},
             "nameExamples": list(self.name_examples),

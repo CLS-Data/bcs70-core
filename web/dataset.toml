@@ -183,6 +183,12 @@ repo         = ""                      # blank: detect from the git remote
 template     = "variable_request.yml"
 title_prefix = "[variable] "
 
+# Which fields must be filled in before an issue can be opened, named by their
+# key in [issue.fields] below. Here rather than in the JavaScript because both
+# routes to an issue — the scratchpad form and the assistant's draft panel —
+# gate on it, and each of them used to carry its own copy of the list.
+required     = ["name", "waves", "category", "description"]
+
 [issue.fields]
 name        = "variable-name"
 waves       = "sweeps"
@@ -294,6 +300,18 @@ stopwords = [
 #
 # The FIRST entry is the fallback: used for the opening message, and whenever
 # the router cannot decide.
+#
+# Three booleans decide what an intent changes about a turn. All of them
+# default to whatever `advances` says, so an intent only declares what
+# differs:
+#
+#   advances         answering it credits a checklist step
+#   shows_checklist  the prompt carries what is settled and what is open
+#   offers_choices   the reply may end with answer buttons
+#
+# They exist because they used to be decided by comparing the intent's id
+# against "interview" in prompts.py and "explore" in the browser, so an
+# intent added here got whatever those comparisons happened to give it.
 
 [[intent]]
 id    = "interview"

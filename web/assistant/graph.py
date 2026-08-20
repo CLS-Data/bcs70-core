@@ -265,8 +265,13 @@ def classify(state: TurnState, config: RunnableConfig) -> dict:
         cfg, str(last.content) if last else "",
         has_history=earlier, last_question=asked[-400:], ask_model=ask_model)
 
-    get_stream_writer()({"type": "mode", "mode": mode,
-                         "label": cfg.intent(mode).label, "decided_by": how})
+    intent = cfg.intent(mode)
+    # `advances` travels with the mode so the browser can mark a turn that
+    # ticks nothing off without knowing which intents exist. It used to test
+    # `mode === "explore"`, which is a name from the config appearing in the
+    # markup — and silently wrong for any intent added later.
+    get_stream_writer()({"type": "mode", "mode": mode, "label": intent.label,
+                         "advances": intent.advances, "decided_by": how})
     return {"mode": mode}
 
 

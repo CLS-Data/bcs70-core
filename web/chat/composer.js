@@ -36,7 +36,6 @@ export function renderComposer() {
 /* Reasoning is off by default and belongs next to Send, not three panels
    away in Setup: it is the one setting worth changing mid-conversation,
    because whether a question deserves half a minute of deliberation depends
-
    on the question. Absent entirely on models that cannot do it. */
 export function renderThinkToggle() {
   const btn = $("#chat-think");

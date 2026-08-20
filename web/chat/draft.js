@@ -3,7 +3,7 @@
 
 import { $, $$ } from "./dom.js";
 import { esc } from "./markup.js";
-import { A, capitaliseWave, chat, restore, saveSession } from "./state.js";
+import { A, capitaliseWave, chat, saveSession } from "./state.js";
 
 /* Every name in the draft is checked against the real index before it is
    shown. This is the backstop for the one failure mode that matters: a model
@@ -11,18 +11,28 @@ import { A, capitaliseWave, chat, restore, saveSession } from "./state.js";
    to exist. A flagged name is not removed — you may have typed a real name
    the site cannot resolve — but it is never presented as if the corpus
    confirmed it. */
+// Built once from the ~32,000-row index rather than on every render: this
+// runs on each draft event and each source-variable removal, and the corpus
+// does not change while the page is open.
+let knownNames = null;
+
 export function checkNames(names) {
-  const local = new Set((A().state.vars || []).map((r) => String(r[0]).toLowerCase()));
+  if (!knownNames) {
+    knownNames = new Set((A().state.vars || []).map((r) => String(r[0]).toLowerCase()));
+  }
   return names.map((n) => ({
     name: n,
-    known: chat.knownVars?.[n] ?? local.has(String(n).toLowerCase()),
+    known: chat.knownVars?.[n] ?? knownNames.has(String(n).toLowerCase()),
   }));
 }
 
 export function refreshGate() {
   const issue = $("#cd-issue");
   if (!issue) return;
-  const missing = ["name", "waves", "category", "description"]
+  // The same list the scratchpad form gates on, from the config. Two copies
+  // of "what an issue needs" is one copy too many, and the drifting one is
+  // always the one you are not reading.
+  const missing = A().requiredFields()
     .filter((k) => !String(chat.draft[k] || "").trim());
   const ready = missing.length === 0;
   issue.href = ready ? issueUrl() : "#";
@@ -40,7 +50,7 @@ export function renderDraft() {
   // A background extraction can land while the researcher is mid-sentence
   // in one of these boxes. Put the caret back where it was.
   const active = document.activeElement;
-  const restore = el.contains(active) && active.id
+  const caret = el.contains(active) && active.id
     ? { id: active.id, start: active.selectionStart, end: active.selectionEnd }
     : null;
 
@@ -121,11 +131,11 @@ export function renderDraft() {
   $("#cd-scratch")?.addEventListener("click", toScratchpad);
   $("#cd-copy")?.addEventListener("click", copyMarkdown);
 
-  if (restore) {
-    const back = $(`#${restore.id}`);
+  if (caret) {
+    const back = $(`#${caret.id}`);
     if (back) {
       back.focus();
-      try { back.setSelectionRange(restore.start, restore.end); }
+      try { back.setSelectionRange(caret.start, caret.end); }
       catch { /* a <select> has no selection range */ }
     }
   }
@@ -169,7 +179,9 @@ export async function copyMarkdown() {
   const d = chat.draft;
   const text = [
     `## ${d.name || "unnamed variable"}`, "",
-    `**${esc(capitaliseWave())}:** ${d.waves || "—"}`,
+    // No esc() here: this is markdown bound for the clipboard, not markup.
+    // Escaping it turned an apostrophe in the wave term into `&#39;`.
+    `**${capitaliseWave()}:** ${d.waves || "—"}`,
     `**Category:** ${d.category || "—"}`, "",
     "### What should this variable capture?", d.description || "—", "",
     "### Known or candidate source variables", sourceLines() || "—", "",
@@ -182,5 +194,3 @@ export async function copyMarkdown() {
     $("#cd-status").textContent = "Couldn't reach the clipboard.";
   }
 }
-
-/* ── Settings ──────────────────────────────────────────────────────── */

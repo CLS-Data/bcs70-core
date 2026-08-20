@@ -39,7 +39,13 @@ export const chat = {
   busy: false,        // a request is in flight
   answered: false,    // …but the reply and its choices have already landed
   phase: "",          // what to show in the working indicator
-  mode: "",           // how the server read the last message
+  // How the server read the last message. The label and whether the intent
+  // advances the checklist both come from the server, so the browser never
+  // needs to know which intents exist — it used to test `mode === "explore"`,
+  // which is a config id spelled out in the markup.
+  mode: "",
+  modeLabel: "",
+  modeAdvances: true,
   turn: 0,            // which turn owns the transcript right now
   abort: null,
   panel: "chat",
