@@ -82,9 +82,19 @@ something worth keeping — but they were not answering a question, so nothing i
 ticked. Facts captured, progress not claimed.
 
 **Adding a capability is a config change.** Add an `[[intent]]`; the router
-offers it and the assistant works to its instructions. No branch in
-`router.py`, none in `prompts.py`, none in `graph.py` — which asks
-`intent.advances` rather than comparing against a name.
+offers it and the assistant works to its instructions. Everything an intent
+changes about a turn is declared, never inferred from its name:
+
+| | |
+|---|---|
+| `advances` | answering it credits a checklist step |
+| `shows_checklist` | the prompt carries what is settled and what is open |
+| `offers_choices` | the reply may end with answer buttons |
+
+The last two default to whatever `advances` says. They exist because they were
+once decided by comparing the id against `"interview"` in `prompts.py` and
+`"explore"` in the browser, so a third intent got whatever those comparisons
+happened to give it.
 
 ## The router
 
@@ -169,42 +179,36 @@ health:
 | + semantic | **6 of 8** | ~325 ms |
 | + expansion | **7 of 8** | ~2 s |
 
-**The index is optional and is not in the repository.** It is built locally by
-`python3 web/build_embeddings.py` against a local embedding model, takes about
-four minutes, and lands in the gitignored `web/data/`. CI has neither Ollama
-nor the file, so everything degrades to lexical search and says so — in the
-server's first line, in `/api/health`, and as a disabled switch in the drawer
-carrying the reason.
+**The index is optional and not in the repository.** Built locally by
+`python3 web/build_embeddings.py` in about four minutes, into the gitignored
+`web/data/`. CI has neither Ollama nor the file, so everything degrades to
+lexical search and says so — in the server's first line, in `/api/health`, and
+as a disabled switch carrying the reason.
 
-**No numpy, and none wanted.** The vectors live in an `array('f')` and a dot
-product over a slice of one is C-backed: a full scan of 32,454 variables costs
-about 150 ms at 256 dimensions. Truncating `nomic-embed-text` from 768 to 256
-still agrees with the full vector on 95% of the top ten while being 2.8×
-faster and a third the size, so 256 is the default — and only safe because
-that model is trained for it.
+**No numpy, and none wanted.** The vectors live in an `array('f')`; a dot
+product over a slice of one is C-backed, so a full scan of 32,454 variables
+costs ~150 ms at 256 dimensions. Truncating `nomic-embed-text` to 256 still
+agrees with the full vector on 95% of the top ten at 2.8× the speed — safe
+only because that model is trained for it.
 
 **Vectors are positional, so a stale index is refused rather than used.** Row
-8,000 of the file is row 8,000 of `variables.json`; rebuild the site with one
-variable inserted and every vector after it describes something else, with
-plausible scores and real names and nothing that looks wrong. The index
-therefore carries a fingerprint of the names it was built from, and a mismatch
-disables semantic search with the rebuild command. Refusing to search is
-recoverable; silently searching the wrong corpus is not.
+8,000 of the file is row 8,000 of `variables.json`. Insert one variable and
+every vector after it describes something else, with plausible scores, real
+names, and nothing that looks wrong — so the index carries a fingerprint of
+the names it was built from. Refusing to search is recoverable; silently
+searching the wrong corpus is not.
 
-**What none of this fixes is `coverage`'s confirmation bar.** A semantically
-found variable has, by definition, a poor lexical share, so it skips the floor
-that keeps coincidences out — but it never counts as *measured*, because the
-thresholds are calibrated on idf mass and mean nothing against a cosine. It
-surfaces as a candidate for the reader to judge, which is what the middle tier
-is for.
+**Meaning surfaces candidates; it never confirms one.** A semantically found
+variable has a poor lexical share by definition, so it skips `coverage`'s
+floor — but it can never count as *measured*, because those thresholds are idf
+mass and mean nothing against a cosine. That is what the middle tier is for.
 
-`inspect_variable` **never resolves a name it was not given.** Where a lookup
-misses, it suggests names differing only in their digits — the same question at
-another wave, `b8hlthgn` → `b9hlthgn` — and leaves the choice to the model.
-Edit distance would be the obvious thing here and is the wrong thing: 93% of
-this study's 31,947 names have another *real* variable one edit away, and one
-edit from `b960434` includes height in feet, in metres and in centimetres. A
-fuzzy match would return a plausible, wrong, unfalsifiable answer.
+`inspect_variable` **never resolves a name it was not given.** On a miss it
+suggests names differing only in their digits — `b8hlthgn` → `b9hlthgn` — and
+leaves the choice to the model. Edit distance is the obvious thing and the
+wrong one: 93% of this study's 31,947 names have another *real* variable one
+edit away, and one edit from `b960434` covers height in feet, metres and
+centimetres. A fuzzy match returns a plausible, wrong, unfalsifiable answer.
 
 ## The state
 
@@ -238,7 +242,7 @@ reads, so `stream_mode="custom"` is the only mode used.
 
 | event | |
 |---|---|
-| `mode` | which intent; the transcript marks an exploration |
+| `mode` | which intent, its label, and whether it advances the checklist |
 | `thinking` | the model's working — buffered and sent **once**, shown collapsed |
 | `content` | prose, streamed |
 | `tool_call` / `tool_result` | what it looked up, with arguments, and what came back |
@@ -273,14 +277,13 @@ depend on the top half and must keep working in a checkout that installed
 nothing. Importing this package does not pull in LangGraph; `assistant.load()`
 does, and names the fix when it cannot.
 
-It also decides what can be tested. CI installs nothing, so a test that
-imports `graph.py` or `agent.py` cannot run there — which is why the rules
-worth guarding have been moved out of them: the hop budget to
-`Config.hops_spent`, and the message pairing to `transcript.plan`. Both were
-wrong once, in ways nothing downstream could show you. What is left in the
-bottom half is a graph, two model builders and a mapping.
+It also decides what can be tested: CI installs nothing, so a test importing
+`graph.py` or `agent.py` cannot run there. Rules worth guarding therefore live
+outside them — the hop budget in `Config.hops_spent`, the message pairing in
+`transcript.plan`. Both were wrong once, invisibly. What is left in the bottom
+half is a graph, two model builders and a mapping.
 
-## Seven things that are not what you would write first
+## Eight things that are not what you would write first
 
 Each was a bug before it was a decision.
 
@@ -294,45 +297,47 @@ things: a terse string for the model and a richer structure for the transcript
 card. A tool's return value has room for one.
 
 **The choices come from the model, inline.** It ends the message with
-`<choices>…</choices>`, parsed off the stream — about 200 ms to buttons, against
+`<choices>…</choices>`, parsed off the stream: ~200 ms to buttons, against
 3.5–8.6 s when a second model reverse-engineered them from the prose. The span
-**closes at the closing tag** and normal output resumes; swallowing to the end
-of the stream once discarded twenty-one seconds of a reply. Text either side of
-the removed span gets its paragraph break back, or a question mark runs into
-the next capital.
+**closes at the closing tag** and normal output resumes — swallowing to the end
+of the stream once discarded twenty-one seconds of a reply — and text either
+side of it gets its paragraph break back.
 
 **Reasoning is stripped from the answer as well as read from the API field.**
-Some models emit `<think>` inline, and one — told *not* to reason — reasons
-anyway, stops using the field, and dumps it into the reply trailing a stray
-`</think>`. `llm.py` may therefore keep sending `reasoning=False`, which is a
-real saving where honoured. The two changes only work together.
+Some models emit `<think>` inline; one, told *not* to reason, reasons anyway
+and dumps it into the reply trailing a stray `</think>`. That is what lets
+`llm.py` keep sending `reasoning=False`, a real saving where honoured. The two
+only work together.
 
 **The hop budget is announced, not just enforced.** Stated in the prompt and
 counted down in the tool results from two remaining. Warning only on the last
 hop comes too late — the turn is already spent.
 
-**A silent model does not end the turn.** `_carry_on` asks the next open step's
-own probe, with that step's answers as buttons; with every step settled it says
-the request is complete and points at the Draft panel. It used to leave a shrug
-in the transcript, which hands back a conversation the researcher came here to
-be led through.
+**A silent model does not end the turn.** `_carry_on` asks the next open
+step's own probe, with that step's answers as buttons; with everything settled
+it says the request is complete and points at the Draft panel. It used to
+leave a shrug in the transcript, handing back a conversation the researcher
+came here to be led through.
 
 **A correction may reopen a step.** The checklist ratchets forward so a model
-forgetting turn two on turn six cannot un-tick it. A researcher changing their
-mind is the opposite case: the extractor reports `revised`, and those steps go
-back to unsettled. The `options` event names the step its question was about,
-because crediting whichever step happened to be *next* meant answering one
-question ticked another off.
+forgetting turn two on turn six cannot un-tick it; a researcher changing their
+mind is the opposite case, and the extractor reports `revised`.
+
+**The `options` event names the step its question was about** — crediting
+whichever step happened to be *next* meant answering one question ticked
+another off. It names none when the intent does not advance, and none when
+every step is settled, since there is then no question: `first_unsettled`
+returns the last step as a fallback, and reading that as an answer offered the
+last step's stock replies under "the request is complete".
 
 ## When something goes wrong
 
 The transcript gets a sentence; the browser console gets the stack. A
-client-side fault is otherwise indistinguishable from a model or network
-failure — one showed up as *"Something went wrong. Cannot read properties of
-undefined (reading 'map')"*, which had nothing to do with the model:
-`/api/interview` had answered without its `steps`. That payload is now checked
-once at boot, so the same cause disables the drawer with the actual fix in its
-tooltip. The usual reason is an older `server.py` still holding the port.
+client-side fault is otherwise indistinguishable from a model or network one —
+*"Cannot read properties of undefined"* once meant `/api/interview` had
+answered without its `steps`, nothing to do with the model. That payload is
+checked at boot now, so the same cause disables the drawer with the actual fix
+in its tooltip; the usual reason is an older `server.py` holding the port.
 
 ## Changing things
 

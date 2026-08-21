@@ -16,8 +16,8 @@ So the model is asked for a few alternative phrasings and every one is
 retrieved. It costs one extra model call per lookup, which is why it can be
 turned off.
 
-Standard library, over `ollama.complete`, deliberately. Retrieval is used by
-the atlas's own `/api/search` as well as by the assistant, and a checkout that
+Standard library, over `ollama.complete`, deliberately: retrieval is reached
+from `/api/search` as well as from the assistant, and a checkout that
 installed nothing should not quietly get a worse search than one that did.
 """
 
