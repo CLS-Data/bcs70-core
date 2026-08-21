@@ -285,15 +285,30 @@ def interviewer(state: TurnState, config: RunnableConfig) -> dict:
     if not reply.content.strip():
         return _carry_on(state, run)
 
-    # An exploration names no step: the researcher asked us something, and
-    # crediting a checklist step for that is how a question about coverage got
-    # filed as an answer about naming.
-    driving = None
-    if _advances(run, state):
-        cfg = run["cfg"]
-        driving = cfg.steps[cfg.first_unsettled(state.get("covered") or {})].id
+    driving = _driving_step(run, state)
     options, step = _publish_options(run, reply.content, options, driving)
     return {"messages": [reply], "options": options, "asked_step": step}
+
+
+def _driving_step(run: dict, state: TurnState) -> str | None:
+    """Which checklist step this message is working on, if any.
+
+    None in two cases, and they are different:
+
+    - An exploration names no step. The researcher asked us something, and
+      crediting a checklist step for that is how a question about coverage
+      got filed as an answer about naming.
+    - With every step settled there is no step being worked on. Naming one
+      anyway is what put the last step's stock answers — "follow the existing
+      family's naming" — underneath a message saying the request was already
+      complete and to open the Draft panel. `first_unsettled` returns the last
+      index as a fallback, which reads exactly like a real answer.
+    """
+    cfg = run["cfg"]
+    covered = state.get("covered") or {}
+    if not _advances(run, state) or cfg.all_settled(covered):
+        return None
+    return cfg.steps[cfg.first_unsettled(covered)].id
 
 
 def press(state: TurnState, config: RunnableConfig) -> dict:
@@ -307,8 +322,7 @@ def press(state: TurnState, config: RunnableConfig) -> dict:
     reply, options, _ = _speak(state, run, with_tools=False, force=True)
 
     if reply.content.strip():
-        cfg = run["cfg"]
-        driving = cfg.steps[cfg.first_unsettled(state.get("covered") or {})].id
+        driving = _driving_step(run, state)
         options, step = _publish_options(run, reply.content, options, driving)
         return {"messages": [reply], "options": options, "asked_step": step}
 
@@ -336,7 +350,7 @@ def _carry_on(state: TurnState, run: dict) -> dict:
         write({"type": "options", "options": [], "step": None})
         return {"messages": [AIMessage(content=text)], "options": [], "asked_step": None}
 
-    if all(covered.get(step.id) for step in cfg.steps):
+    if cfg.all_settled(covered):
         text = ("That is everything on the checklist. Open **Draft** to read the "
                 "request back and file it — or keep going here if you want to "
                 "change any of it.")
