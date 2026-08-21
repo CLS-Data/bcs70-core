@@ -65,6 +65,50 @@ class HopBudget(unittest.TestCase):
         self.assertLessEqual(self.cfg.max_hops - last, 0)
 
 
+class Completeness(unittest.TestCase):
+    """`first_unsettled` returns a fallback, not an answer.
+
+    With every step settled there is no step being worked on, and this
+    returns the last index so a caller indexing `steps` still gets something.
+    Read as "the step in progress" it is wrong, and silently: the interview
+    named that step to the browser, which found no answers offered with the
+    message and fell back to the step's stock replies — so a message saying
+    "the request is complete, open the Draft panel" arrived under three
+    buttons headed "Common answers on name & check".
+    """
+
+    def setUp(self):
+        self.cfg = get_config()
+        self.all_done = {s: True for s in self.cfg.step_ids}
+
+    def test_nothing_settled_is_not_settled(self):
+        self.assertFalse(self.cfg.all_settled({}))
+
+    def test_all_but_one_is_not_settled(self):
+        covered = dict(self.all_done)
+        covered[self.cfg.step_ids[-1]] = False
+        self.assertFalse(self.cfg.all_settled(covered))
+
+    def test_everything_settled_is_settled(self):
+        self.assertTrue(self.cfg.all_settled(self.all_done))
+
+    def test_an_unknown_step_id_does_not_count(self):
+        self.assertFalse(self.cfg.all_settled({"not-a-step": True}))
+
+    def test_the_fallback_is_indistinguishable_without_asking(self):
+        """Why `all_settled` has to exist rather than being inferred.
+
+        The last step being open and every step being settled give the same
+        index. Anything deciding "which step is this about" must ask.
+        """
+        last = len(self.cfg.step_ids) - 1
+        open_last = {s: True for s in self.cfg.step_ids[:-1]}
+        self.assertEqual(self.cfg.first_unsettled(open_last), last)
+        self.assertEqual(self.cfg.first_unsettled(self.all_done), last)
+        self.assertFalse(self.cfg.all_settled(open_last))
+        self.assertTrue(self.cfg.all_settled(self.all_done))
+
+
 class StepOrder(unittest.TestCase):
     def test_first_unsettled_walks_forward(self):
         cfg = get_config()

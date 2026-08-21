@@ -92,7 +92,7 @@ reason to guess.
 
     # With every step settled there is nothing left to ask, and a model told
     # to ask anyway invents a seventh question. Say so instead.
-    if all(covered.get(s.id) for s in cfg.steps):
+    if cfg.all_settled(covered):
         step_block = (
             "THE CHECKLIST IS COMPLETE. Do not ask another question. Say the "
             "request looks complete, name in one line anything you are still "

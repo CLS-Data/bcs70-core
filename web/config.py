@@ -519,11 +519,22 @@ class Config:
         )
 
     def first_unsettled(self, covered: dict[str, bool]) -> int:
-        """Index of the step the interview should be working on."""
+        """Index of the step the interview should be working on.
+
+        With everything settled there is no such step, and this returns the
+        last one so that callers indexing `steps` still get something. That
+        is a fallback, not an answer — ask `all_settled()` before reading it
+        as "the step being worked on". Not doing so is what offered the last
+        step's stock answers under a message saying the request was complete.
+        """
         for i, step in enumerate(self.steps):
             if not covered.get(step.id):
                 return i
         return len(self.steps) - 1
+
+    def all_settled(self, covered: dict[str, bool]) -> bool:
+        """Is every checklist step answered?"""
+        return all(covered.get(step.id) for step in self.steps)
 
     def hops_spent(self, hops: int) -> bool:
         """Has this turn used every lookup it is allowed?
