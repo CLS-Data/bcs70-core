@@ -159,8 +159,11 @@ class Handler(SimpleHTTPRequestHandler):
 
         if route == "/api/search":
             cfg = self.app["cfg"]
-            # The atlas's own search gets the same retrieval the assistant
-            # does - it is the same corpus and the same question.
+            # Used by the assistant's lookups and by the drawer's own search
+            # button. NOT by the atlas's search box, which scans the index
+            # the page already holds — that is what lets the site be served
+            # as static files, and it finds a fragment of a half-remembered
+            # name, which BM25 cannot match at all.
             return self._json(search_grouped(
                 self.app["corpus"], self.app["bm25"],
                 str(body.get("query") or ""),

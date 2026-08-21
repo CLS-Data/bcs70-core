@@ -56,15 +56,15 @@ python3 web/build_embeddings.py          # ~4 minutes, needs Ollama
 python3 web/build_embeddings.py --check  # is the existing index current?
 ```
 
-This embeds every variable label with a local model so the search can match a
-concept whose wording it does not share — *"How is your health generally"* for
-**self-rated health**. It writes ~33 MB into the gitignored `data/`, so it is
-never committed and CI never builds it.
+Embeds every variable label locally so the assistant's lookups can match a
+concept whose wording they do not share — *"How is your health generally"* for
+**self-rated health**. ~33 MB into the gitignored `data/`, so it is never
+committed and CI never builds it.
 
-Everything works without it: retrieval falls back to BM25 alone, `server.py`
-says which mode it is in on its first line, and the drawer's switch is
-disabled with the reason. Rebuild it after any `build_site.py` that changes
-which variables exist — the index is positional, and a stale one is **refused
+Everything works without it: retrieval falls back to BM25, `server.py` says
+which mode it is in on its first line, and the drawer's switch is disabled
+with the reason. Rebuild it after any `build_site.py` that changes which
+variables exist — the index is positional, and a stale one is **refused
 rather than used**.
 
 `build_site.py` reads the metadata CSVs under the configured `[dataset] root`
@@ -79,9 +79,13 @@ python3 -m unittest discover -s web/tests
 
 Standard library, nothing to install, and no built `data/` required — they run
 against a small synthetic corpus, so they work in a fresh checkout and in CI.
-They cover retrieval: that an exact name ranks first, that a word inside a
-phrase is **not** treated as a name, wave filtering, grouping, and the
-suggestions offered when a name lookup misses.
+
+They cover ranking (an exact name first; a word inside a phrase *not* read as
+a name), wave filtering, grouping, the suggestions offered when a name lookup
+misses, semantic fusion and query expansion against stubs, and the rules that
+were wrong once and are now kept where a test can reach them: the hop budget,
+the checklist's completeness, an intent's declared behaviour, and the pairing
+of a lookup's result to the call that asked for it.
 
 ## Pointing it at another dataset
 
@@ -116,6 +120,15 @@ the file and study it came from. Filter by **measurement level**, by wave from
 the spine, or by file from a variable's detail pane; the three combine, and
 each shows as a clearable chip.
 
+That box scans the index the page already holds, in the browser. It is
+literal, so it finds a fragment of a half-remembered name — `b960`, `hlth` —
+which the assistant's BM25 cannot match at all, since that indexes whole
+tokens. It needs no server, which is what keeps the site static. **The
+assistant's lookups are a different search** over the same corpus, ranked and
+optionally semantic, via `/api/search`. Neither subsumes the other:
+`cigarettes per day` is found by one and not the other, and `b960` the
+reverse.
+
 **Derived** — the harmonised variables, filterable by **category**. Each shows
 the source that produces it, the files it draws on, and the raw variables it
 needs, all clickable back into the metadata. Tick any of them and **download
@@ -127,13 +140,12 @@ open a prefilled GitHub issue. Nothing is submitted until you review it.
 **Assistant** — the same destination, reached by conversation.
 See [assistant/README.md](assistant/README.md).
 
-The level filter reads `measurement_level`, not `variable_type`: the latter is
-the more obvious "type" field and does not discriminate — 31,472 of 32,454
-variables are `numeric`. Both filters draw every option including empty ones,
-for the reason the spine draws empty waves: knowing a search contains no scale
-variables is the answer, not a reason to hide the control. Counts beside each
-option are tallied *before* that filter is applied, so a count says what
-choosing it would give, not what is already on screen.
+The level filter reads `measurement_level`, not `variable_type`: the obvious
+"type" field does not discriminate — 31,472 of 32,454 variables are `numeric`.
+Both filters draw empty options too, for the reason the spine draws empty
+waves: knowing a search has no scale variables is the answer. Counts are
+tallied *before* that filter is applied, so each says what choosing it would
+give, not what is already on screen.
 
 ## Downloading variables as R code
 
@@ -161,18 +173,14 @@ Three things about this are deliberate:
 
 - **The R is shipped verbatim, never regenerated.** A bundle-specific runner
   would be a second implementation of the join, the identifier cleaning and the
-  duplicate resolution, and the day it drifted from the tested one, the
-  researcher's numbers would quietly stop matching this repository's. The
-  bundle's `R/` is this repository's `R/`, minus the variables you did not pick.
-- **The zip is written in the browser.** No server is involved, so this works on
-  a static deploy; `bundle.js` writes the archive format itself rather than
-  taking a dependency, and compresses through `CompressionStream` where the
-  browser has it. The pipeline source is fetched from `data/pipeline.json` only
-  when someone actually downloads something.
+  duplicate resolution — and the day it drifted, the researcher's numbers would
+  quietly stop matching this repository's.
+- **The zip is written in the browser**, so no server is involved. `bundle.js`
+  writes the archive format itself rather than taking a dependency, and fetches
+  the pipeline source only when someone actually downloads something.
 - **The README names what is unverified.** A `draft` variable has passed
-  synthetic tests, which cannot tell you that the codes it recodes are the codes
-  your deposit uses. The selection bar counts them too, so it is visible before
-  the download rather than only after.
+  synthetic tests, which cannot tell you its codes are the codes your deposit
+  uses. The selection bar counts them before the download, not after.
 
 The environment variable is named in `dataset.toml` (`[dataset] data_env`) and
 read by `R/lib/io.R`; leave it empty for a pipeline with no such override and
@@ -198,54 +206,29 @@ distinct.
 
 ## Deploying to GitHub Pages
 
-**Currently unavailable, and the local route above is the supported one.**
-GitHub Pages does not serve from a private account, so while the repository
-is private the workflow below cannot publish. It is kept intact rather than
-deleted: nothing about it has been made wrong by the account change, and it
-works again the moment the repository is public. Note that the assistant is
-local-only by construction — it talks to Ollama on `localhost` — so a
-published copy of this site would carry the drawer but never connect.
+**Dormant: Pages will not serve from a private repository, and this one is
+private.** `.github/workflows/pages.yml` is kept because nothing about it has
+been made wrong — it publishes again as soon as the repository is public. Note
+that the assistant talks to Ollama on `localhost`, so a published copy carries
+the drawer but never connects.
 
+The workflow runs `build_site.py` and uploads this directory on every push to
+`main` touching `web/`, `registry/`, or `bcs70/`. Three things about it:
 
-`.github/workflows/pages.yml` runs `build_site.py` and uploads this directory
-on every push to `main` touching `web/`, `registry/`, or `bcs70/`. The site is
-live at <https://cls-data.github.io/bcs70-core/>.
+- **`data/` is built at publish time, not committed.** The published site is
+  therefore built from the commit being published and cannot disagree with its
+  `registry/`, there is no stale state to detect, and ~88 files of generated
+  JSON stay out of every variable PR's diff.
+- **`registry/**` and `bcs70/**` are trigger paths deliberately.** They are the
+  workflow's real inputs; leaving them out made merges publish nothing.
+- **Settings → Pages → Source must be GitHub Actions**, not a branch. With a
+  branch selected the run goes red without publishing while the old copy stays
+  up, so the site looks fine and is silently frozen.
 
-**`data/` is generated by that workflow, not committed.** This is the single
-most important thing about the setup, and it exists because the alternative
-failed in practice. When `data/` was committed, publishing correct data
-depended on whoever added a variable also remembering to run `build_site.py`
-and commit the result. Nothing enforced it: the freshness check lived in this
-workflow, which only triggered on `web/**`, so a change to `registry/` — the
-exact change that invalidates the data — could never trigger the check that
-would have caught it. Building at publish time removes the failure mode
-instead of guarding against it, and drops ~88 files of generated JSON out of
-every variable PR's diff.
+Publishing exposes the data dictionaries — names, labels, value labels,
+missing-value codes — to anyone. No row of study data is ever included, but
+that is a licensing decision to make deliberately.
 
-Two consequences worth knowing:
-
-- **The published site is built from the commit being published**, so it can
-  never disagree with that commit's `registry/` and `bcs70/`. There is no
-  "stale data" state to detect, and no rebuild step for contributors to forget.
-- **`registry/**` and `bcs70/**` are in the trigger paths deliberately.** They
-  are the workflow's real inputs; leaving them out is what made merges publish
-  nothing.
-
-### Source must be set to GitHub Actions
-
-In **Settings → Pages → Source**, this must be **GitHub Actions**, not a
-branch. With a branch selected, `actions/configure-pages` fails, `upload` and
-`deploy` are skipped, and the run goes red without publishing — while the old
-branch-served copy stays up, so the site looks fine and is silently frozen.
-That is precisely what happened between the merge of PR #16 and this change.
-
-### Two other things to know
-
-- **This repository is public, and so is the site.** The published data
-  dictionaries — variable names, labels, value labels, missing-value codes —
-  are readable by anyone. No row of study data is ever included (see above),
-  but the metadata's licensing is a decision to make deliberately rather than
-  by default.
-- **`data/` is ~21 MB**, most of it the per-file dictionaries, which are
-  fetched lazily and only when a variable is opened. The initial load is the
-  1.9 MB search index (about 350 KB gzipped) plus the manifest.
+`data/` is ~21 MB, mostly the per-file dictionaries, fetched only when a
+variable is opened. The initial load is the 2.0 MB search index (~350 KB
+gzipped) plus the manifest.
