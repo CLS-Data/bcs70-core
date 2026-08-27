@@ -18,4 +18,10 @@ __pycache__/
 # Run 'python3 web/build_site.py' to produce it locally.
 web/data/
 
-docs/
+# Working notes, kept local — with one exception. A parent directory that is
+# excluded cannot have a file re-included from inside it, so the directories
+# are opened up a level at a time and only the shared page let back through.
+docs/*
+!docs/architecture/
+docs/architecture/*
+!docs/architecture/atlas-loop.html

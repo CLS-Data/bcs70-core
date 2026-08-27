@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Atlas Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Sans+3:wght@400;600&display=swap">
+
+<style>
+/* Palette from web/styles.css and images/generate.py — Ordnance Survey mapping
+   colours, because this documents the atlas. One hue, one meaning: sea an
+   agent, contour the moment consent is asked for, moss the catalogue and
+   everything that reads it, rose the secure environment holding the real
+   files, ochre what is proposed but not yet built. */
+:root {
+  --paper:#e9ece7; --paper-2:#f5f7f3; --paper-3:#dfe3dc;
+  --ink:#131a22; --ink-2:#4d5862; --ink-3:#78838c;
+  --rule:#c5ccc3; --contour:#8e2f6b; --ochre:#9a6410;
+  --moss:#2c6b50; --sea:#2a5c8a; --rose:#9b2c4a;
+  --wash-sea:rgba(42,92,138,.10); --wash-contour:rgba(142,47,107,.10);
+  --wash-moss:rgba(44,107,80,.08); --wash-ochre:rgba(154,100,16,.07);
+  --wash-rose:rgba(155,44,74,.06); --atlas-fill:rgba(19,26,34,.022);
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"Source Sans 3",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#11171b; --paper-2:#192026; --paper-3:#232c33;
+    --ink:#e7ece7; --ink-2:#9aa6ac; --ink-3:#6d7a82;
+    --rule:#2b353d; --contour:#e879b8; --ochre:#d9a145;
+    --moss:#6cc198; --sea:#82b8e8; --rose:#e8829b;
+    --wash-sea:rgba(130,184,232,.13); --wash-contour:rgba(232,121,184,.13);
+    --wash-moss:rgba(108,193,152,.11); --wash-ochre:rgba(217,161,69,.10);
+    --wash-rose:rgba(232,130,155,.09); --atlas-fill:rgba(231,236,231,.028);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#11171b; --paper-2:#192026; --paper-3:#232c33;
+  --ink:#e7ece7; --ink-2:#9aa6ac; --ink-3:#6d7a82;
+  --rule:#2b353d; --contour:#e879b8; --ochre:#d9a145;
+  --moss:#6cc198; --sea:#82b8e8; --rose:#e8829b;
+  --wash-sea:rgba(130,184,232,.13); --wash-contour:rgba(232,121,184,.13);
+  --wash-moss:rgba(108,193,152,.11); --wash-ochre:rgba(217,161,69,.10);
+  --wash-rose:rgba(232,130,155,.09); --atlas-fill:rgba(231,236,231,.028);
+}
+
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+.page { max-width:1320px; margin:0 auto; padding:46px 20px 88px;
+  display:flex; flex-direction:column; gap:38px; }
+p { margin:0; max-width:68ch; }
+
+.mast { display:flex; flex-direction:column; gap:12px; }
+.kicker { font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); }
+h1 { margin:0; font-family:var(--mono); font-weight:700;
+  font-size:clamp(28px,4.6vw,42px); line-height:1.08; letter-spacing:-.02em; text-wrap:balance; }
+.standfirst { font-size:19px; color:var(--ink-2); max-width:64ch; }
+
+.why { display:flex; flex-direction:column; gap:22px; }
+section > .kicker { border-top:1px solid var(--rule); padding-top:12px; }
+.kicker + h2 { border-top:none; padding-top:0; }
+.lede { font-size:18px; color:var(--ink-2); max-width:70ch; }
+.lede b { color:var(--ink); font-weight:600; }
+.stats {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:1px; background:var(--rule); border:1px solid var(--rule); border-radius:3px;
+}
+.stat { background:var(--paper-2); padding:18px 20px; display:flex; flex-direction:column; gap:5px; }
+.stat .n {
+  font-family:var(--mono); font-size:clamp(26px,3.2vw,34px); font-weight:700;
+  letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; color:var(--contour);
+}
+.stat .l { font-size:14px; color:var(--ink-2); line-height:1.4; }
+.stat .s { font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3); }
+.pull {
+  border-left:3px solid var(--contour); padding:4px 0 4px 20px;
+  font-size:20px; line-height:1.45; color:var(--ink); max-width:60ch; text-wrap:balance;
+}
+.claims { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px; }
+.claim { display:flex; flex-direction:column; gap:6px; }
+.claim h3 { margin:0; font-family:var(--mono); font-weight:500; font-size:14px; color:var(--moss); }
+.claim p { font-size:15.5px; color:var(--ink-2); }
+.src { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+
+.figure { display:flex; flex-direction:column; gap:16px; }
+.canvas { overflow-x:auto; background:var(--paper-2); border:1px solid var(--rule);
+  border-radius:3px; padding:6px; }
+.canvas svg { display:block; min-width:1140px; width:100%; height:auto; }
+
+.g { transition:opacity .22s ease; }
+.g.dim { opacity:.1; }
+
+.atlas-frame { fill:var(--atlas-fill); stroke:var(--ink-3); stroke-width:1.5; }
+.atlas-tab { fill:var(--paper-2); stroke:var(--ink-3); stroke-width:1.5; }
+.stack-frame { fill:var(--paper-2); stroke:var(--sea); stroke-width:1.5; }
+.t-stack { font-family:var(--mono); font-size:10px; letter-spacing:.14em; fill:var(--sea); }
+.t-atlas { font-family:var(--mono); font-size:11.5px; font-weight:700; letter-spacing:.16em; fill:var(--ink); }
+
+.box { fill:var(--paper-2); stroke:var(--rule); stroke-width:1.25; }
+.box-agent { fill:var(--wash-sea); stroke:var(--sea); stroke-width:1.75; }
+.box-intent { fill:var(--wash-contour); stroke:var(--contour); stroke-width:2.25; }
+.box-tool { fill:var(--paper); stroke:var(--moss); stroke-width:1.25; }
+.box-cat { fill:var(--wash-moss); stroke:var(--moss); stroke-width:1.5; }
+.box-secure { fill:var(--paper-2); stroke:var(--rose); stroke-width:1.4; }
+.box-cloud { fill:var(--paper-2); stroke:var(--sea); stroke-width:1.6; }
+.box-soon { fill:var(--wash-ochre); stroke:var(--ochre); stroke-width:1.4; stroke-dasharray:5 4; }
+.band-tool { fill:none; stroke:var(--moss); stroke-width:1.25; stroke-dasharray:5 4; opacity:.8; }
+.band-sec { fill:var(--wash-rose); stroke:var(--rose); stroke-width:1.5; stroke-dasharray:7 5; }
+
+.t-name { font-family:var(--mono); font-size:13px; font-weight:500; fill:var(--ink); }
+.t-sub { font-family:var(--sans); font-size:11.5px; fill:var(--ink-2); }
+.t-tool { font-family:var(--mono); font-size:11px; font-weight:500; fill:var(--ink); }
+.t-band { font-family:var(--mono); font-size:10px; letter-spacing:.13em; fill:var(--moss); }
+.t-sband { font-family:var(--mono); font-size:10px; letter-spacing:.13em; fill:var(--rose); }
+.t-edge { font-family:var(--mono); font-size:10.5px; fill:var(--ink-3); }
+.t-edge.hot { fill:var(--contour); }
+.t-chip { font-family:var(--mono); font-size:8.5px; letter-spacing:.1em; fill:var(--ochre); }
+
+.ln { fill:none; stroke:var(--ink-2); stroke-width:1.5; }
+.ln-intent { fill:none; stroke:var(--contour); stroke-width:2.25; }
+.ln-tool { fill:none; stroke:var(--moss); stroke-width:1.4; }
+.ln-cat { fill:none; stroke:var(--moss); stroke-width:1.8; }
+.ln-sec { fill:none; stroke:var(--rose); stroke-width:1.8; }
+.ln-back { fill:none; stroke:var(--ink-3); stroke-width:1.4; stroke-dasharray:6 5; }
+.ln-soon { fill:none; stroke:var(--ochre); stroke-width:1.4; stroke-dasharray:6 5; }
+
+.icon { fill:none; stroke:var(--ink); stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.i-moss{stroke:var(--moss)} .i-sea{stroke:var(--sea)} .i-cont{stroke:var(--contour)}
+.i-ochre{stroke:var(--ochre)} .i-rose{stroke:var(--rose)}
+
+.ah{fill:var(--ink-2)} .ah-i{fill:var(--contour)} .ah-t{fill:var(--moss)}
+.ah-b{fill:var(--ink-3)} .ah-s{fill:var(--ochre)} .ah-r{fill:var(--rose)} .ah-c{fill:var(--moss)}
+
+.walk { display:flex; flex-direction:column; gap:14px; }
+.walk-head { font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); border-top:1px solid var(--rule); padding-top:12px; }
+.steps { display:flex; flex-wrap:wrap; gap:8px; }
+.step { font-family:var(--mono); font-size:12px; color:var(--ink-2);
+  background:var(--paper-2); border:1px solid var(--rule); border-radius:2px;
+  padding:7px 12px; cursor:pointer; transition:all .16s ease; }
+.step:hover { border-color:var(--ink-3); color:var(--ink); }
+.step[aria-pressed="true"] { border-color:var(--contour); color:var(--contour);
+  background:var(--wash-contour); font-weight:500; }
+.step:focus-visible { outline:2px solid var(--contour); outline-offset:2px; }
+.walk-note { font-size:16px; color:var(--ink-2); min-height:3.4em;
+  border-left:2px solid var(--rule); padding-left:16px; max-width:76ch; }
+.walk-note b { color:var(--ink); font-weight:600; }
+
+.key { display:flex; flex-wrap:wrap; gap:10px 24px; }
+.key span { font-family:var(--mono); font-size:11px; color:var(--ink-2);
+  display:inline-flex; align-items:center; gap:7px; }
+.swatch { width:20px; height:3px; border-radius:2px; display:inline-block; }
+
+section { display:flex; flex-direction:column; gap:16px; }
+h2 { margin:0; font-family:var(--mono); font-weight:500; font-size:21px;
+  letter-spacing:-.01em; border-top:1px solid var(--rule); padding-top:14px; }
+.notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:22px; }
+.note h3 { margin:0 0 6px; font-family:var(--mono); font-weight:500; font-size:14px; }
+.note p { font-size:15.5px; color:var(--ink-2); }
+.note.a h3{color:var(--sea)} .note.b h3{color:var(--contour)}
+.note.c h3{color:var(--rose)} .note.d h3{color:var(--ochre)}
+
+code { font-family:var(--mono); font-size:.86em; background:var(--paper-3); padding:1px 5px; border-radius:2px; }
+footer { border-top:1px solid var(--rule); padding-top:14px;
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { .g,.step { transition:none; } }
+@media (max-width:620px) { body{font-size:16px} .page{padding:32px 14px 60px} }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="mast">
+    <p class="kicker">BCS70 variable atlas · the whole loop</p>
+    <h1>The Atlas Loop</h1>
+    <p class="standfirst">Twenty-eight ways to compute BMI, and two thirds of them never written
+      down. The atlas is an attempt to make a derived variable something you find rather than
+      something you rebuild. This is how it works, end to end.</p>
+  </header>
+
+  <section class="why">
+    <p class="kicker">Why this exists</p>
+    <h2>Everyone builds it again</h2>
+
+    <p class="lede">We scraped the published literature that uses BCS70 and pulled the methods
+      apart — 391 papers found, 237 with a workflow we could extract, 5,890 variables recorded
+      as raw or derived. Then we asked a narrow question of it: <b>when two papers use the same
+      construct, do they build it the same way?</b></p>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="n">28</span>
+        <span class="l">distinct ways <b>BMI</b> was derived, across 65 papers</span>
+        <span class="s">one construct</span>
+      </div>
+      <div class="stat">
+        <span class="n">66%</span>
+        <span class="l">of variables were named but never had their derivation stated</span>
+        <span class="s">3,882 of 5,890 rows</span>
+      </div>
+      <div class="stat">
+        <span class="n">4,026</span>
+        <span class="l">distinct recipes for 3,352 constructs — 335 of them contested</span>
+        <span class="s">the ledger of what exists</span>
+      </div>
+      <div class="stat">
+        <span class="n">0.88</span>
+        <span class="l">design recurrence — at 1.00 every paper is its own pattern</span>
+        <span class="s">near-total non-reuse</span>
+      </div>
+    </div>
+
+    <p class="pull">Twenty-five years of researchers have each rebuilt body mass index from
+      height and weight, twenty-eight different times, and two thirds of them never wrote down
+      how.</p>
+
+    <p class="lede">None of that is anyone's fault — there was nowhere to put a derivation so
+      that the next person could find it. It is expensive in three separate ways: the work is
+      redone, the results are not comparable, and most of it cannot be reproduced at all,
+      because the recipe was never recorded. Childhood socioeconomic position was built sixteen
+      ways across forty-seven papers. Educational attainment, twelve ways across thirty-three.</p>
+
+    <div class="claims">
+      <div class="claim">
+        <h3>One source of truth</h3>
+        <p>A construct is derived once, in the open, from named source variables. The next paper
+          cites the variable rather than re-inventing it — and two papers using it are using the
+          same thing.</p>
+      </div>
+      <div class="claim">
+        <h3>Reproducible and traceable</h3>
+        <p>Every variable in the ledger carries the script that produced it, the sweeps it draws
+          on, the raw items it reads, and the record of it having been run against the real
+          files. The recipe cannot go unstated, because the recipe <em>is</em> the artefact.</p>
+      </div>
+      <div class="claim">
+        <h3>Nobody starts from nothing</h3>
+        <p>Where a variable exists you download working R. Where it does not, an agent writes a
+          first cut against the real dictionary and an interview turns a rough idea into a
+          request precise enough to build.</p>
+      </div>
+    </div>
+
+    <p class="src">Figures from <em>method-miner</em>, a scrape of the BCS70 literature via
+      OpenAlex and Europe PMC, run 27 August 2026. Constructs and recipes are the ledger's
+      collapsed counts — one entry per construct and derivation method, not one per paper.</p>
+  </section>
+
+  <section>
+    <p class="kicker">How it works</p>
+    <h2>From a question to a variable, and back</h2>
+  </section>
+
+  <figure class="figure">
+    <div class="canvas">
+      <svg viewBox="0 0 1400 1120" role="img"
+           aria-label="The atlas loop. Inside the variable atlas: the ledger of harmonised variables and the data dictionaries at the top, searched by four lookups. From the ledger a download of the tested R goes back to the researcher. The researcher talks to a general chat agent; asking for a derivation produces an intent box, which dispatches into an agent stack holding the variable interviewer, an R coding agent, and a slot for a next specialist. The interviewer produces a draft and then a ticket; the draft can also seed the R coding agent, which the researcher can ask directly. The ticket leaves the atlas for a coding agent on a frontier cloud model, which sends code into a secure environment where a small local model refines it against the real files and fills out a data contract. The two iterate. A human reviews the pull request, and merging adds the variable to the ledger.">
+        <defs>
+          <marker id="m-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="m-int" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah-i" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="m-tool" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path class="ah-t" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="m-back" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path class="ah-b" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="m-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah-r" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="m-cat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah-c" d="M0,0 L10,5 L0,10 z"/></marker>
+
+          <g id="k-db"><path class="icon i-moss" d="M3 5c0-1.1 4-2 9-2s9 .9 9 2-4 2-9 2-9-.9-9-2zM3 5v14c0 1.1 4 2 9 2s9-.9 9-2V5M3 12c0 1.1 4 2 9 2s9-.9 9-2"/></g>
+          <g id="k-book"><path class="icon i-moss" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></g>
+          <g id="k-dl"><path class="icon i-moss" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></g>
+          <g id="k-search"><path class="icon i-moss" d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35"/></g>
+          <g id="k-net"><path class="icon i-moss" d="M9 2h6v6H9zM2 16h6v6H2zM16 16h6v6h-6zM12 8v4M5 16v-2h14v2"/></g>
+          <g id="k-file"><path class="icon i-moss" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h6"/></g>
+          <g id="k-layers"><path class="icon i-moss" d="M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></g>
+          <g id="k-user"><path class="icon" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></g>
+          <g id="k-bot"><path class="icon i-sea" d="M12 2v4M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zM2 14h2M20 14h2M9 13v2M15 13v2"/></g>
+          <g id="k-shield"><path class="icon i-cont" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4"/></g>
+          <g id="k-flow"><path class="icon i-sea" d="M3 3h6v6H3zM15 15h6v6h-6zM3 15h6v6H3zM15 3h6v6h-6zM9 6h6M6 9v6M18 9v6"/></g>
+          <g id="k-rcode"><path class="icon i-sea" d="M8 6 2 12l6 6M16 6l6 6-6 6M13 3l-3 18"/></g>
+          <g id="k-brain"><path class="icon" d="M12 5a3 3 0 0 0-6 0 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 0zM12 5a3 3 0 0 1 6 0 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 0zM12 5v14"/></g>
+          <g id="k-ticket"><path class="icon" d="M3 8V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 8v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-8zM12 5v2M12 11v2M12 17v2"/></g>
+          <g id="k-cpu"><path class="icon i-ochre" d="M5 5h14v14H5zM9 9h6v6H9zM9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4"/></g>
+          <g id="k-cloud"><path class="icon i-sea" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10zM9 15l2 2 4-4"/></g>
+          <g id="k-chip"><path class="icon i-rose" d="M5 5h14v14H5zM9 9h6v6H9zM9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4"/></g>
+          <g id="k-lock"><path class="icon i-rose" d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4"/></g>
+          <g id="k-eye"><path class="icon" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></g>
+        </defs>
+
+        <!-- ══ ATLAS FRAME ══ -->
+        <g class="g" data-in="exists built download nothing filed code verify merge">
+          <rect class="atlas-frame" x="26" y="30" width="1348" height="730" rx="10"/>
+          <rect class="atlas-tab" x="52" y="16" width="252" height="30" rx="6"/>
+          <text class="t-atlas" x="70" y="36">THE VARIABLE ATLAS</text>
+        </g>
+
+        <!-- ══ the two stores ══ -->
+        <g class="g" data-in="built download merge">
+          <rect class="box-cat" x="250" y="76" width="220" height="50" rx="4"/>
+          <use href="#k-book" x="272" y="90" width="20" height="20"/>
+          <text class="t-name" x="304" y="98">the ledger</text>
+          <text class="t-sub"  x="304" y="115">what is already built</text>
+        </g>
+        <g class="g" data-in="exists">
+          <rect class="box-cat" x="500" y="76" width="850" height="50" rx="4"/>
+          <use href="#k-db" x="536" y="90" width="20" height="20"/>
+          <text class="t-name" x="568" y="98">Data dictionaries</text>
+          <text class="t-sub"  x="568" y="115">32,454 variable labels · no study data, ever</text>
+        </g>
+
+        <!-- ══ and out to the researcher ══ -->
+        <g class="g" data-in="download">
+          <path class="ln-cat" d="M250 101 H 153 V 184" marker-end="url(#m-cat)"/>
+          <rect class="box-cat" x="58" y="192" width="190" height="76" rx="4"/>
+          <use href="#k-dl" x="78" y="206" width="20" height="20"/>
+          <text class="t-name" x="106" y="214">download it</text>
+          <text class="t-sub"  x="78" y="236">a zip of the tested R,</text>
+          <text class="t-sub"  x="78" y="252">verbatim — yours to run</text>
+          <path class="ln-cat" d="M153 268 V 312" marker-end="url(#m-cat)"/>
+        </g>
+
+        <!-- ══ the four lookups ══ -->
+        <g class="g" data-in="exists built">
+          <rect class="band-tool" x="250" y="156" width="840" height="116" rx="4"/>
+          <text class="t-band" x="266" y="176">THE FOUR LOOKUPS · ANY AGENT, ON ITS OWN INITIATIVE, AT MOST FIVE A TURN</text>
+          <path class="ln-tool" d="M340 190 V 134" marker-end="url(#m-tool)"/>
+          <path class="ln-tool" d="M560 190 V 134" marker-end="url(#m-tool)"/>
+          <path class="ln-tool" d="M780 190 V 134" marker-end="url(#m-tool)"/>
+          <path class="ln-tool" d="M1000 190 V 134" marker-end="url(#m-tool)"/>
+
+          <rect class="box-tool" x="265" y="190" width="150" height="66" rx="3"/>
+          <use href="#k-layers" x="329" y="198" width="22" height="22"/>
+          <text class="t-tool" x="340" y="236" text-anchor="middle">list_harmonised</text>
+          <text class="t-sub"  x="340" y="250" text-anchor="middle" font-size="10.5">reads the ledger</text>
+
+          <rect class="box-tool" x="485" y="190" width="150" height="66" rx="3"/>
+          <use href="#k-search" x="549" y="198" width="22" height="22"/>
+          <text class="t-tool" x="560" y="236" text-anchor="middle">search_variables</text>
+          <text class="t-sub"  x="560" y="250" text-anchor="middle" font-size="10.5">by meaning</text>
+
+          <rect class="box-tool" x="705" y="190" width="150" height="66" rx="3"/>
+          <use href="#k-net" x="769" y="198" width="22" height="22"/>
+          <text class="t-tool" x="780" y="236" text-anchor="middle">coverage</text>
+          <text class="t-sub"  x="780" y="250" text-anchor="middle" font-size="10.5">by sweep</text>
+
+          <rect class="box-tool" x="925" y="190" width="150" height="66" rx="3"/>
+          <use href="#k-file" x="989" y="198" width="22" height="22"/>
+          <text class="t-tool" x="1000" y="236" text-anchor="middle">inspect_variable</text>
+          <text class="t-sub"  x="1000" y="250" text-anchor="middle" font-size="10.5">by name</text>
+        </g>
+
+        <!-- ══ the spine ══ -->
+        <g class="g" data-in="exists built download nothing filed code verify merge">
+          <rect class="box" x="75" y="318" width="130" height="78" rx="3"/>
+          <use href="#k-user" x="129" y="334" width="22" height="22"/>
+          <text class="t-name" x="140" y="378" text-anchor="middle" font-size="12">Researcher</text>
+          <path class="ln" d="M205 357 H 257" marker-end="url(#m-ink)"/>
+        </g>
+
+        <g class="g" data-in="exists built nothing code">
+          <rect class="box-agent" x="265" y="318" width="150" height="78" rx="3"/>
+          <use href="#k-bot" x="329" y="330" width="22" height="22"/>
+          <text class="t-name" x="340" y="370" text-anchor="middle">chat</text>
+          <text class="t-sub"  x="340" y="386" text-anchor="middle">general · the default</text>
+        </g>
+        <g class="g" data-in="exists built">
+          <path class="ln-tool" d="M328 318 V 260" marker-end="url(#m-tool)"/>
+          <path class="ln-tool" d="M352 260 V 314" marker-end="url(#m-tool)"/>
+        </g>
+
+        <g class="g" data-in="nothing">
+          <path class="ln-intent" d="M415 357 H 457" marker-end="url(#m-int)"/>
+          <text class="t-edge hot" x="436" y="306" text-anchor="middle">wants something derived</text>
+        </g>
+        <g class="g" data-in="nothing">
+          <rect class="box-intent" x="465" y="318" width="150" height="78" rx="3"/>
+          <use href="#k-shield" x="529" y="330" width="22" height="22"/>
+          <text class="t-name" x="540" y="370" text-anchor="middle">intent</text>
+          <text class="t-sub"  x="540" y="386" text-anchor="middle">names it back, asks first</text>
+        </g>
+        <g class="g" data-in="nothing">
+          <path class="ln-intent" d="M615 357 H 662" marker-end="url(#m-int)"/>
+          <text class="t-edge hot" x="638" y="306" text-anchor="middle">accepted</text>
+        </g>
+
+        <!-- ══ THE AGENT STACK ══ -->
+        <g class="g" data-in="nothing filed code">
+          <rect class="stack-frame" x="650" y="288" width="320" height="344" rx="8"/>
+          <text class="t-stack" x="985" y="560" text-anchor="middle" transform="rotate(-90 985 560)">THE AGENT STACK</text>
+        </g>
+
+        <g class="g" data-in="nothing filed">
+          <rect class="box-agent" x="670" y="318" width="222" height="78" rx="3"/>
+          <use href="#k-flow" x="770" y="330" width="22" height="22"/>
+          <text class="t-name" x="781" y="370" text-anchor="middle" font-size="11.5">variable interviewer</text>
+          <text class="t-sub"  x="781" y="386" text-anchor="middle">specialist · sticky</text>
+        </g>
+        <g class="g" data-in="none">
+          <path class="ln-tool" d="M769 318 V 260" marker-end="url(#m-tool)"/>
+          <path class="ln-tool" d="M793 260 V 314" marker-end="url(#m-tool)"/>
+        </g>
+
+        <g class="g" data-in="code">
+          <rect class="box-agent" x="670" y="441" width="222" height="78" rx="3"/>
+          <use href="#k-rcode" x="770" y="453" width="22" height="22"/>
+          <text class="t-name" x="781" y="493" text-anchor="middle" font-size="12">R coding agent</text>
+          <text class="t-sub"  x="781" y="509" text-anchor="middle">writes a script you can run</text>
+        </g>
+
+        <g class="g" data-in="none">
+          <rect class="box-soon" x="670" y="540" width="222" height="78" rx="3"/>
+          <use href="#k-cpu" x="770" y="550" width="22" height="22"/>
+          <text class="t-name" x="781" y="590" text-anchor="middle" font-size="12">a next specialist</text>
+          <text class="t-sub"  x="781" y="605" text-anchor="middle" font-size="10.5">verifier · reviewer · auditor</text>
+          <text class="t-chip" x="781" y="618" text-anchor="middle">ONE [[intent]] ENTRY · NOT BUILT YET</text>
+        </g>
+
+        <!-- ══ into the R coding agent ══ -->
+        <g class="g" data-in="code">
+          <path class="ln" d="M140 396 V 480 H 662" marker-end="url(#m-ink)"/>
+          <text class="t-edge" x="300" y="472">ask it directly</text>
+        </g>
+        <g class="g" data-in="code">
+          <path class="ln" d="M1085 396 V 480 H 900" marker-end="url(#m-ink)"/>
+          <text class="t-edge" x="990" y="472">or seed it from the draft</text>
+        </g>
+
+        <!-- ══ draft and ticket ══ -->
+        <g class="g" data-in="filed">
+          <path class="ln" d="M892 357 H 1002" marker-end="url(#m-ink)"/>
+        </g>
+        <g class="g" data-in="filed code">
+          <rect class="box" x="1010" y="318" width="150" height="78" rx="3"/>
+          <use href="#k-brain" x="1074" y="330" width="22" height="22"/>
+          <text class="t-name" x="1085" y="370" text-anchor="middle">draft</text>
+          <text class="t-sub"  x="1085" y="386" text-anchor="middle">fills it in, ticks a step</text>
+        </g>
+        <g class="g" data-in="filed">
+          <path class="ln" d="M1160 357 H 1192" marker-end="url(#m-ink)"/>
+        </g>
+        <g class="g" data-in="filed verify">
+          <rect class="box" x="1200" y="318" width="140" height="78" rx="3"/>
+          <use href="#k-ticket" x="1259" y="330" width="22" height="22"/>
+          <text class="t-name" x="1270" y="370" text-anchor="middle" font-size="12.5">ticket</text>
+          <text class="t-sub"  x="1270" y="386" text-anchor="middle">a variable request</text>
+        </g>
+
+        <!-- ══ returns ══ -->
+        <g class="g" data-in="nothing">
+          <path class="ln-back" d="M500 396 V 414 H 300 V 400" marker-end="url(#m-back)"/>
+          <text class="t-edge" x="392" y="408">declined</text>
+        </g>
+        <g class="g" data-in="nothing">
+          <path class="ln-back" d="M781 396 V 406 H 640 V 444 H 380 V 400" marker-end="url(#m-back)"/>
+          <text class="t-edge" x="440" y="438">stop, or the checklist completes</text>
+        </g>
+
+        <!-- ══ ticket leaves the atlas ══ -->
+        <g class="g" data-in="verify">
+          <path class="ln-sec" d="M1270 396 V 832" marker-end="url(#m-rose)"/>
+          <text class="t-edge" x="1290" y="620" font-size="10.5">submitted</text>
+        </g>
+
+        <!-- ══ the coding agent (outside, in the cloud) ══ -->
+        <g class="g" data-in="verify merge">
+          <rect class="box-cloud" x="1150" y="840" width="210" height="92" rx="4"/>
+          <use href="#k-cloud" x="1172" y="854" width="20" height="20"/>
+          <text class="t-name" x="1200" y="868">coding agent</text>
+          <text class="t-sub"  x="1172" y="890">a frontier model, in the cloud</text>
+          <text class="t-sub"  x="1172" y="906">writes the R and its tests</text>
+          <text class="t-sub"  x="1172" y="922" font-size="10.5">never sees a row</text>
+        </g>
+
+        <!-- ══ the secure environment ══ -->
+        <g class="g" data-in="verify">
+          <rect class="band-sec" x="420" y="820" width="640" height="160" rx="8"/>
+          <use href="#k-lock" x="438" y="826" width="18" height="18"/>
+          <text class="t-sband" x="464" y="840">THE SECURE ENVIRONMENT · THE REAL FILES</text>
+
+          <rect class="box-secure" x="450" y="862" width="240" height="84" rx="4"/>
+          <use href="#k-lock" x="472" y="876" width="20" height="20"/>
+          <text class="t-name" x="500" y="888" font-size="12.5">the deposited files</text>
+          <text class="t-sub"  x="472" y="910">the actual study data,</text>
+          <text class="t-sub"  x="472" y="926">licensed and never copied</text>
+
+          <rect class="box-secure" x="730" y="862" width="230" height="84" rx="4"/>
+          <use href="#k-chip" x="752" y="876" width="20" height="20"/>
+          <text class="t-name" x="780" y="888" font-size="12.5">a local model</text>
+          <text class="t-sub"  x="752" y="910">refines the code against</text>
+          <text class="t-sub"  x="752" y="926">the real rows</text>
+
+          <path class="ln-sec" d="M730 888 H 698" marker-end="url(#m-rose)"/>
+          <path class="ln-sec" d="M690 922 H 722" marker-end="url(#m-rose)"/>
+
+          <path class="ln-sec" d="M1150 868 H 968" marker-end="url(#m-rose)"/>
+          <path class="ln-sec" d="M960 912 H 1142" marker-end="url(#m-rose)"/>
+          <text class="t-edge" x="1055" y="856" text-anchor="middle" font-size="10">the code</text>
+          <text class="t-edge" x="1055" y="934" text-anchor="middle" font-size="10">the data contract</text>
+          <text class="t-edge" x="700" y="1002" text-anchor="middle">the two iterate until the contract holds</text>
+        </g>
+
+        <!-- ══ human review, and the merge ══ -->
+        <g class="g" data-in="merge">
+          <path class="ln" d="M1255 932 V 1036 H 428" marker-end="url(#m-ink)"/>
+          <rect class="box" x="220" y="994" width="200" height="84" rx="4"/>
+          <use href="#k-eye" x="242" y="1008" width="20" height="20"/>
+          <text class="t-name" x="270" y="1020" font-size="12.5">a human reviews</text>
+          <text class="t-sub"  x="242" y="1042">the pull request — and</text>
+          <text class="t-sub"  x="242" y="1058">merges it, or does not</text>
+          <path class="ln-cat" d="M220 1036 H 42 V 54 H 360 V 68" marker-end="url(#m-cat)"/>
+          <text class="t-edge" x="372" y="60">merged</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="key">
+      <span><i class="swatch" style="background:var(--sea)"></i>an agent</span>
+      <span><i class="swatch" style="background:var(--contour)"></i>where consent is asked for</span>
+      <span><i class="swatch" style="background:var(--moss)"></i>the catalogue, and what reads it</span>
+      <span><i class="swatch" style="background:var(--rose)"></i>the secure environment</span>
+      <span><i class="swatch" style="background:var(--ochre)"></i>proposed, not built yet</span>
+      <span><i class="swatch" style="background:var(--ink-3)"></i>a way back</span>
+    </div>
+  </figure>
+
+  <div class="walk">
+    <p class="walk-head">A researcher's journey, step by step</p>
+    <div class="steps" id="steps" role="group" aria-label="A researcher's journey through the atlas">
+      <button class="step" data-scene="all"      aria-pressed="true">The whole loop</button>
+      <button class="step" data-scene="exists"   aria-pressed="false">1 · What was ever measured?</button>
+      <button class="step" data-scene="built"    aria-pressed="false">2 · What is already harmonised?</button>
+      <button class="step" data-scene="download" aria-pressed="false">3 · Take it and run it</button>
+      <button class="step" data-scene="nothing"  aria-pressed="false">4 · Nothing fits — describe it</button>
+      <button class="step" data-scene="filed"    aria-pressed="false">5 · The request is filed</button>
+      <button class="step" data-scene="code"     aria-pressed="false">6 · Code you can use today</button>
+      <button class="step" data-scene="verify"   aria-pressed="false">7 · Built, run and verified</button>
+      <button class="step" data-scene="merge"    aria-pressed="false">8 · Into the ledger</button>
+    </div>
+    <p class="walk-note" id="note">Eight steps, from “does this variable exist?” to “it is in the
+      catalogue for the next person”. Take them in order, or jump to the part you care about.</p>
+  </div>
+
+
+  <section>
+    <h2>Four things worth knowing</h2>
+    <div class="notes">
+      <div class="note a">
+        <h3>One runtime, three agents</h3>
+        <p>What differs between them is a prompt and a lifecycle — when the turn ends, whether
+          the checklist moves, whether the extractor runs. The streaming, the hop budget and
+          the four lookups are shared. A graph each would have duplicated all of it to change
+          a system prompt.</p>
+      </div>
+      <div class="note b">
+        <h3>Getting in takes a yes</h3>
+        <p>The interview is withheld from the router entirely; the only way in is a proposal
+          the researcher accepts. A wrong route costs a turn — being put into an interview
+          unasked costs more, and the confirmation is what pays the difference.</p>
+      </div>
+      <div class="note c">
+        <h3>Only the small model crosses the wall</h3>
+        <p>The frontier model writes the code and judges the contract; it never sees a row.
+          The model that does see rows is small, local, and stays inside. What passes between
+          them is code one way and a filled-in data contract the other — never data.</p>
+      </div>
+      <div class="note d">
+        <h3>The ledger is both ends of the loop</h3>
+        <p>It is what <code>list_harmonised</code> searches when the assistant asks whether
+          something already exists, what a merge adds to, and what a researcher downloads.
+          The same store closes the circle.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Drawn from <code>web/assistant/</code> and <code>CONTRIBUTING.md</code> at <code>c5a4e0a</code>.
+    Two agents inside the atlas ship today. The R coding agent, the slot beside it, and the
+    whole build pipeline beyond the ticket are the intended design, not yet the code.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var SCENES = {
+    all:      "Eight steps, from \u201cdoes this variable exist?\u201d to \u201cit is in the catalogue for the next person\u201d. Take them in order, or jump to the part you care about.",
+    exists:   "<b>Start with what was ever asked.</b> Fifty-five years of questionnaires \u2014 32,454 variable labels across fourteen sweeps. Chat searches them <em>by meaning</em>, not by name, so \u201chow is your health generally\u201d comes back when you ask about self-rated health. That gap is the whole difficulty with a corpus written in questionnaire English.",
+    built:    "<b>Then: has someone already done the work?</b> <code>list_harmonised</code> reads the ledger \u2014 the variables this project has already derived, tested, and run against the real files. A different question from the first one, against a different store, which is why it is a different lookup.",
+    download: "<b>If it is there, take it.</b> Tick the variables you want and the atlas builds you a zip of the R that produced them \u2014 the tested tree, verbatim, not regenerated for the occasion. Run it against your own copy of the data. No account, no server, nothing to install.",
+    nothing:  "<b>Nothing fits, so describe what you want.</b> The <b>intent</b> box names the concept back to you and asks before starting anything. A yes dispatches into the agent stack, where the <b>variable interviewer</b> takes over \u2014 one question a message: which sweeps, what form, who answered, what to do where a sweep never asked. Put a question to it mid-way and it answers, then carries on.",
+    filed:    "<b>The answers become a request.</b> The draft extractor reads the conversation back and fills the request in, and that becomes a ticket against the central repository. End of your part; beginning of the build.",
+    code:     "<b>You do not have to wait for it.</b> The <b>R coding agent</b> takes the same draft and writes a derivation you can run today, against your own data \u2014 or skip the interview and just ask it directly. What you get is a working starting point, not the article that ends up in the ledger. That is settled across the wall, and by a person.",
+    verify:   "<b>Across the wall, and back, until it holds.</b> The ticket goes to a coding agent on a frontier model, which writes the derivation and its tests and sends the <b>code</b> in. Inside, a small local model runs it against the real rows, refines it, and fills out a <b>data contract</b> \u2014 what the variable should look like once derived. That comes back out; the frontier model checks its code against the contract and revises. Round it goes. Only code crosses inwards and only the contract crosses out \u2014 never data, and never a row to the frontier model.",
+    merge:    "<b>A person decides, and the circle closes.</b> The work becomes a pull request against the repository holding the ledger. A human reads the derivation, its tests, and what the real run reported, then merges it \u2014 or does not. What is merged joins the ledger, which is where step two started. The next person to ask finds it already done."
+  };
+  var note = document.getElementById("note");
+  var steps = document.getElementById("steps");
+  var groups = Array.prototype.slice.call(document.querySelectorAll("svg .g"));
+  if (!note || !steps || !groups.length) return;
+
+  function show(scene) {
+    groups.forEach(function (g) {
+      var list = (g.getAttribute("data-in") || "").split(" ");
+      g.classList.toggle("dim", scene !== "all" && list.indexOf(scene) === -1);
+    });
+    note.innerHTML = SCENES[scene] || SCENES.all;
+    Array.prototype.forEach.call(steps.querySelectorAll(".step"), function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.scene === scene));
+    });
+  }
+  steps.addEventListener("click", function (e) {
+    var b = e.target.closest(".step");
+    if (b) show(b.dataset.scene);
+  });
+})();
+</script>
+</body>
+</html>
