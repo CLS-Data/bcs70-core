@@ -211,12 +211,14 @@
     sent off this machine. No study data exists in this site to send.
   </p>
 
-  <div class="chat-strip" data-panel="chat">
+  <div class="chat-strip" data-panel="chat" id="chat-strip" hidden>
     <div class="chat-steps" id="chat-steps" role="group" aria-label="Checklist"></div>
     <span class="chat-strip-meta">
       <span class="chat-mode" id="chat-mode" hidden></span>
       <span class="chat-progress" id="chat-progress"></span>
     </span>
+    <button class="chat-stop" id="chat-stop" type="button" hidden
+            title="Stop working on this request. Nothing settled is lost.">Stop</button>
   </div>
 
   <div class="chat-scroll" data-panel="chat" id="chat-log"></div>
@@ -227,7 +229,7 @@
     <div class="replies" id="chat-replies" hidden></div>
     <div class="pinned" id="chat-pinned" hidden></div>
     <div class="composer">
-      <textarea id="chat-input" rows="1" placeholder="Describe the variable you want…"
+      <textarea id="chat-input" rows="1" placeholder="Ask about the study, or what you want derived…"
                 spellcheck="true"></textarea>
       <div class="composer-actions">
         <button class="btn btn-quiet" id="chat-search" type="button"

@@ -161,10 +161,13 @@ export function renderTranscript() {
   if (!chat.messages.length) {
     box.innerHTML = `
       <div class="chat-intro">
-        <h3>Describe what you want harmonised</h3>
-        <p>Say it however you'd say it to a colleague — “income at each ${esc(waveTerm())}”, “whether they were ever unemployed before 30”. I'll ask
-           about the ${chat.interview.steps.length} things a derivation needs
-           settled and compose the issue.</p>
+        <h3>Ask about the study, or say what you want harmonised</h3>
+        <p>What exists, where, how something is coded — ask and I'll look it
+           up. When you want something derived — “income at each
+           ${esc(waveTerm())}”, “whether they were ever unemployed before 30”
+           — say so however you'd say it to a colleague, and I'll offer to
+           take you through the ${chat.interview.steps.length} things a
+           derivation needs settled and compose the issue.</p>
         <p>${modelUsesTools()
           ? "I search the dictionaries myself when I need to, rather than on " +
             "every message. You'll see each lookup and what it returned, so " +

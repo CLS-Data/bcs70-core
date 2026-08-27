@@ -19,7 +19,9 @@ web/
                   boot, state, dom, spine, views, metadata, derived, scratchpad
   bundle.js       packages selected variables as a runnable zip [loaded on demand]
   chat.js         the assistant's turn loop and wiring
-  chat/           one module per panel — state, api, transcript, steps,
+  chat/           one module per panel — state (incl. which intent the
+                  conversation is in, which the server does not remember),
+                  api, transcript, steps,
                   composer, draft, settings
   assistant/      what the assistant asks and looks up   → assistant/README.md
   data/           generated, gitignored

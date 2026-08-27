@@ -12,7 +12,8 @@ Events emitted (NDJSON, one object per line):
     {"type":"tool_call",  "name": …, "args": {…}}
     {"type":"tool_result","name": …, "args": {…}, "display": {…}}
     {"type":"mode",       "mode": …, "label": …, "advances": bool,
-                          "sticky": bool, "awaiting": …, "entering": bool}
+                          "sticky": bool, "awaiting": …, "entering": bool,
+                          "exitsTo": …}
     {"type":"options",    "options": [...], "step": "coverage"|null}
     {"type":"draft",      "draft": {…}, "covered": {…}, "step": n, "separate": [...]}
     {"type":"error",      "message": …, "status": 410|null}

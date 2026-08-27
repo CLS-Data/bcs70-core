@@ -302,6 +302,12 @@ No checkpointer is configured and none is wanted: the browser holds the
 conversation and posts it back each turn, so a server restart is invisible and
 nothing accumulates per user. The graph's state exists for exactly one turn.
 
+That is also why the browser now stores `mode`, `sticky`, `awaiting` and
+`exitsTo` alongside the transcript in `localStorage`. A reload used to cost
+nothing; with a sticky intent it would drop you out of the interview
+mid-question, and a reload between an offer and its answer would turn "yes"
+into a sentence about nothing.
+
 ## The event stream
 
 Nodes publish through `get_stream_writer()` in the shape `../chat.js` already
@@ -389,6 +395,15 @@ own probe, with that step's answers as buttons; with every step settled it says
 the request is complete and points at the Draft panel. It used to leave a shrug
 in the transcript, which hands back a conversation the researcher came here to
 be led through.
+
+**The way out of the interview is a button, not a phrase.** The phrase rule
+above is the courtesy path — it cannot be certain, and in a mode you stay in,
+being wrong about an exit is expensive in both directions. The stop control in
+the strip is instant and entirely local: `route` names where an exit lands in
+the `mode` event, so there is nothing to ask the model and nothing to guess.
+It says so in the transcript rather than changing mode silently, because a
+conversation whose next reply makes no sense against anything on screen is
+worse than one extra line.
 
 **Stickiness is cheaper than routing, not just steadier.** The obvious reading
 of "stay in the interview until they leave" is that it costs an extra check

@@ -292,7 +292,12 @@ def route_turn(state: TurnState, config: RunnableConfig) -> dict:
                          "label": intent.label, "advances": intent.advances,
                          "decided_by": moved.how, "sticky": intent.sticky,
                          "awaiting": moved.proposing,
-                         "entering": moved.entering})
+                         "entering": moved.entering,
+                         # Where a stop lands, so the control that offers one
+                         # does not have to guess — or worse, depend on the
+                         # phrase rule, which is the courtesy path and not
+                         # the reliable one.
+                         "exitsTo": cfg.exit_intent(intent).id})
     return {"mode": moved.mode, "awaiting": moved.proposing,
             "entering": moved.entering}
 

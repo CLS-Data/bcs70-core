@@ -15,7 +15,7 @@ import { api, streamTurn } from "./chat/api.js";
 import { esc } from "./chat/markup.js";
 import { A, DRAG_MIME, chat, creditStep, defaultBase, emptyDraft, helperThinks, key, modelThinks, modelUsesTools, restore, saveSession, saveSettings } from "./chat/state.js";
 import { renderStreaming, renderTranscript } from "./chat/transcript.js";
-import { applyProgress, moveChoice, renderChecklist, renderReplies } from "./chat/steps.js";
+import { applyProgress, moveChoice, renderChecklist, renderReplies, stopInterview } from "./chat/steps.js";
 import { renderComposer, renderPinned, renderStatus, renderThinkToggle } from "./chat/composer.js";
 import { renderDraft } from "./chat/draft.js";
 import { connect, renderSettings } from "./chat/settings.js";
@@ -40,16 +40,20 @@ async function send(text) {
   // step it credits whichever step happens to be next, so answering one
   // question ticked another off. A message that is itself a question is not
   // an answer, so it credits nothing.
-  // Only when the server named the step its question was about. An
-  // exploration names none, so asking about the data never counts as
-  // answering a checklist question.
+  // Only when the server named the step its question was about. A question
+  // about the data names none, so asking one never counts as answering a
+  // checklist question — and neither does saying yes to an offer to start,
+  // which is asked before there is any interview to credit.
   creditStep(chat.askedStep);
 
   chat.messages.push({ role: "user", content: text });
   chat.busy = true;
   chat.answered = false;
   chat.phase = "thinking";
-  chat.mode = "";
+  // `mode` and `awaiting` are NOT cleared here. They used to be, when the
+  // server decided the intent afresh every message and the browser only had
+  // to display the answer. They are now what the server is told, and a
+  // sticky intent forgotten on send is not sticky at all.
   chat.options = [];
   chat.askedStep = null;
   chat.abort = new AbortController();
@@ -74,6 +78,10 @@ async function send(text) {
       pinned: chat.pinned,
       covered: chat.covered,
       draft: chat.draft,
+      // The server keeps nothing between turns, so where the conversation
+      // had got to comes back with it.
+      mode: chat.mode,
+      awaiting: chat.awaiting,
       baseUrl: chat.settings.baseUrl,
       model: chat.settings.model,
       helperModel: chat.settings.helperModel,
@@ -184,6 +192,12 @@ function handleEvent(ev, openReply, closeReply) {
       // Absent means "assume it advanced", so an older server that does not
       // send this marks nothing rather than marking every turn.
       chat.modeAdvances = ev.advances !== false;
+      chat.sticky = ev.sticky === true;
+      chat.awaiting = ev.awaiting || "";
+      chat.exitsTo = ev.exitsTo || "";
+      // The strip appears the moment an interview begins and carries the way
+      // out of it, so it is redrawn here rather than only when a step lands.
+      renderChecklist();
       renderTranscript();
       break;
 
@@ -297,6 +311,10 @@ function resetSession() {
   chat.options = [];
   chat.askedStep = null;
   chat.knownVars = null;
+  chat.mode = "";
+  chat.sticky = false;
+  chat.awaiting = "";
+  chat.exitsTo = "";
   saveSession();
   renderTranscript(); renderPinned(); renderChecklist(); renderDraft();
   renderComposer();
@@ -327,6 +345,11 @@ function setPanel(name) {
   });
   if (name === "settings") renderSettings();
   if (name === "draft") renderDraft();
+  // The line above unhides everything belonging to this panel, the strip
+  // included — and whether the strip belongs on screen is not a question
+  // about which panel is showing. Re-deciding it here is what stops a return
+  // from Draft revealing an empty checklist.
+  if (name === "chat") renderChecklist();
 }
 
 /* ── Drag and drop ─────────────────────────────────────────────────── */
@@ -554,6 +577,13 @@ function wireUp() {
     if (input.selectionStart !== 0 || input.selectionEnd !== 0) return;
     e.preventDefault();
     moveChoice(-1, null);
+  });
+
+  $("#chat-stop").addEventListener("click", () => {
+    stopInterview();
+    renderChecklist();
+    renderTranscript();
+    renderComposer();
   });
 
   $("#chat-steps").addEventListener("click", (e) => {
