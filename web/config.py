@@ -29,6 +29,17 @@ DEFAULT_CONFIG = WEB / "dataset.toml"
 #     ATLAS_DATASET_CONFIG=web/other.toml python3 web/server.py
 ENV_VAR = "ATLAS_DATASET_CONFIG"
 
+# How an intent may be entered. Named rather than spelled out at each use, so
+# a typo in the config is caught by `validate()` instead of quietly making an
+# intent unreachable.
+ROUTER = "router"      # the router may choose it on any message
+HANDOFF = "handoff"    # only ever entered by a proposal the researcher accepts
+ENTRIES = (ROUTER, HANDOFF)
+
+# Every tool. The default, so an intent that says nothing about tools keeps
+# the whole toolbox rather than losing it to an empty list.
+ALL_TOOLS = "*"
+
 
 class ConfigError(RuntimeError):
     pass
@@ -77,6 +88,24 @@ class Intent:
     shows_checklist: bool   # is the checklist's state woven into the prompt?
     offers_choices: bool    # may the reply end with answer buttons?
     heuristic: str          # "question" marks where the fallback rule sends one
+
+    # How a turn ENTERS this intent and how it leaves. Without these the
+    # router picks afresh on every message, which is right for answering a
+    # question and wrong for an interview: a researcher asking "which sweeps
+    # have this?" halfway through would be routed out of the very thing they
+    # asked to start.
+    sticky: bool            # once here, stay until an exit signal
+    entry: str              # "router" — chosen per message | "handoff" — only
+                            # ever entered by a proposal the researcher accepts
+    confirm: str            # how to phrase that proposal
+    exits_to: str           # which intent a sticky one returns to ("" = fallback)
+    extracts: bool          # does the draft extractor run after the reply?
+    tools: tuple[str, ...]  # lookups this intent may call ("*" = all of them)
+    replies: tuple[str, ...]  # answers offered with its proposal
+
+    @property
+    def entered_by_handoff(self) -> bool:
+        return self.entry == HANDOFF
 
 
 @dataclass(frozen=True)
@@ -127,10 +156,64 @@ class Config:
         if len(set(ids)) != len(ids):
             raise ConfigError(f"{self.path}: duplicate interview step id(s)")
 
+        self._validate_intents()
+
         fields = self._raw["issue"].get("fields") or {}
         for key in ("name", "waves", "category", "description", "sources", "notes"):
             if key not in fields:
                 raise ConfigError(f"{self.path}: [issue.fields] is missing '{key}'")
+
+    def _validate_intents(self) -> None:
+        """Every way an intent can be unreachable, caught at start-up.
+
+        These are not hypothetical. An intent nothing can route to and nothing
+        can hand off to is a config the assistant loads happily and then never
+        uses, and the symptom — a capability that simply never appears — gives
+        no hint where to look.
+        """
+        where = f"{self.path}: [[intent]]"
+
+        ids = self.intent_ids
+        if len(set(ids)) != len(ids):
+            raise ConfigError(f"{where} duplicate id(s)")
+
+        fallback = self.fallback_intent
+        if fallback.entered_by_handoff:
+            raise ConfigError(
+                f'{where} "{fallback.id}" is the fallback but is entered by '
+                f"handoff, so nothing could ever reach it")
+        if fallback.sticky:
+            raise ConfigError(
+                f'{where} "{fallback.id}" is the fallback and sticky, so a '
+                f"conversation would start in it and never leave")
+
+        for i in self.intents:
+            if i.entry not in ENTRIES:
+                raise ConfigError(
+                    f'{where} "{i.id}" has entry "{i.entry}"; expected one of '
+                    f"{', '.join(ENTRIES)}")
+            if i.exits_to and i.exits_to not in ids:
+                raise ConfigError(
+                    f'{where} "{i.id}" exits_to "{i.exits_to}", which is not an intent')
+            if i.exits_to == i.id:
+                raise ConfigError(f'{where} "{i.id}" exits to itself')
+            if i.sticky and self.exit_intent(i).sticky:
+                raise ConfigError(
+                    f'{where} "{i.id}" is sticky and exits into another sticky '
+                    f'intent, "{self.exit_intent(i).id}"')
+            if i.entered_by_handoff and not i.confirm:
+                raise ConfigError(
+                    f'{where} "{i.id}" is entered by handoff but has no '
+                    f"`confirm`, so there is nothing to propose with")
+            if i.entered_by_handoff and len(i.replies) < 2:
+                raise ConfigError(
+                    f'{where} "{i.id}" is entered by handoff and needs at '
+                    f"least two `replies` — an offer with no way to accept "
+                    f"or decline it is not an offer")
+            if not i.tools:
+                raise ConfigError(
+                    f'{where} "{i.id}" has an empty `tools`; omit it for all of '
+                    f'them, or list the ones it may call')
 
     def _section(self, name: str) -> dict:
         return self._raw.get(name) or {}
@@ -279,6 +362,17 @@ class Config:
                 offers_choices=bool(i.get("offers_choices",
                                           i.get("advances", False))),
                 heuristic=str(i.get("heuristic", "")),
+                sticky=bool(i.get("sticky", False)),
+                entry=str(i.get("entry", ROUTER)),
+                confirm=i.get("confirm", "").strip(),
+                exits_to=str(i.get("exits_to", "")),
+                # Extraction is what the checklist is built from, so an intent
+                # that advances it needs the extractor by definition. One that
+                # does not may still want it — a draft fills in from an aside —
+                # which is why it is a separate field rather than a synonym.
+                extracts=bool(i.get("extracts", i.get("advances", False))),
+                tools=tuple(str(t) for t in i.get("tools", (ALL_TOOLS,))),
+                replies=tuple(str(r) for r in i.get("replies", ())),
             )
             for i in self._raw.get("intent") or ()
         )
@@ -291,7 +385,35 @@ class Config:
         for i in self.intents:
             if i.id == intent_id:
                 return i
+        return self.fallback_intent
+
+    @cached_property
+    def fallback_intent(self) -> Intent:
+        """Where a conversation starts, and where an unreadable mode lands."""
         return self.intents[0]
+
+    @cached_property
+    def router_intents(self) -> tuple[Intent, ...]:
+        """The intents the router may choose between on any given message.
+
+        An intent entered by handoff is deliberately absent: the researcher
+        has to accept a proposal to get there, so offering it to the router as
+        well would let a message put them into it unasked — which is the whole
+        thing the confirmation exists to prevent.
+        """
+        return tuple(i for i in self.intents if not i.entered_by_handoff)
+
+    @cached_property
+    def handoff_intents(self) -> tuple[Intent, ...]:
+        """The intents a conversation can be invited into."""
+        return tuple(i for i in self.intents if i.entered_by_handoff)
+
+    def exit_intent(self, intent: Intent) -> Intent:
+        """Where leaving `intent` lands. The fallback unless it says otherwise."""
+        return self.intent(intent.exits_to) if intent.exits_to else self.fallback_intent
+
+    def may_use(self, intent: Intent, tool: str) -> bool:
+        return ALL_TOOLS in intent.tools or tool in intent.tools
 
     @cached_property
     def question_intent(self) -> Intent:

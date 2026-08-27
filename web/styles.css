@@ -685,6 +685,19 @@ body.chat-open { padding-right: var(--chat-w); }
   font-family: var(--mono); font-size: 10px; color: var(--ink-3);
 }
 
+/* Quiet until you want it. Leaving is recoverable — the draft is kept — so
+   this does not need to shout, but it does need to be findable without
+   reading the transcript for the right words to type. */
+.chat-stop {
+  flex: none;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: none; cursor: pointer;
+  padding: 2px 7px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.chat-stop:hover { color: var(--contour); border-color: var(--contour); }
+
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 12px; }
 .chat-form { padding: 16px 14px 40px; background: var(--paper-2); }
 .chat-form .section-title { margin-top: 26px; }

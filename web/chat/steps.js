@@ -2,7 +2,7 @@
 
 import { $, $$ } from "./dom.js";
 import { esc } from "./markup.js";
-import { chat, firstUnsettled, saveSession, stepById } from "./state.js";
+import { chat, firstUnsettled, saveSession, showsChecklist, stepById } from "./state.js";
 
 export function applyProgress(ev) {
   if (ev.covered && typeof ev.covered !== "object") return;
@@ -20,6 +20,15 @@ export function renderChecklist() {
   const el = $("#chat-steps");
   const steps = chat.interview?.steps;
   if (!el || !Array.isArray(steps)) return;
+
+  // Nothing to show until a request is actually being worked on. A checklist
+  // over a conversation that is only asking questions promises an interview
+  // nobody started, and counts six things unanswered that were never asked.
+  const strip = $("#chat-strip");
+  if (strip) strip.hidden = !showsChecklist();
+
+  renderStop();
+
   el.innerHTML = steps.map((s, i) => {
     const done = Boolean(chat.covered[s.id]);
     const now = i === chat.step && !done;
@@ -30,6 +39,38 @@ export function renderChecklist() {
   const n = steps.filter((s) => chat.covered[s.id]).length;
   $("#chat-progress").textContent = `${n}/${steps.length} settled`;
   renderReplies();
+}
+
+/* The way out of a sticky intent.
+
+   A button rather than a phrase, because the phrase rule is the courtesy
+   path: it cannot be certain, and in a mode you stay in, being wrong about
+   an exit is expensive in both directions. This is instant and local — the
+   server named where a stop lands in the `mode` event, so there is nothing
+   to ask it and nothing to guess. */
+export function renderStop() {
+  const el = $("#chat-stop");
+  if (!el) return;
+  el.hidden = !chat.sticky;
+}
+
+export function stopInterview() {
+  if (!chat.sticky) return;
+  chat.mode = chat.exitsTo || "";
+  chat.sticky = false;
+  chat.awaiting = "";
+  chat.options = [];
+  chat.askedStep = null;
+  // Said out loud in the transcript, and carried back to the model with it.
+  // A mode that changes silently leaves a conversation whose next reply
+  // makes no sense against anything the reader can see.
+  chat.messages.push({
+    role: "assistant",
+    content: "Stopped working on the request. Everything settled so far is "
+      + "kept — open **Draft** to read it back, or say what you would like "
+      + "to derive whenever you want to pick it up again.",
+  });
+  saveSession();
 }
 
 /* Answers to the question actually asked come first — the model marks them

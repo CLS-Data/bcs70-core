@@ -39,13 +39,21 @@ export const chat = {
   busy: false,        // a request is in flight
   answered: false,    // …but the reply and its choices have already landed
   phase: "",          // what to show in the working indicator
-  // How the server read the last message. The label and whether the intent
-  // advances the checklist both come from the server, so the browser never
-  // needs to know which intents exist — it used to test `mode === "explore"`,
-  // which is a config id spelled out in the markup.
+  // How the server read the last message, and — since it keeps nothing
+  // between turns — what has to be handed back for the next one. The browser
+  // never needs to know which intents exist: it used to test
+  // `mode === "explore"`, a config id spelled out in the markup.
   mode: "",
   modeLabel: "",
   modeAdvances: true,
+  // Sticky: this intent is stayed in until an explicit stop, so the strip
+  // shows a way out. `awaiting` is an offer to start something, outstanding
+  // until answered — whether "yes" means anything depends on what was asked,
+  // so the question has to survive the round trip. `exitsTo` is where the
+  // stop control lands, named by the server rather than guessed here.
+  sticky: false,
+  awaiting: "",
+  exitsTo: "",
   turn: 0,            // which turn owns the transcript right now
   abort: null,
   panel: "chat",
@@ -86,6 +94,13 @@ export const capitaliseWave = () => wavePlural().replace(/^./, (c) => c.toUpperC
 
 /* ── API ───────────────────────────────────────────────────────────── */
 
+// The checklist belongs to the interview. Before one it is noise; after one
+// it is the progress that was made, which is worth keeping on screen even
+// once the conversation has gone back to general questions.
+export function showsChecklist() {
+  return chat.sticky || Object.values(chat.covered || {}).some(Boolean);
+}
+
 export function firstUnsettled() {
   const steps = chat.interview?.steps || [];
   const next = steps.findIndex((s) => !chat.covered[s.id]);
@@ -113,6 +128,11 @@ export function saveSession() {
       messages: chat.messages.slice(-40), pinned: chat.pinned,
       draft: chat.draft, covered: chat.covered, step: chat.step,
       separate: chat.separate, options: chat.options, askedStep: chat.askedStep,
+      // Without these a reload drops you out of the interview mid-question,
+      // and a reload between an offer and its answer turns "yes" into a
+      // sentence about nothing.
+      mode: chat.mode, sticky: chat.sticky, awaiting: chat.awaiting,
+      exitsTo: chat.exitsTo,
     }));
   } catch { /* over quota — the transcript is not worth failing over */ }
 }
@@ -132,6 +152,10 @@ export function restore() {
       chat.separate = s.separate || [];
       chat.options = s.options || [];
       chat.askedStep = s.askedStep || null;
+      chat.mode = s.mode || "";
+      chat.sticky = Boolean(s.sticky);
+      chat.awaiting = s.awaiting || "";
+      chat.exitsTo = s.exitsTo || "";
     }
   } catch { /* start fresh */ }
 }

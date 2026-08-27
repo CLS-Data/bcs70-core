@@ -62,15 +62,19 @@ class Defaults(unittest.TestCase):
         self.assertFalse(explore.shows_checklist)
         self.assertFalse(explore.offers_choices)
 
-    def test_the_shipped_config_is_unchanged_by_this(self):
-        """The two real intents keep exactly the behaviour they had."""
+    def test_the_shipped_intents_get_what_they_declare(self):
+        """Whatever the two shipped intents are called, each gets the
+        behaviour its own entry asks for and not the other's.
+
+        This read `explore` until the general agent absorbed it. The name was
+        never the point — that a checklist and answer buttons follow the
+        declaration rather than the id is."""
         from config import get as get_config
-        real = get_config()
-        by_id = {i.id: i for i in real.intents}
+        by_id = {i.id: i for i in get_config().intents}
         self.assertTrue(by_id["interview"].shows_checklist)
         self.assertTrue(by_id["interview"].offers_choices)
-        self.assertFalse(by_id["explore"].shows_checklist)
-        self.assertFalse(by_id["explore"].offers_choices)
+        self.assertFalse(by_id["chat"].shows_checklist)
+        self.assertFalse(by_id["chat"].offers_choices)
 
 
 class AThirdIntent(unittest.TestCase):

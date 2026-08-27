@@ -20,7 +20,7 @@ from .tools import COVERAGE, HARMONISED, INSPECT, SEARCH
 
 def system(cfg: Config, step_index: int, covered: dict[str, bool],
            agentic: bool, facts: dict | None = None,
-           mode: str | None = None) -> str:
+           mode: str | None = None, entering: bool = False) -> str:
     """Standing instructions for one message, in whichever mode it is."""
     facts = facts or {}
     step = cfg.steps[step_index]
@@ -105,6 +105,18 @@ reason to guess.
             f"Drive towards this. The things it needs to establish:\n{probes}"
         )
 
+    # The first message inside an intent just entered. Everything the
+    # researcher said before agreeing is above in the conversation, and a
+    # specialist that opens by asking what they have already been told is the
+    # standard way a handoff annoys people.
+    entering_block = ""
+    if entering:
+        entering_block = (
+            "\nTHEY HAVE JUST AGREED TO START.\nRead back over what they "
+            "already told you above. Take as settled anything they have "
+            "plainly said, do not ask it again, and open on the first thing "
+            "that is genuinely still open.\n")
+
     intent = cfg.intent(mode)
     if intent.shows_checklist:
         # Declared by the intent, not compared against its name: an intent
@@ -114,7 +126,7 @@ reason to guess.
 
 Settled: {", ".join(done) if done else "nothing yet"}.
 Still to come: {", ".join(left) if left else "nothing"}.
-
+{entering_block}
 {step_block}"""
     else:
         job_block = f"YOUR JOB RIGHT NOW — {intent.label}\n{intent.instructions}"
@@ -165,6 +177,27 @@ separated by | — so a question about which {waves} to cover would end:
   or genuinely open. A wide question with narrow options stapled underneath
   is worse than one with none.
 - Emit it once, at the very end. Nothing may follow it."""}"""
+
+
+def proposal_block(cfg: Config, offered) -> str:
+    """What to say instead of answering, when the researcher has asked for
+    something derived.
+
+    A separate instruction rather than a separate prompt: the corpus facts,
+    the known traps and the naming conventions all still apply — the only
+    thing that changes is what this one message is for. How it is phrased is
+    the intent's own `confirm`, so it stays a config change.
+    """
+    return f"""THIS MESSAGE IS AN OFFER, NOT AN ANSWER.
+
+They have asked for something to be derived. Do not begin the work and do not
+look anything up.
+
+{offered.confirm}
+
+Keep it to two sentences. If what they want is not clear enough to state back
+to them, say which part you are unsure of and ask about that instead — the
+answer buttons are Yes and No, so the question has to be answerable with one."""
 
 
 def pinned_block(pinned: list[dict]) -> str:

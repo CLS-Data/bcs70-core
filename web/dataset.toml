@@ -294,24 +294,63 @@ stopwords = [
 
 
 # ── What the assistant can be asked to do ───────────────────────────────
-# The router picks one of these per message. Adding a capability means adding
-# an entry here — a description the router matches on, and the instructions
-# the assistant then works to. No code changes.
+# Adding a capability means adding an entry here — a description, and the
+# instructions the assistant works to. No code changes.
 #
-# The FIRST entry is the fallback: used for the opening message, and whenever
-# the router cannot decide.
+# The FIRST entry is the fallback: where a conversation opens, where an
+# unreadable mode lands, and where a sticky intent returns to.
 #
-# Three booleans decide what an intent changes about a turn. All of them
-# default to whatever `advances` says, so an intent only declares what
-# differs:
+# What an intent changes about a turn is declared, never inferred from its
+# name. Three booleans decide what it does with the checklist:
 #
 #   advances         answering it credits a checklist step
 #   shows_checklist  the prompt carries what is settled and what is open
 #   offers_choices   the reply may end with answer buttons
+#   extracts         the draft extractor runs after the reply
 #
-# They exist because they used to be decided by comparing the intent's id
-# against "interview" in prompts.py and "explore" in the browser, so an
-# intent added here got whatever those comparisons happened to give it.
+# All three of the last ones default to whatever `advances` says, so an
+# intent only declares what differs. They exist because they used to be
+# decided by comparing the intent's id against "interview" in prompts.py and
+# "explore" in the browser, so an intent added here got whatever those
+# comparisons happened to give it.
+#
+# Four more decide how a turn gets into it and out again:
+#
+#   entry            "router" — chosen per message
+#                    "handoff" — only ever entered by a proposal accepted
+#   confirm          how that proposal is phrased
+#   sticky           once here, stay until an explicit stop
+#   exits_to         where leaving lands ("" = the fallback)
+#
+# Picking afresh on every message is right for answering a question and wrong
+# for an interview: a researcher asking "which sweeps have this?" halfway
+# through would be routed out of the very thing they asked to start.
+
+[[intent]]
+id    = "chat"
+label = "general"
+# The default. It answers, it looks things up, and it credits nothing —
+# asking a question is not answering one.
+advances = false
+# Where the fallback rule sends a message that looks like a question. With
+# one router intent it changes nothing; it stays declared so the rule keeps
+# working if a second is ever added.
+heuristic = "question"
+description = """
+The researcher is asking about the study or its variables — what exists, \
+where, how something is coded, how many, what a name means — or talking \
+about their work in general."""
+instructions = """
+Answer what they asked, and stop.
+
+- Look it up. Do not answer from memory about which variables exist, what they
+  are called or how they are coded — that is what the tools are for.
+- Be concrete: name the variables, name the waves, quote the codes.
+- If the corpus does not have it, say so plainly. An empty search is an answer.
+- Say what you did not check. A search returns the best matches, not
+  everything; if you are reporting coverage, say so.
+- Do not ask interview questions and do not chase a checklist. One short
+  answer."""
 
 [[intent]]
 id    = "interview"
@@ -319,6 +358,21 @@ label = "working on the request"
 # Answering a question is progress; a step gets credited. Only one intent
 # should advance the checklist.
 advances = true
+# Entered only by a proposal the researcher accepts. A wrong route costs a
+# turn; being put into an interview unasked costs more, and the confirmation
+# is what pays the difference.
+entry    = "handoff"
+confirm  = """
+Say in one sentence what you understand they want derived, then ask whether \
+to take them through the request. Do not ask anything else, and do not start \
+the checklist — they have not agreed yet."""
+# Stay until they say to stop. A question about the data mid-interview is
+# expected and is answered in place; only an explicit stop leaves.
+sticky   = true
+exits_to = "chat"
+# The answers offered with the proposal. Not the model's to invent: "shall I
+# start?" has exactly two answers and a rescue call cannot improve on them.
+replies  = ["Yes, start the request", "No, I'm just asking"]
 description = """
 The researcher is answering a question we asked, stating what they want \
 derived, correcting something they said earlier, or telling us to carry on."""
@@ -328,30 +382,11 @@ Work through the checklist, one step per message.
 - Ask ONE question, about the current step, and end the message with it.
 - Never summarise what is settled or list what is left; both are on screen.
 - If the researcher revises something already settled, that overrides the
-  step: say what you now have for it, confirm it in one question, then move on."""
-
-[[intent]]
-id    = "explore"
-label = "asking about the data"
-# Asking a question is not answering one, so nothing is ticked off.
-advances = false
-# Where the fallback rule sends a message that looks like a question.
-heuristic = "question"
-description = """
-The researcher is asking a question ABOUT the study or its variables — what \
-exists, where, how something is coded, how many, what a name means. They want \
-an answer, not the next interview question."""
-instructions = """
-Answer the question they asked, and stop.
-
-- Look it up. Do not answer from memory about which variables exist, what they
-  are called or how they are coded — that is what the tools are for.
-- Be concrete: name the variables, name the waves, quote the codes.
-- If the corpus does not have it, say so plainly. An empty search is an answer.
-- Say what you did not check. A search returns the best matches, not
-  everything; if you are reporting coverage, say so.
-- Do NOT ask a checklist question and do not chase the next step. One short
-  answer. They will come back to it."""
+  step: say what you now have for it, confirm it in one question, then move on.
+- If they ask a question about the data instead of answering, look it up and
+  answer it in a line or two — then put your own question back to them in the
+  same message. Do not hand the conversation back, and do not treat the
+  question as an answer to anything."""
 
 
 # ── The interview ───────────────────────────────────────────────────────
