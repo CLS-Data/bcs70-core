@@ -17,3 +17,5 @@ __pycache__/
 # copy that can disagree with the metadata it claims to describe.
 # Run 'python3 web/build_site.py' to produce it locally.
 web/data/
+
+docs/
