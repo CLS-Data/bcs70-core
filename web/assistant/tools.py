@@ -29,12 +29,17 @@ NAMES = (SEARCH, INSPECT, COVERAGE, HARMONISED)
 
 # ── Declarations ────────────────────────────────────────────────────────
 
-def schemas(cfg: Config) -> list[dict]:
-    """OpenAI-style function schemas, worded from the dataset's own terms."""
+def schemas(cfg: Config, intent=None) -> list[dict]:
+    """OpenAI-style function schemas, worded from the dataset's own terms.
+
+    `intent` narrows them to the lookups it declares. Binding is the
+    enforcement point: a tool the model is never shown is a tool it cannot
+    ask for, which is steadier than refusing the call afterwards.
+    """
     wave, waves = cfg.wave_term, cfg.wave_plural
     example = cfg.name_examples[0] if cfg.name_examples else "abc123"
 
-    return [
+    declared = [
         {
             "type": "function",
             "function": {
@@ -168,9 +173,13 @@ def schemas(cfg: Config) -> list[dict]:
             },
         },
     ]
+    if intent is None:
+        return declared
+    return [s for s in declared
+            if cfg.may_use(intent, s["function"]["name"])]
 
 
-def lc_tools(cfg: Config):
+def lc_tools(cfg: Config, intent=None):
     """The same schemas as LangChain tool objects, for binding onto a model.
 
     Declaration only — the functions are never invoked through LangChain, for
@@ -187,7 +196,7 @@ def lc_tools(cfg: Config):
             description=spec["function"]["description"],
             args_schema=spec["function"]["parameters"],
         )
-        for spec in schemas(cfg)
+        for spec in schemas(cfg, intent)
     ]
 
 

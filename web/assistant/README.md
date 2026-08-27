@@ -1,8 +1,15 @@
 # The assistant
 
-A LangGraph that answers questions about the study and interviews a researcher
-until a variable request is complete enough to implement, searching the data
-dictionaries on its own initiative as it goes.
+A LangGraph running two agents over one runtime: a general one that answers
+questions about the study, and a specialist that interviews a researcher until
+a variable request is complete enough to implement. Both search the data
+dictionaries on their own initiative as they go.
+
+They are not two graphs. What differs between an agent here is its prompt and
+its lifecycle — when its turn ends, whether the checklist moves, whether the
+extractor runs. Everything else is shared: the streaming, the choices parser,
+the hop budget, the four lookups. A second graph would have duplicated all of
+it to change a system prompt.
 
 `../chat.js` and `../chat/` only draw this. Nothing about *what it asks* lives
 in the browser, and nothing dataset-specific lives in this directory — the
@@ -13,22 +20,27 @@ interview come from `../dataset.toml`.
 
 ```mermaid
 flowchart TD
-    START([START]) --> CLS
+    START([START]) --> RT
 
-    CLS{"classify<br/>a question about the data,<br/>or an answer to ours?"}
-    CLS -- "explore" --> INT
-    CLS -- "interview" --> INT
+    RT{"route<br/>which intent does this turn run in?"}
+    RT -- "a proposal is outstanding" --> HO
+    RT -- "chat · interview" --> RES
 
-    INT["interviewer<br/>stream a reply in that mode, strip the reasoning<br/>and the choices marker, publish the buttons"]
+    HO["handoff<br/>name the concept, offer to start,<br/>and stop there"]
+    RES["respond<br/>stream a reply in that intent, strip the reasoning<br/>and the choices marker, publish the buttons"]
     LOOK["lookups<br/>run the tools it asked for,<br/>show each call and its result"]
     PRESS["press<br/>withhold the tools and make it ask"]
     DRAFT["draft<br/>read the conversation back, fill in the request,<br/>advance the checklist only if interviewing"]
 
-    INT -- "asked for tools,<br/>hops left" --> LOOK
-    INT -- "asked for tools,<br/>hops spent" --> PRESS
-    INT -- "answered" --> DRAFT
-    LOOK --> INT
-    PRESS --> DRAFT
+    RES -- "asked for tools,<br/>hops left" --> LOOK
+    RES -- "asked for tools,<br/>hops spent" --> PRESS
+    RES -- "answered" --> EX
+    LOOK --> RES
+    PRESS --> EX
+    EX{"does this intent extract?"}
+    EX -- "yes" --> DRAFT
+    EX -- "no" --> STOP
+    HO --> STOP
     DRAFT --> STOP([END])
 
     subgraph tools ["the four lookups"]
@@ -44,65 +56,116 @@ flowchart TD
     classDef decision fill:#eef2ee,stroke:#8e2f6b,color:#131a22
     classDef terminal fill:#dfe3dc,stroke:#78838c,color:#4d5862
     classDef toolbox fill:#eef2ee,stroke:#2a5c8a,color:#2a5c8a
-    class INT,LOOK,PRESS,DRAFT node
-    class CLS decision
+    class RES,LOOK,PRESS,DRAFT,HO node
+    class RT,EX decision
     class START,STOP terminal
     class T1,T2,T3,T4 toolbox
     style tools fill:#eef2ee,stroke:#c5ccc3,color:#78838c
 ```
 
-One message runs the graph once. The loop between `interviewer` and `lookups`
-is the model deciding what it needs to know; `press` is the escape hatch when
-it never stops deciding.
+One message runs the graph once. The loop between `respond` and `lookups` is
+the model deciding what it needs to know; `press` is the escape hatch when it
+never stops deciding.
 
 | node | |
 |---|---|
-| **classify** | Which intent is this message? See *the router*. |
-| **interviewer** | Streams one reply in that intent's terms. Separates the model's reasoning from its answer, pulls out the answer buttons it marked, publishes both. |
+| **route** | Which intent does this turn run in? Supplies the model and publishes the answer; the deciding is `router.transition`, which is standard library and pure so CI can test it. |
+| **handoff** | Reached when the researcher has asked for something derived. Names the concept back to them and offers to start. The turn ends there — nothing is looked up, no step is asked, and the extractor does not run, because none of it means anything until they say yes. |
+| **respond** | Streams one reply in that intent's terms. Separates the model's reasoning from its answer, pulls out the answer buttons it marked, publishes both. Binds only the lookups the intent declares. |
 | **lookups** | Runs the tools it asked for, publishes each call *with its arguments* and its result, and records what was found. |
 | **press** | Reached only when the hop budget is gone. Re-asks with the tools withheld, because a model mid-search returns nothing rather than change course. If it still says nothing, `_carry_on` takes over. |
-| **draft** | Reads the conversation back and fills in the request. Runs after the answer, never before. Advances the checklist only when the intent says to. |
+| **draft** | Reads the conversation back and fills in the request. Runs after the answer, never before, and only for an intent that declares `extracts` — it is the slowest node here, and it used to run on every turn including the ones that could not move the checklist. Advances the checklist only when the intent says to. |
 
 ## Intents
 
-What the assistant can be asked for. Each is an `[[intent]]` in
-`dataset.toml`: a description the router matches on, the instructions the
-assistant then works to, and whether answering it moves the checklist.
+What the assistant can be asked for, and how a turn gets into it and out
+again. Each is an `[[intent]]` in `dataset.toml`.
 
-| | **interview** | **explore** |
+| | **chat** | **interview** |
 |---|---|---|
-| the message is | an answer, a request, a correction | a question about the data |
-| it does | drives the next unsettled step | answers, and stops |
-| checklist | the answered step is credited | never advances |
-| the draft | fills in | fills in |
+| the message is | a question, or anything else | an answer, a request, a correction |
+| it does | answers, and stops | drives the next unsettled step |
+| entered by | the default; every conversation opens here | a proposal the researcher accepts |
+| left by | a proposal accepted | an explicit stop, or the checklist completing |
+| checklist | never advances | the answered step is credited |
+| the draft | does not run | fills in |
 
-The draft fills in either way; only the checklist is held back. Someone saying
-"I only care about the adult sweeps" while asking a question has told us
-something worth keeping — but they were not answering a question, so nothing is
-ticked. Facts captured, progress not claimed.
+**A question mid-interview does not leave the interview.** It used to: an
+`explore` intent sat beside `interview` and the router picked between them
+afresh on every message, so asking "which sweeps have this?" halfway through
+routed you out of the very thing you asked to start. The interviewer now looks
+it up, answers in a line, and puts its own question back in the same message.
+`explore` is gone; its instructions are `chat`'s.
 
-**Adding a capability is a config change.** Add an `[[intent]]`; the router
-offers it and the assistant works to its instructions. No branch in
-`router.py`, none in `prompts.py`, none in `graph.py` — which asks
-`intent.advances` rather than comparing against a name.
+**Getting in takes a yes.** `entry = "handoff"` withholds an intent from the
+router entirely. A wrong route costs a turn; being put into an interview
+unasked costs more, and the confirmation is what pays the difference. The
+proposal is also where the draft gets seeded — the extractor reads the whole
+conversation, so everything said before agreeing is already in it, and the
+interview opens on the first thing genuinely still open rather than re-asking
+the concept.
+
+**Adding a capability is a config change.** Everything an intent changes about
+a turn is declared, never inferred from its name:
+
+| | |
+|---|---|
+| `advances` | answering it credits a checklist step |
+| `shows_checklist` | the prompt carries what is settled and what is open |
+| `offers_choices` | the reply may end with answer buttons |
+| `extracts` | the draft extractor runs after the reply |
+| `entry` | `router` — chosen per message; `handoff` — only ever entered by an accepted proposal |
+| `confirm` | how that proposal is phrased |
+| `replies` | the answers offered with it |
+| `sticky` | once here, stay until an explicit stop |
+| `exits_to` | where leaving lands |
+| `tools` | which lookups it may call |
+
+The three after `advances` default to whatever it says. They exist because
+they were once decided by comparing the id against `"interview"` in
+`prompts.py` and `"explore"` in the browser, so a third intent got whatever
+those comparisons happened to give it. `validate()` now refuses every shape
+of intent nothing could reach — a sticky or handoff-entered fallback, a
+handoff with nothing to propose with or no way to answer it, `exits_to`
+naming nothing, sticky exiting into sticky.
 
 ## The router
 
-`classify` asks the helper model, giving it each intent's description and the
-question just asked. About a second, and it reads intent rather than syntax:
+`transition()` decides which intent a turn runs in, given the one the last
+turn ran in. It is standard library and pure — the graph supplies `ask_model`
+and stores the result — so every rule in it is tested in a checkout that
+installed nothing.
 
-| message | rule | model | |
-|---|---|---|---|
-| `Remind me what b7khlstt is` | interview | **explore** | rule wrong |
-| `I forget whether height was measured at 10y` | interview | **explore** | rule wrong |
-| `Tell me more about that variable` | explore | explore | |
+The order is not arbitrary. A pending proposal is answered before anything
+else, or a "yes" gets classified as a fresh message. Leaving a sticky intent
+is decided before staying in it. Only a turn doing neither is free to route.
 
-No punctuation rule catches the first two, and no word list will catch the next
-intent someone adds. A heuristic stays behind it, chosen by
-`[assistant] router`: **`model`**, **`heuristic`**, or **`auto`** (the default
-— the model, with the rule as fallback, because a routing failure should
-degrade a turn rather than end it). The opening message skips the router: it is
-the request however it is phrased.
+| in | the question | costs |
+|---|---|---|
+| a first message | none — it is the fallback, whatever it says | nothing |
+| `chat` | is this a request to derive something? | one binary call |
+| a proposal outstanding | did they say yes? | one binary call |
+| `interview` | do they want out? | **nothing at all** |
+
+That last row is the saving, and it is the common case: a sticky turn asks
+the model nothing. Behind each question is a rule, chosen by
+`[assistant] router` — **`model`**, **`heuristic`**, or **`auto`** (the
+default: the model, with the rule as fallback, because a routing failure
+should degrade a turn rather than end it).
+
+**The exit rule is narrower than it looks, and every narrowing is a message
+that ended an interview by accident.** "stop" runs through this corpus
+mid-sentence — stopping smoking, stopping work, stopping school. So: a
+question is never an exit however it is worded; only an unambiguous
+multi-word phrase may open a longer message ("never mind, let's do something
+else" yes, "go back to the 16y sweep" no); and anything else has to be four
+words or fewer. Six was the first threshold, and *"did they stop smoking by
+29y?"* is exactly six.
+
+A two-word "stop smoking" still reads as an exit. That is the residue of a
+rule with no model behind it — the visible stop control is the reliable way
+out, this is the courtesy — and leaving is recoverable, since the draft is
+kept and the interview is one sentence away.
 
 ## The tools
 
@@ -217,9 +280,17 @@ options      the answer buttons for the reply just given
 asked_step   which step the question was about
 separate     concepts that should be split into their own issues
 hops         tool round-trips used this turn
-mode         which intent the router chose
+mode         which intent this turn is running in
+awaiting     an intent offered, waiting on a yes
+entering     this turn entered `mode` by acceptance
 seen         every variable the lookups surfaced, as records
 ```
+
+`mode` and `awaiting` come IN as well as out. The server keeps nothing
+between turns, so a sticky intent that the browser did not hand back would be
+forgotten the moment the response ended — and whether "yes" means anything
+depends on what was asked. `entering` is turn-local: it is derived fresh from
+`awaiting` and the message, never posted back.
 
 `seen` is a reduced field: each lookup adds to one working set rather than
 replacing it. It exists because the alternative was re-parsing the *rendered
@@ -250,7 +321,8 @@ reads, so `stream_mode="custom"` is the only mode used.
 
 ```
 standard library — these work with nothing installed
-  router.py      which intent is this message? model, with a rule behind it
+  router.py      the state machine: which intent this turn runs in, how one
+                 is entered and left. Model, with a rule behind it
   prompts.py     the system prompt, schemas, extraction instructions
   choices.py     TagSpan: pulls tagged spans out of a live stream
   retrieval.py   BM25, coverage, rank fusion, and the per-turn settings
@@ -276,11 +348,12 @@ does, and names the fix when it cannot.
 It also decides what can be tested. CI installs nothing, so a test that
 imports `graph.py` or `agent.py` cannot run there — which is why the rules
 worth guarding have been moved out of them: the hop budget to
-`Config.hops_spent`, and the message pairing to `transcript.plan`. Both were
-wrong once, in ways nothing downstream could show you. What is left in the
+`Config.hops_spent`, the message pairing to `transcript.plan`, and the whole
+mode machine to `router.transition`. All three were wrong once, in ways
+nothing downstream could show you. What is left in the
 bottom half is a graph, two model builders and a mapping.
 
-## Seven things that are not what you would write first
+## Eight things that are not what you would write first
 
 Each was a bug before it was a decision.
 
@@ -317,6 +390,12 @@ the request is complete and points at the Draft panel. It used to leave a shrug
 in the transcript, which hands back a conversation the researcher came here to
 be led through.
 
+**Stickiness is cheaper than routing, not just steadier.** The obvious reading
+of "stay in the interview until they leave" is that it costs an extra check
+each turn. It removes one: the intent is already known, so the only question
+is whether to leave, and the rule answers that without a model. The round trip
+that used to open every single message now happens only in `chat`.
+
 **A correction may reopen a step.** The checklist ratchets forward so a model
 forgetting turn two on turn six cannot un-tick it. A researcher changing their
 mind is the opposite case: the extractor reports `revised`, and those steps go
@@ -342,7 +421,7 @@ tooltip. The usual reason is an older `server.py` still holding the port.
 | the embedding model, or its dimensions | `../dataset.toml` → `[retrieval] embed_model`, `embed_dims`, then rebuild the index |
 | what it knows about the study | `../dataset.toml` → `[dataset] about`, `cautions` |
 | what it asks, or the answers it offers | `../dataset.toml` → `[[interview.step]]` |
-| what it can be asked to do | `../dataset.toml` → `[[intent]]` |
+| what it can be asked to do, and how a turn enters or leaves it | `../dataset.toml` → `[[intent]]` |
 | how it is told to behave | `prompts.py` |
 | what it can look up | `tools.py`, and the diagram above |
 | the shape of the conversation | `graph.py` |

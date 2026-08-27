@@ -171,18 +171,35 @@ AFFIRM = (
     "do it", "sounds right", "that's right", "thats right", "correct", "right",
 )
 
-# Leaving a sticky intent. Matched at the start of the message, or anywhere in
-# a short one — "stop" appears mid-sentence all over this corpus ("did they
-# stop smoking?"), and reading that as an exit would drop someone out of the
-# interview for asking a perfectly ordinary question.
+# Leaving a sticky intent. "stop" runs through this corpus mid-sentence —
+# stopping smoking, stopping work, stopping school — so a bare match anywhere
+# would drop someone out of the interview for asking an ordinary question.
 STOP_PHRASES = (
     "stop", "cancel", "never mind", "nevermind", "forget it", "forget this",
     "not now", "not any more", "not anymore", "i'm done", "im done",
     "we're done", "were done", "that's enough", "thats enough", "quit",
-    "abandon", "leave it", "drop it", "go back", "start over", "let's stop",
-    "lets stop", "no more",
+    "abandon", "leave it", "drop it", "go back", "let's stop", "lets stop",
 )
-SHORT_MESSAGE_WORDS = 6
+
+# Which of them may open a LONGER message. Listed rather than derived: being
+# more than one word is not what makes a phrase unambiguous. "no more" was
+# dropped from the list above for the same reason — "no more than 3 sweeps"
+# is an answer — and "go back" is here only in the short form, because "go
+# back to the 16y sweep" is navigation, not an exit.
+#
+# "start over" is deliberately absent from both: it asks to restart the
+# interview, not to leave it, and the checklist already reopens a step when
+# the extractor reports a revision.
+STOP_OPENERS = (
+    "never mind", "nevermind", "forget it", "forget this",
+    "let's stop", "lets stop", "i'm done", "im done",
+    "we're done", "were done", "that's enough", "thats enough",
+)
+
+# Otherwise an exit has to BE the message. Four words, not six: "did they
+# stop smoking by 29y?" is exactly six, which is how this rule first let a
+# perfectly ordinary question end an interview.
+SHORT_MESSAGE_WORDS = 4
 
 # Wanting something derived. Conservative on purpose: the proposal is what
 # makes a wrong reading cheap, but only if wrong readings are rare enough
@@ -237,11 +254,26 @@ def is_exit(text: str) -> bool:
     Note what this does NOT do: infer an exit from a message that merely
     changes the subject. Asking about the data mid-interview is expected — the
     interviewer answers it and carries on — so only an explicit stop leaves.
+
+    Three narrowings, each for a message that would otherwise have ended an
+    interview by accident: a question is never an exit however it is worded,
+    only an unambiguous multi-word phrase may open a longer message, and
+    anything else has to be short enough to be the whole point of the message.
+
+    A two-word "stop smoking" still reads as an exit. That is the residue of
+    a rule with no model behind it — the visible stop control is the reliable
+    way out, this is the courtesy — and leaving is recoverable: the draft is
+    kept and the interview is one sentence away.
     """
-    if _opens_with(text, STOP_PHRASES):
+    body = (text or "").strip()
+    if _opens_with(body, STOP_OPENERS):
         return True
-    words = _words(text)
-    if len(words) > SHORT_MESSAGE_WORDS:
+    # A question is a question. Whatever else it contains, they are waiting
+    # on an answer, not asking to leave.
+    if body.endswith("?"):
+        return False
+    words = _words(body)
+    if not words or len(words) > SHORT_MESSAGE_WORDS:
         return False
     low = " ".join(words)
     return any(re.search(rf"\b{re.escape(p)}\b", low) for p in STOP_PHRASES)

@@ -47,8 +47,9 @@ from . import llm, prompts, router, tools as toolkit
 from .choices import ChoiceParser, TagSpan
 
 # Node names, so a typo is an error rather than an unreachable branch.
-CLASSIFY = "classify"
-INTERVIEWER = "interviewer"
+ROUTE = "route"
+HANDOFF = "handoff"
+RESPOND = "respond"
 LOOKUPS = "lookups"
 PRESS = "press"
 DRAFT = "draft"
@@ -79,7 +80,12 @@ class TurnState(TypedDict, total=False):
     asked_step: str | None
     separate: list[str]
     hops: int
-    mode: str          # which intent the router chose
+    mode: str          # which intent this turn is running in
+    # A proposal outstanding: the intent offered, waiting on a yes. The client
+    # holds it between turns and posts it back, because whether "yes" means
+    # anything depends on what was asked.
+    awaiting: str
+    entering: bool     # this turn entered `mode` by acceptance
     seen: Annotated[list[dict], _merge_seen]   # variables the tools returned
 
 
@@ -99,7 +105,8 @@ def _run(config: RunnableConfig) -> dict:
 
 # ── Talking ─────────────────────────────────────────────────────────────
 
-def _context(state: TurnState, run: dict, force: bool = False) -> list[AnyMessage]:
+def _context(state: TurnState, run: dict, force: bool = False,
+             extra: str = "") -> list[AnyMessage]:
     """System framing plus the trimmed transcript."""
     cfg = run["cfg"]
     step = cfg.first_unsettled(state.get("covered") or {})
@@ -107,7 +114,8 @@ def _context(state: TurnState, run: dict, force: bool = False) -> list[AnyMessag
     msgs: list[AnyMessage] = [SystemMessage(prompts.system(
         cfg, step, state.get("covered") or {}, run["agentic"],
         facts=run["corpus"].facts,
-        mode=state.get("mode")))]
+        mode=state.get("mode"),
+        entering=bool(state.get("entering"))))]
 
     pins = prompts.pinned_block(state.get("pinned") or [])
     if pins:
@@ -126,10 +134,15 @@ def _context(state: TurnState, run: dict, force: bool = False) -> list[AnyMessag
             "plain prose, with the single question for the current step — or "
             "with what you found, if the step is answered."
         ))
+    # Last, because it governs this one message and has to outrank the
+    # standing instructions above it.
+    if extra:
+        msgs.append(SystemMessage(extra))
     return msgs
 
 
-def _speak(state: TurnState, run: dict, *, with_tools: bool, force: bool):
+def _speak(state: TurnState, run: dict, *, with_tools: bool, force: bool,
+           extra: str = ""):
 
     """Stream one assistant message, stripping the choices marker as it goes.
 
@@ -140,7 +153,7 @@ def _speak(state: TurnState, run: dict, *, with_tools: bool, force: bool):
 
     model = llm.interviewer(run)
     if with_tools:
-        model = model.bind_tools(toolkit.lc_tools(cfg))
+        model = model.bind_tools(toolkit.lc_tools(cfg, cfg.intent(state.get("mode"))))
 
     parser = ChoiceParser(cfg)
     # Belt and braces. Well-behaved models put their working in Ollama's own
@@ -153,7 +166,7 @@ def _speak(state: TurnState, run: dict, *, with_tools: bool, force: bool):
     thinking: list[str] = []
     final: AIMessage | None = None
 
-    for chunk in model.stream(_context(state, run, force)):
+    for chunk in model.stream(_context(state, run, force, extra)):
         reasoning = (chunk.additional_kwargs or {}).get("reasoning_content")
         if reasoning:
             thinking.append(reasoning)
@@ -246,8 +259,13 @@ def _rescue_options(run: dict, question: str) -> tuple[list[str], str | None]:
 
 # ── Nodes ───────────────────────────────────────────────────────────────
 
-def classify(state: TurnState, config: RunnableConfig) -> dict:
-    """What does the researcher want from this message?"""
+def route_turn(state: TurnState, config: RunnableConfig) -> dict:
+    """Which intent does this turn run in?
+
+    The whole decision is `router.transition`, which is standard library and
+    pure so CI can test it. This node supplies the model and publishes the
+    result; it decides nothing itself.
+    """
     run = _run(config)
     cfg = run["cfg"]
 
@@ -257,25 +275,61 @@ def classify(state: TurnState, config: RunnableConfig) -> dict:
     asked = next((str(m.content) for m in reversed(state["messages"])
                   if isinstance(m, AIMessage) and str(m.content).strip()), "")
 
-    def ask_model(instruction: str) -> dict:
-        model = llm.structured(run, router.schema(cfg))
-        return model.invoke([HumanMessage(instruction)])
+    def ask_model(instruction: str, schema: dict) -> dict:
+        return llm.structured(run, schema).invoke([HumanMessage(instruction)])
 
-    mode, how = router.classify(
-        cfg, str(last.content) if last else "",
-        has_history=earlier, last_question=asked[-400:], ask_model=ask_model)
+    moved = router.transition(
+        cfg, state.get("mode"), str(last.content) if last else "",
+        has_history=earlier, awaiting=state.get("awaiting") or "",
+        last_question=asked[-400:], ask_model=ask_model)
 
-    intent = cfg.intent(mode)
-    # `advances` travels with the mode so the browser can mark a turn that
-    # ticks nothing off without knowing which intents exist. It used to test
-    # `mode === "explore"`, which is a name from the config appearing in the
-    # markup — and silently wrong for any intent added later.
-    get_stream_writer()({"type": "mode", "mode": mode, "label": intent.label,
-                         "advances": intent.advances, "decided_by": how})
-    return {"mode": mode}
+    intent = cfg.intent(moved.mode)
+    # Everything the browser needs to draw this turn, so it never has to know
+    # which intents exist. It used to test `mode === "explore"` — a name from
+    # the config appearing in the markup, and silently wrong for any intent
+    # added later. `awaiting` is the one piece it has to hand back next turn.
+    get_stream_writer()({"type": "mode", "mode": moved.mode,
+                         "label": intent.label, "advances": intent.advances,
+                         "decided_by": moved.how, "sticky": intent.sticky,
+                         "awaiting": moved.proposing,
+                         "entering": moved.entering})
+    return {"mode": moved.mode, "awaiting": moved.proposing,
+            "entering": moved.entering}
 
 
-def interviewer(state: TurnState, config: RunnableConfig) -> dict:
+def handoff(state: TurnState, config: RunnableConfig) -> dict:
+    """Offer to start, and stop there.
+
+    The turn ends on the offer: nothing is looked up, no step is asked, and
+    the extractor does not run. All of that waits for a yes, which is the
+    point of asking.
+    """
+    run = _run(config)
+    cfg = run["cfg"]
+    write = get_stream_writer()
+    offered = cfg.intent(state.get("awaiting") or "")
+
+    reply, _, _ = _speak(state, run, with_tools=False, force=False,
+                         extra=prompts.proposal_block(cfg, offered))
+    text = reply.content.strip()
+    if not text:
+        # Same reasoning as `_carry_on`: a silent model must not end the turn
+        # with a shrug, least of all on the message that decides where the
+        # conversation goes next.
+        text = (f"It sounds like you want something derived. Shall I take you "
+                f"through the request?")
+        write({"type": "content", "text": text})
+        reply = AIMessage(content=text)
+
+    # Fixed, and from the intent being offered: the answers to "shall I start?"
+    # are not the model's to invent, and a rescue call cannot improve on them.
+    options = list(offered.replies)
+    write({"type": "options", "options": options, "step": None})
+    return {"messages": [reply], "options": options, "asked_step": None}
+
+
+def respond(state: TurnState, config: RunnableConfig) -> dict:
+    """One reply, in whichever intent this turn is running in."""
     run = _run(config)
     reply, options, calls = _speak(state, run, with_tools=run["agentic"], force=False)
 
@@ -590,25 +644,50 @@ def _variables_in(display: dict) -> list[dict]:
     return found
 
 
-def route(state: TurnState, config: RunnableConfig) -> str:
+def after_route(state: TurnState, config: RunnableConfig) -> str:
+    """A proposal outstanding replaces the reply; there is nothing else to say
+    until it is answered."""
+    return HANDOFF if state.get("awaiting") else RESPOND
+
+
+def after_speaking(state: TurnState, config: RunnableConfig) -> str:
+    """Where a finished reply goes.
+
+    Extraction is the slowest node in the graph — most of a 95-second call on
+    a small local model — and it used to run after every turn including the
+    ones that could not move the checklist. It now runs where an intent says
+    it should.
+    """
+    cfg = _run(config)["cfg"]
+    return DRAFT if cfg.intent(state.get("mode")).extracts else END
+
+
+def after_respond(state: TurnState, config: RunnableConfig) -> str:
     if not getattr(state["messages"][-1], "tool_calls", None):
-        return DRAFT
+        return after_speaking(state, config)
     return PRESS if _run(config)["cfg"].hops_spent(state.get("hops", 0)) else LOOKUPS
 
 
 def build():
     graph = StateGraph(TurnState)
-    graph.add_node(CLASSIFY, classify)
-    graph.add_node(INTERVIEWER, interviewer)
+    graph.add_node(ROUTE, route_turn)
+    graph.add_node(HANDOFF, handoff)
+    graph.add_node(RESPOND, respond)
     graph.add_node(LOOKUPS, lookups)
     graph.add_node(PRESS, press)
     graph.add_node(DRAFT, draft)
 
-    graph.add_edge(START, CLASSIFY)
-    graph.add_edge(CLASSIFY, INTERVIEWER)
-    graph.add_conditional_edges(INTERVIEWER, route,
-                                {LOOKUPS: LOOKUPS, PRESS: PRESS, DRAFT: DRAFT})
-    graph.add_edge(LOOKUPS, INTERVIEWER)
-    graph.add_edge(PRESS, DRAFT)
+    graph.add_edge(START, ROUTE)
+    graph.add_conditional_edges(ROUTE, after_route,
+                                {HANDOFF: HANDOFF, RESPOND: RESPOND})
+    # The offer ends the turn. Nothing to extract from a question nobody has
+    # answered yet.
+    graph.add_edge(HANDOFF, END)
+    graph.add_conditional_edges(RESPOND, after_respond,
+                                {LOOKUPS: LOOKUPS, PRESS: PRESS,
+                                 DRAFT: DRAFT, END: END})
+    graph.add_edge(LOOKUPS, RESPOND)
+    graph.add_conditional_edges(PRESS, after_speaking,
+                                {DRAFT: DRAFT, END: END})
     graph.add_edge(DRAFT, END)
     return graph.compile()

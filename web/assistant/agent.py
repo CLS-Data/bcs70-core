@@ -11,6 +11,8 @@ Events emitted (NDJSON, one object per line):
     {"type":"content",    "text": …}     prose, streamed
     {"type":"tool_call",  "name": …, "args": {…}}
     {"type":"tool_result","name": …, "args": {…}, "display": {…}}
+    {"type":"mode",       "mode": …, "label": …, "advances": bool,
+                          "sticky": bool, "awaiting": …, "entering": bool}
     {"type":"options",    "options": [...], "step": "coverage"|null}
     {"type":"draft",      "draft": {…}, "covered": {…}, "step": n, "separate": [...]}
     {"type":"error",      "message": …, "status": 410|null}
@@ -43,6 +45,12 @@ class TurnRequest:
     pinned: list[dict] = field(default_factory=list)
     covered: dict[str, bool] = field(default_factory=dict)
     draft: dict = field(default_factory=dict)
+    # Which intent the last turn ran in, and any offer still waiting on a yes.
+    # Both are held by the client for the same reason the transcript is: the
+    # server keeps nothing between turns, and a sticky intent is worthless if
+    # it is forgotten the moment the response ends.
+    mode: str = ""
+    awaiting: str = ""
     base_url: str = ""
     model: str = ""
     helper_model: str = ""
@@ -60,6 +68,8 @@ class TurnRequest:
             pinned=body.get("pinned") or [],
             covered=body.get("covered") or {},
             draft=body.get("draft") or {},
+            mode=str(body.get("mode") or ""),
+            awaiting=str(body.get("awaiting") or ""),
             base_url=(body.get("baseUrl") or cfg.ollama).rstrip("/"),
             model=body.get("model") or "",
             helper_model=body.get("helperModel") or "",
@@ -116,6 +126,9 @@ class Agent:
             "asked_step": None,
             "separate": [],
             "hops": 0,
+            "mode": req.mode,
+            "awaiting": req.awaiting,
+            "entering": False,
         }
         config = {
             "configurable": {

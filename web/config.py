@@ -101,6 +101,7 @@ class Intent:
     exits_to: str           # which intent a sticky one returns to ("" = fallback)
     extracts: bool          # does the draft extractor run after the reply?
     tools: tuple[str, ...]  # lookups this intent may call ("*" = all of them)
+    replies: tuple[str, ...]  # answers offered with its proposal
 
     @property
     def entered_by_handoff(self) -> bool:
@@ -204,6 +205,11 @@ class Config:
                 raise ConfigError(
                     f'{where} "{i.id}" is entered by handoff but has no '
                     f"`confirm`, so there is nothing to propose with")
+            if i.entered_by_handoff and len(i.replies) < 2:
+                raise ConfigError(
+                    f'{where} "{i.id}" is entered by handoff and needs at '
+                    f"least two `replies` — an offer with no way to accept "
+                    f"or decline it is not an offer")
             if not i.tools:
                 raise ConfigError(
                     f'{where} "{i.id}" has an empty `tools`; omit it for all of '
@@ -366,6 +372,7 @@ class Config:
                 # which is why it is a separate field rather than a synonym.
                 extracts=bool(i.get("extracts", i.get("advances", False))),
                 tools=tuple(str(t) for t in i.get("tools", (ALL_TOOLS,))),
+                replies=tuple(str(r) for r in i.get("replies", ())),
             )
             for i in self._raw.get("intent") or ()
         )

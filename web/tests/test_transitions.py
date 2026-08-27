@@ -53,6 +53,7 @@ INTERVIEW = {
     "entry": "handoff",
     "confirm": "Shall I take you through the request?",
     "exits_to": "chat",
+    "replies": ["Yes, start the request", "No, I'm just asking"],
 }
 
 
@@ -63,16 +64,46 @@ def machine() -> Config:
 class Defaults(unittest.TestCase):
     """An intent that says nothing new behaves exactly as it did."""
 
-    def test_the_shipped_config_gains_nothing_it_did_not_ask_for(self):
+    def test_an_intent_that_declares_nothing_new_behaves_as_it_always_did(self):
+        """The defaults are what let the two original intents keep working
+        through this change without restating anything."""
+        plain = config_with({"id": "only", "label": "l", "description": "d",
+                             "instructions": "i", "advances": True}).intent("only")
+        self.assertFalse(plain.sticky)
+        self.assertEqual(plain.entry, "router")
+        self.assertEqual(plain.tools, (ALL_TOOLS,))
+        self.assertEqual(plain.exits_to, "")
+        self.assertEqual(plain.replies, ())
+        # Extraction ran on every turn before it was nameable.
+        self.assertEqual(plain.extracts, plain.advances)
+
+    def test_the_shipped_config_is_a_general_agent_and_a_specialist(self):
         from config import get as get_config
-        for intent in get_config().intents:
-            self.assertFalse(intent.sticky, intent.id)
-            self.assertEqual(intent.entry, "router", intent.id)
-            self.assertEqual(intent.tools, (ALL_TOOLS,), intent.id)
-            self.assertEqual(intent.exits_to, "", intent.id)
-            # Extraction ran on every turn before it was nameable, and both
-            # shipped intents must keep whatever they had.
-            self.assertEqual(intent.extracts, intent.advances, intent.id)
+        cfg = get_config()
+        self.assertEqual(cfg.fallback_intent.id, "chat")
+        self.assertEqual([i.id for i in cfg.router_intents], ["chat"])
+        self.assertEqual([i.id for i in cfg.handoff_intents], ["interview"])
+
+        chat, interview = cfg.intent("chat"), cfg.intent("interview")
+        # The general agent answers and credits nothing, and the slowest node
+        # in the graph does not run for it.
+        self.assertFalse(chat.advances)
+        self.assertFalse(chat.extracts)
+        self.assertFalse(chat.sticky)
+        # The specialist is entered by acceptance, stayed in, and left to chat.
+        self.assertTrue(interview.sticky)
+        self.assertTrue(interview.extracts)
+        self.assertEqual(interview.exits_to, "chat")
+        self.assertTrue(interview.confirm)
+        self.assertGreaterEqual(len(interview.replies), 2)
+
+    def test_the_offer_can_be_accepted_by_clicking_its_own_first_reply(self):
+        """The buttons and the acceptance rule have to agree, or the obvious
+        way to say yes does not work."""
+        from config import get as get_config
+        yes, *rest = get_config().intent("interview").replies
+        self.assertTrue(router.is_affirmative(yes))
+        self.assertFalse(any(router.is_affirmative(r) for r in rest))
 
     def test_extracts_can_be_asked_for_without_advancing(self):
         """The reason it is a field and not a synonym for `advances`.
@@ -108,12 +139,17 @@ class Reachability(unittest.TestCase):
                            saying="never leave")
 
     def test_a_fallback_entered_by_handoff_could_never_be_reached(self):
-        self.assertRefused({**CHAT, "entry": "handoff", "confirm": "?"},
+        self.assertRefused({**CHAT, "entry": "handoff", "confirm": "?",
+                            "replies": ["Yes", "No"]},
                            INTERVIEW, saying="nothing could ever reach it")
 
     def test_a_handoff_intent_needs_something_to_propose_with(self):
         no_confirm = {k: v for k, v in INTERVIEW.items() if k != "confirm"}
         self.assertRefused(CHAT, no_confirm, saying="no `confirm`")
+
+    def test_a_handoff_intent_needs_a_way_to_answer_the_offer(self):
+        self.assertRefused(CHAT, {**INTERVIEW, "replies": ["Yes"]},
+                           saying="least two `replies`")
 
     def test_an_unknown_entry_is_a_typo_not_a_new_mode(self):
         self.assertRefused(CHAT, {**INTERVIEW, "entry": "handover"},
@@ -133,7 +169,7 @@ class Reachability(unittest.TestCase):
             {**INTERVIEW, "exits_to": "verify"},
             {"id": "verify", "label": "verifying", "description": "d",
              "instructions": "i", "advances": False, "sticky": True,
-             "entry": "handoff", "confirm": "?"},
+             "entry": "handoff", "confirm": "?", "replies": ["Yes", "No"]},
             saying="exits into another sticky")
 
     def test_duplicate_ids_are_refused(self):
@@ -197,15 +233,39 @@ class Recogniser(unittest.TestCase):
 
     def test_stop_mid_sentence_is_not_an_exit(self):
         """The case that would drop someone out of the interview for asking
-        an ordinary question — this corpus is full of stopping smoking."""
+        an ordinary question — this corpus is full of stopping smoking.
+
+        Every line here has ended an interview by accident at some point in
+        writing this rule. The six-word question is the one that got past a
+        word-count threshold of six; the last two got past a rule that let any
+        multi-word phrase open a message.
+        """
         for text in ("Did they stop smoking between 26y and 29y?",
+                     "Did they stop smoking by 29y?",
+                     "did they stop smoking by 29y",
+                     "stop smoking questions are at 29y",
                      "Only for mothers who stopped work after the birth",
-                     "The 16y sweep asks when they stopped attending"):
+                     "The 16y sweep asks when they stopped attending",
+                     "no more than 3 sweeps please",
+                     "go back to the 16y sweep for that"):
             self.assertFalse(router.is_exit(text), text)
+
+    def test_a_question_is_never_an_exit_however_it_is_worded(self):
+        """They are waiting on an answer, not asking to leave."""
+        self.assertFalse(router.is_exit("stop?"))
+        self.assertFalse(router.is_exit("should we stop there?"))
+
+    def test_restarting_is_not_leaving(self):
+        """"start over" asks to redo the interview, not to end it — the
+        checklist reopens a step when the extractor reports a revision."""
+        self.assertFalse(router.is_exit("start over"))
+        self.assertFalse(router.is_exit("start over from the concept step"))
 
     def test_an_explicit_stop_is(self):
         for text in ("stop", "Stop.", "cancel this", "never mind",
-                     "forget it", "I'm done", "let's stop", "go back"):
+                     "forget it", "I'm done", "let's stop", "go back",
+                     "stop for now", "that's enough for now",
+                     "never mind, let's do something else"):
             self.assertTrue(router.is_exit(text), text)
 
     def test_only_a_plain_yes_accepts(self):
