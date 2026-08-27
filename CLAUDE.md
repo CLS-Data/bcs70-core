@@ -57,9 +57,9 @@ registry/
 
 web/                              the variable atlas: search the metadata, read derived variables and their source,
                                   draft a variable request, or talk to an assistant that builds the request with you.
-                                  build_site.py generates web/data/ from bcs70/ and registry/; that output is gitignored
-                                  and built by CI at publish time, so adding a variable needs no rebuild step — run it
-                                  only to preview locally. See web/README.md.
+                                  build_site.py generates web/data/ from bcs70/ and registry/; that output is gitignored.
+                                  CI rebuilds it when publishing to Pages, but Pages is dormant while the repo is private,
+                                  so run build_site.py yourself after adding a variable. See web/README.md.
   index.html, styles.css          the atlas front end (no framework, no build step)
   atlas/                          one module per view: boot, state, dom, spine, views,
                                   metadata, derived, scratchpad — mirrors chat/
@@ -71,14 +71,16 @@ web/                              the variable atlas: search the metadata, read 
   config.py                       loads it; the one place defaults live
   chat.js + chat/                 draw the assistant; contain no prompts, tools or model calls
   server.py                       serves the site and /api — `python3 web/server.py` (standard library)
-  tests/                          stdlib unittest over retrieval and the tools, on a synthetic corpus -
-                                  `python3 -m unittest discover -s web/tests`; no install, no built data/
+  tests/                          stdlib unittest on a synthetic corpus: retrieval and the tools, plus the rules
+                                  kept outside the LangGraph half so CI can reach them (hop budget, checklist
+                                  completeness, intent behaviour, message pairing). `python3 -m unittest discover
+                                  -s web/tests`; no install, no built data/
   assistant/                      the assistant's actual logic: router.py, prompts.py, tools.py (search/inspect/
                                   coverage/list_harmonised over the dictionaries), retrieval.py (BM25
                                   by meaning, per-sweep coverage, rank fusion), vectors.py +
                                   build_embeddings.py (optional local semantic index, gitignored and
-                                  never built by CI), expansion.py (other wordings), choices.py,
-                                  corpus.py, ollama.py — all standard library — plus graph.py (the LangGraph),
+                                  never built by CI), expansion.py (other wordings), choices.py, corpus.py,
+                                  transcript.py, ollama.py — all standard library — plus graph.py (the LangGraph),
                                   llm.py and agent.py, which need the `assistant` extra. See its README.
 
 DATA_KNOWLEDGE.md                 hand-maintained ledger of known data quirks that no dictionary records
