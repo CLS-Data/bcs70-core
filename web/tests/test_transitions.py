@@ -325,6 +325,52 @@ class AnswerButtons(unittest.TestCase):
         self.assertIsNone(router.step_for_options(None, None))
 
 
+class OfferingOneOfSeveral(unittest.TestCase):
+    """Which specialist a message asks to start.
+
+    Asking per intent cost a round trip each and made the order in
+    `dataset.toml` the tie-break — the first to say yes won, which is not a
+    decision that belongs in a list's order.
+    """
+
+    def setUp(self):
+        self.cfg = config_with(
+            CHAT, INTERVIEW,
+            {**INTERVIEW, "id": "verifier", "label": "verifier",
+             "description": "checking a variable against the real files"})
+        self.calls = []
+
+    def answering(self, start):
+        def ask(instruction, schema):
+            self.calls.append(schema["properties"]["start"]["enum"])
+            return {"start": start}
+        return ask
+
+    def test_one_call_however_many_there_are(self):
+        router.transition(self.cfg, "chat", "which sweeps measured height?",
+                          has_history=True, ask_model=self.answering(""))
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.calls[0],
+                         ["variable_interviewer", "verifier", ""])
+
+    def test_the_model_picks_not_the_config_order(self):
+        out = router.transition(self.cfg, "chat", "check bmi against the files",
+                                has_history=True, ask_model=self.answering("verifier"))
+        self.assertEqual(out.proposing, "verifier")
+
+    def test_an_empty_answer_proposes_nothing(self):
+        out = router.transition(self.cfg, "chat", "what does b8hlthgn mean?",
+                                has_history=True, ask_model=self.answering(""))
+        self.assertFalse(out.is_proposal)
+
+    def test_an_id_that_is_not_on_offer_is_ignored(self):
+        out = router.transition(self.cfg, "chat", "I want BMI harmonised",
+                                has_history=True, ask_model=self.answering("chat"))
+        # Falls through to the rule, which knows only "something wants
+        # deriving" and can therefore only offer the first.
+        self.assertEqual(out.proposing, "variable_interviewer")
+
+
 class Machine(unittest.TestCase):
     """`transition()` itself, with no model behind it."""
 
@@ -407,21 +453,22 @@ class TheModelBehindIt(unittest.TestCase):
         """The saving, and the reason stickiness is cheaper as well as steadier."""
         out = router.transition(self.cfg, "variable_interviewer", "Which sweeps have it?",
                                 has_history=True,
-                                ask_model=self.answering(start=True))
+                                ask_model=self.answering(start="variable_interviewer"))
         self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(self.calls, [])
 
     def test_the_model_can_propose_where_the_rule_would_not(self):
         out = router.transition(
             self.cfg, "chat", "could you put together age at first birth?",
-            has_history=True, ask_model=self.answering(start=True))
+            has_history=True,
+            ask_model=self.answering(start="variable_interviewer"))
         self.assertEqual(out.proposing, "variable_interviewer")
         self.assertEqual(len(self.calls), 1)
 
     def test_the_model_can_decline_where_the_rule_would_propose(self):
         out = router.transition(
             self.cfg, "chat", "I need to know which variables measure height",
-            has_history=True, ask_model=self.answering(start=False))
+            has_history=True, ask_model=self.answering(start=""))
         self.assertFalse(out.is_proposal)
 
     def test_a_mistake_in_our_own_code_is_not_a_model_failure(self):
@@ -452,10 +499,12 @@ class TheModelBehindIt(unittest.TestCase):
         self.assertEqual(out.proposing, "variable_interviewer")
 
     def test_a_nonsense_answer_degrades_the_same_way(self):
-        out = router.transition(self.cfg, "chat", "please derive BMI",
-                                has_history=True,
-                                ask_model=self.answering(start="probably"))
-        self.assertEqual(out.proposing, "variable_interviewer")
+        """Including a model that answers the old boolean shape."""
+        for answer in ("probably", True, None):
+            out = router.transition(self.cfg, "chat", "please derive BMI",
+                                    has_history=True,
+                                    ask_model=self.answering(start=answer))
+            self.assertEqual(out.proposing, "variable_interviewer", repr(answer))
 
     def test_the_proposal_it_is_answering_is_quoted_back(self):
         router.transition(self.cfg, "chat", "go on", awaiting="variable_interviewer",

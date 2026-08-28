@@ -467,7 +467,8 @@ def lookups(state: TurnState, config: RunnableConfig) -> dict:
 
         write({"type": "tool_call", "name": name, "args": args})
         found_text, display = toolkit.run(run["corpus"], run["bm25"], cfg, name, args,
-                                          run.get("retriever"), run.get("retrieval"))
+                                          run.get("retriever"), run.get("retrieval"),
+                                          intent=cfg.intent(state.get("mode")))
         # Warned before the budget runs out, not only when it has. A model
         # told at the last moment has already wasted the turn.
         text = found_text

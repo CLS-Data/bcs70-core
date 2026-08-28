@@ -493,7 +493,21 @@ def _harmonised(corpus, args: dict) -> tuple[str, dict]:
 
 
 def run(corpus, bm25, cfg: Config, name: str, args: dict,
-        retriever=None, settings=None) -> tuple[str, dict]:
+        retriever=None, settings=None, intent=None) -> tuple[str, dict]:
+    """Execute one lookup.
+
+    `intent` closes the half of the allowlist that binding cannot. `schemas`
+    decides what a model is SHOWN, which is the whole enforcement as long as
+    models only call what they were given — and they do not always. Without
+    this an intent declaring `tools = ["coverage"]` still had every other
+    lookup run for it on a hallucinated name.
+    """
+    if intent is not None and not cfg.may_use(intent, name):
+        return (
+            f'"{name}" is not available on this turn. Available: '
+            f'{", ".join(n for n in NAMES if cfg.may_use(intent, n))}.',
+            {"note": f'"{name}" not available here'},
+        )
     if name == SEARCH:
         return _search(corpus, bm25, cfg, args, retriever, settings)
     if name == INSPECT:

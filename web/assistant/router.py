@@ -323,28 +323,34 @@ def wants_derivation(text: str) -> bool:
             and any(n in low for n in WANT_NOUNS))
 
 
-def start_schema() -> dict:
+def proposal_schema(cfg) -> dict:
+    """Which specialist to offer, if any. One question, not one per intent."""
+    ids = [i.id for i in cfg.handoff_intents]
     return {
         "type": "object",
-        "properties": {"start": {"type": "boolean"}},
+        "properties": {"start": {"type": "string", "enum": [*ids, ""]}},
         "required": ["start"],
     }
 
 
-def start_instruction(cfg, intent, text: str) -> str:
+def proposal_instruction(cfg, text: str) -> str:
+    options = "\n".join(f"  {i.id} — {i.description}" for i in cfg.handoff_intents)
     return f"""A researcher is talking to an assistant about {cfg.name}.
 
 Their message:
 "{text}"
 
-Are they asking for a variable to be derived — that is, do they want work
-started that ends in {intent.description.lower() or "a variable request"}?
+Are they asking for work to be STARTED on their behalf, and if so which of
+these would do it?
 
-Answer true only if they are asking for something to be BUILT. A question
-about what the study measured, what a variable means, or where a concept
-appears is not a request to derive anything, however specific it is.
+{options}
 
-Answer {{"start": true}} or {{"start": false}}.
+Name one only if they are asking for something to be built or worked on. A
+question about what the study measured, what a variable means, or where a
+concept appears is not a request to start anything, however specific it is —
+answer with "" for those, and for anything you are unsure of.
+
+Answer {{"start": "<id>"}} or {{"start": ""}}.
 """
 
 
@@ -444,15 +450,42 @@ def _answer_proposal(cfg, current, awaiting: str, text: str,
     return Transition(cfg.exit_intent(offered).id, "declined")
 
 
+def _proposal_for(cfg, text: str, ask_model) -> str:
+    """Which specialist this message is asking to start, or "".
+
+    One model call however many there are. Asking per intent cost a round trip
+    each and made the order in `dataset.toml` the tie-break — the first to say
+    yes won, which is not a decision that belongs in a list's order.
+    """
+    if not cfg.handoff_intents:
+        return ""
+    ids = [i.id for i in cfg.handoff_intents]
+
+    strategy = cfg.router_strategy
+    if strategy in ("model", "auto") and ask_model is not None:
+        try:
+            out = ask_model(proposal_instruction(cfg, text), proposal_schema(cfg))
+            chosen = (out or {}).get("start")
+            if chosen in ids:
+                return chosen
+            if chosen == "":
+                return ""
+        except OUR_FAULT:
+            raise
+        except Exception:                              # noqa: BLE001 - see above
+            pass
+
+    # The rule knows only that something wants deriving, not which of several
+    # would do it, so it can only offer the first. That is a fallback, not the
+    # normal path.
+    return ids[0] if wants_derivation(text) else ""
+
+
 def _route(cfg, current, text: str, last_question: str, ask_model) -> Transition:
     """Not in a sticky intent, and nothing pending. Route the message."""
-    for offered in cfg.handoff_intents:
-        starting = _ask_yes_no(
-            cfg, ask_model, start_schema(), "start",
-            lambda: start_instruction(cfg, offered, text),
-            lambda: wants_derivation(text))
-        if starting:
-            return Transition(current.id, "proposed", proposing=offered.id)
+    offered = _proposal_for(cfg, text, ask_model)
+    if offered:
+        return Transition(current.id, "proposed", proposing=offered)
 
     choices = cfg.router_intents
     if len(choices) < 2:

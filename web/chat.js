@@ -325,6 +325,8 @@ function resetSession() {
   chat.sticky = false;
   chat.awaiting = "";
   chat.exitsTo = "";
+  chat.agent = null;
+  chat.tool = null;
   saveSession();
   renderTranscript(); renderPinned(); renderChecklist(); renderDraft();
   renderComposer();
