@@ -95,7 +95,12 @@ export function renderReplies() {
   // away from where the conversation just ended. Prepended rather than
   // returned early, because a completing turn may still have asked a real
   // question, and its own buttons are not this action's to swallow.
-  const done = allSettled() ? `
+  // Not until the turn is fully over. `draft` lands after the reply, it is
+  // what settles the last step, and it can still REOPEN one when the
+  // extractor reports a revision — so offering the Draft while "Updating the
+  // draft" is still running risks showing it a beat before it is true, and
+  // taking it away again.
+  const done = allSettled() && !chat.busy ? `
     <button class="choice is-go" data-open-draft>
       <span class="choice-key">→</span>
       <span class="choice-text">Open the Draft to review it and file it</span>

@@ -423,6 +423,11 @@ checklist stops offering answers — carries the action instead. It is
 prepended rather than substituted, because a completing turn may still have
 asked something, and its buttons are not this action's to swallow.
 
+It waits for the whole turn, not just the reply. `draft` lands *after* the
+prose, it is what settles the last step, and it can still reopen one when the
+extractor reports a revision — so a button gated on the checklist alone would
+appear a beat before it was true and then be taken away again.
+
 **Which lookup is running, and on what.** A search used to be a spinner saying
 "Searching the dictionaries". It now names the tool and its argument while the
 call is in flight — `search_variables self rated health` — and the finished
