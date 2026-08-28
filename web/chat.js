@@ -56,6 +56,8 @@ async function send(text) {
   // sticky intent forgotten on send is not sticky at all.
   chat.options = [];
   chat.askedStep = null;
+  chat.agent = null;
+  chat.tool = null;
   chat.abort = new AbortController();
   const signal = chat.abort.signal;
   renderTranscript();
@@ -67,7 +69,9 @@ async function send(text) {
   let sawDraft = false;
   const openReply = () => {
     if (reply) return reply;
-    reply = { role: "assistant", content: "", thinking: "" };
+    // Stamped with whoever is speaking, so the transcript still says which
+     // agent answered long after the mode event has been replaced.
+    reply = { role: "assistant", content: "", thinking: "", agent: chat.agent };
     chat.messages.push(reply);
     return reply;
   };
@@ -160,7 +164,9 @@ function handleEvent(ev, openReply, closeReply) {
 
     case "tool_call":
       // The card is drawn when the result lands; until then the indicator
-      // says what it is doing.
+      // names the lookup and what was asked of it, so a slow search is
+      // legible rather than a spinner.
+      chat.tool = { name: ev.name, args: ev.args || {} };
       chat.phase = "searching";
       renderTranscript();
       break;
@@ -181,6 +187,7 @@ function handleEvent(ev, openReply, closeReply) {
         role: "tool", name: ev.name, args: ev.args,
         content: ev.text || "", display: ev.display,
       });
+      chat.tool = null;
       chat.phase = "thinking";
       renderTranscript();
       break;
@@ -195,6 +202,9 @@ function handleEvent(ev, openReply, closeReply) {
       chat.sticky = ev.sticky === true;
       chat.awaiting = ev.awaiting || "";
       chat.exitsTo = ev.exitsTo || "";
+      // Held for the whole turn: `openReply` stamps it onto the message, and
+      // the working row shows it before any words arrive.
+      chat.agent = { id: ev.mode, label: ev.label || ev.mode };
       // The strip appears the moment an interview begins and carries the way
       // out of it, so it is redrawn here rather than only when a step lands.
       renderChecklist();

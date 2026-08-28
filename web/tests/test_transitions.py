@@ -45,7 +45,7 @@ CHAT = {
     "advances": False,
 }
 INTERVIEW = {
-    "id": "interview", "label": "working on the request",
+    "id": "variable_interviewer", "label": "variable interviewer",
     "description": "a variable request being built",
     "instructions": "Work the checklist.",
     "advances": True,
@@ -82,9 +82,9 @@ class Defaults(unittest.TestCase):
         cfg = get_config()
         self.assertEqual(cfg.fallback_intent.id, "chat")
         self.assertEqual([i.id for i in cfg.router_intents], ["chat"])
-        self.assertEqual([i.id for i in cfg.handoff_intents], ["interview"])
+        self.assertEqual([i.id for i in cfg.handoff_intents], ["variable_interviewer"])
 
-        chat, interview = cfg.intent("chat"), cfg.intent("interview")
+        chat, interview = cfg.intent("chat"), cfg.intent("variable_interviewer")
         # The general agent answers and credits nothing, and the slowest node
         # in the graph does not run for it.
         self.assertFalse(chat.advances)
@@ -101,7 +101,7 @@ class Defaults(unittest.TestCase):
         """The buttons and the acceptance rule have to agree, or the obvious
         way to say yes does not work."""
         from config import get as get_config
-        yes, *rest = get_config().intent("interview").replies
+        yes, *rest = get_config().intent("variable_interviewer").replies
         self.assertTrue(router.is_affirmative(yes))
         self.assertFalse(any(router.is_affirmative(r) for r in rest))
 
@@ -160,7 +160,7 @@ class Reachability(unittest.TestCase):
                            saying="not an intent")
 
     def test_an_intent_may_not_exit_to_itself(self):
-        self.assertRefused(CHAT, {**INTERVIEW, "exits_to": "interview"},
+        self.assertRefused(CHAT, {**INTERVIEW, "exits_to": "variable_interviewer"},
                            saying="exits to itself")
 
     def test_sticky_may_not_exit_into_sticky(self):
@@ -188,10 +188,10 @@ class Accessors(unittest.TestCase):
 
     def test_the_router_is_never_offered_a_handoff_intent(self):
         self.assertEqual([i.id for i in self.cfg.router_intents], ["chat"])
-        self.assertEqual([i.id for i in self.cfg.handoff_intents], ["interview"])
+        self.assertEqual([i.id for i in self.cfg.handoff_intents], ["variable_interviewer"])
 
     def test_exit_honours_exits_to_and_falls_back_otherwise(self):
-        self.assertEqual(self.cfg.exit_intent(self.cfg.intent("interview")).id, "chat")
+        self.assertEqual(self.cfg.exit_intent(self.cfg.intent("variable_interviewer")).id, "chat")
         bare = config_with(CHAT, {**INTERVIEW, "exits_to": ""})
         self.assertEqual(bare.exit_intent(bare.intent("interview")).id, "chat")
 
@@ -302,30 +302,30 @@ class Machine(unittest.TestCase):
         """The confirmation is the whole point: wanting it is not being in it."""
         out = self.go("chat", "I want BMI harmonised across the sweeps")
         self.assertEqual(out.mode, "chat")
-        self.assertEqual(out.proposing, "interview")
+        self.assertEqual(out.proposing, "variable_interviewer")
         self.assertFalse(out.entering)
 
     def test_accepting_enters_and_flags_the_draft_for_seeding(self):
-        out = self.go("chat", "yes please", awaiting="interview")
-        self.assertEqual(out.mode, "interview")
+        out = self.go("chat", "yes please", awaiting="variable_interviewer")
+        self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(out.how, "accepted")
         self.assertTrue(out.entering)
 
     def test_anything_but_a_yes_declines(self):
         out = self.go("chat", "actually, which sweeps have height?",
-                      awaiting="interview")
+                      awaiting="variable_interviewer")
         self.assertEqual(out.mode, "chat")
         self.assertEqual(out.how, "declined")
         self.assertFalse(out.entering)
 
     def test_a_question_inside_the_interview_does_not_leave_it(self):
         """`explore` stops being a mode: the interviewer answers and carries on."""
-        out = self.go("interview", "Which sweeps have self-rated health?")
-        self.assertEqual(out.mode, "interview")
+        out = self.go("variable_interviewer", "Which sweeps have self-rated health?")
+        self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(out.how, "sticky")
 
     def test_an_explicit_stop_leaves(self):
-        out = self.go("interview", "stop for now")
+        out = self.go("variable_interviewer", "stop for now")
         self.assertEqual(out.mode, "chat")
         self.assertEqual(out.how, "exit")
 
@@ -357,17 +357,17 @@ class TheModelBehindIt(unittest.TestCase):
 
     def test_a_sticky_turn_asks_the_model_nothing(self):
         """The saving, and the reason stickiness is cheaper as well as steadier."""
-        out = router.transition(self.cfg, "interview", "Which sweeps have it?",
+        out = router.transition(self.cfg, "variable_interviewer", "Which sweeps have it?",
                                 has_history=True,
                                 ask_model=self.answering(start=True))
-        self.assertEqual(out.mode, "interview")
+        self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(self.calls, [])
 
     def test_the_model_can_propose_where_the_rule_would_not(self):
         out = router.transition(
             self.cfg, "chat", "could you put together age at first birth?",
             has_history=True, ask_model=self.answering(start=True))
-        self.assertEqual(out.proposing, "interview")
+        self.assertEqual(out.proposing, "variable_interviewer")
         self.assertEqual(len(self.calls), 1)
 
     def test_the_model_can_decline_where_the_rule_would_propose(self):
@@ -381,16 +381,16 @@ class TheModelBehindIt(unittest.TestCase):
             raise RuntimeError("ollama is not running")
         out = router.transition(self.cfg, "chat", "please derive BMI",
                                 has_history=True, ask_model=explode)
-        self.assertEqual(out.proposing, "interview")
+        self.assertEqual(out.proposing, "variable_interviewer")
 
     def test_a_nonsense_answer_degrades_the_same_way(self):
         out = router.transition(self.cfg, "chat", "please derive BMI",
                                 has_history=True,
                                 ask_model=self.answering(start="probably"))
-        self.assertEqual(out.proposing, "interview")
+        self.assertEqual(out.proposing, "variable_interviewer")
 
     def test_the_proposal_it_is_answering_is_quoted_back(self):
-        router.transition(self.cfg, "chat", "go on", awaiting="interview",
+        router.transition(self.cfg, "chat", "go on", awaiting="variable_interviewer",
                           has_history=True, ask_model=self.answering(accepted=True))
         self.assertIn("Shall I take you through the request?",
                       self.calls[0]["instruction"])

@@ -1,9 +1,9 @@
 """Building the two models a turn uses.
 
-The interviewer, and a helper. The helper does the small mechanical jobs —
+The one that talks, and a helper. The helper does the small mechanical jobs —
 filling in the draft, and rescuing answer buttons from a model that didn't
-mark its own — and defaults to the interviewer when none is chosen. Neither
-needs the other's settings: the interview wants a little temperature, the
+mark its own — and defaults to the talking one when none is chosen. Neither
+needs the other's settings: a conversation wants a little temperature, the
 structured calls want none.
 """
 
@@ -34,8 +34,12 @@ def _build(*, model: str, base_url: str, temperature: float,
     return ChatOllama(**kwargs)
 
 
-def interviewer(run: dict) -> ChatOllama:
-    """The model that holds the conversation."""
+def conversational(run: dict) -> ChatOllama:
+    """The model that holds the conversation.
+
+    One builder for every agent: which agent is speaking is a matter of the
+    system prompt and which tools are bound, not of the model behind it.
+    """
     return _build(
         model=run["model"],
         base_url=run["base_url"],

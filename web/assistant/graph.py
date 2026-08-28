@@ -1,13 +1,20 @@
-"""The interview as a LangGraph.
+"""The agents as one LangGraph.
 
-    START ─▶ interviewer ─┬─(asked for tools, hops left)─▶ lookups ─┐
-                          │                                         │
-                          │◀────────────────────────────────────────┘
-                          ├─(asked for tools, hops spent)─▶ press ──┐
-                          └─(answered)─────────────────────────────▶┴─▶ draft ─▶ END
+    START ─▶ route ─┬─(a proposal is outstanding)─▶ handoff ─────────────▶ END
+                    │
+                    └─▶ respond ─┬─(asked for tools, hops left)─▶ lookups ─┐
+                                 │◀──────────────────────────────────────── ┘
+                                 ├─(asked for tools, hops spent)─▶ press ──┐
+                                 └─(answered)─────────────────────────────▶┴─▶ extracts? ─┬─▶ draft ─▶ END
+                                                                                          └────────────▶ END
 
-Three things this file is careful about, all of them things the graph does
-not give you for free:
+One graph, one `respond` node, and as many agents as `dataset.toml` declares.
+Which agent is speaking is a matter of the system prompt and which lookups are
+bound — never of a branch in here. `route` decides it; everything downstream
+reads it off the state.
+
+Four things this file is careful about, all of them things the graph does not
+give you for free:
 
 **Tokens are written by hand, not streamed by the framework.** LangGraph's
 `messages` stream mode would emit raw model tokens, and those include the
@@ -19,6 +26,10 @@ keeps the parser between the model and the client where it belongs.
 **Tools are executed here rather than by the prebuilt ToolNode.** Each lookup
 produces two different things: a terse string for the model, and a richer
 structure for the transcript card. ToolNode only carries the first.
+
+**Extraction is a declared edge, not the end of every turn.** `draft` is the
+slowest node here, and it used to run after every reply including the ones
+that could not move the checklist. `after_speaking` asks the intent.
 
 **The event contract is the API's, not LangGraph's.** Everything published is
 already in the shape `web/chat.js` reads, so the browser is unaware any of
@@ -151,7 +162,7 @@ def _speak(state: TurnState, run: dict, *, with_tools: bool, force: bool,
     cfg = run["cfg"]
     write = get_stream_writer()
 
-    model = llm.interviewer(run)
+    model = llm.conversational(run)
     if with_tools:
         model = model.bind_tools(toolkit.lc_tools(cfg, cfg.intent(state.get("mode"))))
 

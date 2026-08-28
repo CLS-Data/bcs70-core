@@ -303,7 +303,7 @@ reads, so `stream_mode="custom"` is the only mode used.
 
 | event | |
 |---|---|
-| `mode` | which intent, its label, and whether it advances the checklist |
+| `mode` | which intent, its label, whether it advances the checklist, whether it is sticky, and any proposal outstanding. The label is what the transcript prints above the reply, so an agent is named by its config and nowhere else |
 | `thinking` | the model's working — buffered and sent **once**, shown collapsed |
 | `content` | prose, streamed |
 | `tool_call` / `tool_result` | what it looked up, with arguments, and what came back |
@@ -406,6 +406,21 @@ another off. It names none when the intent does not advance, and none when
 every step is settled, since there is then no question: `first_unsettled`
 returns the last step as a fallback, and reading that as an answer offered the
 last step's stock replies under "the request is complete".
+
+## What the browser shows
+
+Two things about a turn used to be invisible, and both are now printed.
+
+**Which agent answered.** The reply carries the `label` from its intent —
+printed above the message, and only when it changes hands, so a run of replies
+from one agent is not stamped six times over. The browser never names an agent
+itself: rename one in `dataset.toml` and the transcript follows.
+
+**Which lookup is running, and on what.** A search used to be a spinner saying
+"Searching the dictionaries". It now names the tool and its argument while the
+call is in flight — `search_variables self rated health` — and the finished
+card carries the tool's own name beside the paraphrase, so what the model
+actually called is legible rather than inferred.
 
 ## When something goes wrong
 

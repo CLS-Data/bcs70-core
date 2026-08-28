@@ -137,7 +137,7 @@ class Agent:
                 "corpus": self.corpus,
                 "bm25": self.bm25,
                 "retriever": self.retriever,
-                # The expansion model is the helper, not the interviewer:
+                # The expansion model is the helper, not the talking one:
                 # rephrasing a search is exactly the small, cheap, structured
                 # job the helper exists for.
                 "retrieval": req.retrieval.but(

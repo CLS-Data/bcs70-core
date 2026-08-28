@@ -629,6 +629,25 @@ body.chat-open { padding-right: var(--chat-w); }
 }
 .chat-mode.is-agentic { color: var(--sea); border-color: var(--sea); }
 
+/* Who answered, and what it reached for. Both were invisible: the agent was
+   only implied by the shape of the reply, and a lookup in flight was a
+   spinner saying "searching" with no clue what for. */
+.msg-agent {
+  display: inline-block; margin-bottom: 5px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--sea);
+  border: 1px solid var(--sea); border-radius: 2px; padding: 1px 5px;
+}
+.tool-name {
+  font-family: var(--mono); font-size: 10.5px; color: var(--moss);
+  background: none; padding: 0; letter-spacing: -.01em;
+}
+.working .who {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--sea); margin-right: 7px;
+}
+.working .tool-arg { color: var(--ink-3); }
+
 .chat-tabs { margin-left: auto; display: flex; gap: 2px; }
 .chat-tabs button {
   border: 0; background: none; cursor: pointer;
