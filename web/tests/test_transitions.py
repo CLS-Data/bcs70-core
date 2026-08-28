@@ -269,12 +269,37 @@ class Recogniser(unittest.TestCase):
             self.assertTrue(router.is_exit(text), text)
 
     def test_only_a_plain_yes_accepts(self):
-        for text in ("yes", "Yes please", "sure, go ahead", "ok let's do that",
-                     "yep", "that's right"):
+        for text in ("yes", "Yes please", "Yes, start the request",
+                     "sure, go ahead", "ok let's do that", "yep",
+                     "that's right", "go ahead", "please do",
+                     "yes please, that is exactly what I want"):
             self.assertTrue(router.is_affirmative(text), text)
         for text in ("actually, which sweeps have height?", "not yet",
                      "no", "hold on", "what would that involve?"):
             self.assertFalse(router.is_affirmative(text), text)
+
+    def test_a_question_is_never_an_acceptance(self):
+        """The four that used to slip through, and why it matters.
+
+        `right`, `correct`, `ok` and `sure` are discourse markers as often as
+        they are agreement, and this is the rule BEHIND the model — it decides
+        when the model is unreachable, which is when things are already going
+        wrong. Each of these was read as a yes and put the researcher into an
+        interview they had not agreed to.
+        """
+        for text in ("Right, which sweeps have height?",
+                     "Right then, what does b8hlthgn mean?",
+                     "Correct me if I'm wrong, but isn't BMI already there?",
+                     "Sure, but first — which sweeps?",
+                     "ok what about maternal smoking?",
+                     "Yes — but which sweeps should I say?"):
+            self.assertFalse(router.is_affirmative(text), text)
+
+    def test_an_ambiguous_opener_must_be_the_whole_message(self):
+        """No question mark, but still not agreement."""
+        self.assertFalse(router.is_affirmative(
+            "Right, I also need housing tenure as well as this"))
+        self.assertTrue(router.is_affirmative("right"))
 
 
 class AnswerButtons(unittest.TestCase):
@@ -398,6 +423,26 @@ class TheModelBehindIt(unittest.TestCase):
             self.cfg, "chat", "I need to know which variables measure height",
             has_history=True, ask_model=self.answering(start=False))
         self.assertFalse(out.is_proposal)
+
+    def test_a_mistake_in_our_own_code_is_not_a_model_failure(self):
+        """The catch-all used to hide both.
+
+        A typo in an instruction builder degraded every routing decision to
+        the heuristic with nothing said anywhere — which is how a broken probe
+        for this very file reported zero model calls instead of an error.
+        """
+        def our_bug(instruction, schema):
+            raise AttributeError("typo in start_instruction")
+        with self.assertRaises(AttributeError):
+            router.transition(self.cfg, "chat", "please derive BMI",
+                              has_history=True, ask_model=our_bug)
+
+    def test_the_world_failing_still_degrades(self):
+        def network_down(instruction, schema):
+            raise ConnectionError("ollama unreachable")
+        out = router.transition(self.cfg, "chat", "please derive BMI",
+                                has_history=True, ask_model=network_down)
+        self.assertEqual(out.proposing, "variable_interviewer")
 
     def test_a_model_failure_degrades_to_the_rule_rather_than_the_turn(self):
         def explode(instruction, schema):

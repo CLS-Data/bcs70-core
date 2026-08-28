@@ -143,6 +143,8 @@ def classify(cfg, text: str, *, has_history: bool, last_question: str = "",
             chosen = (out or {}).get("intent")
             if chosen in allowed:
                 return chosen, "model"
+        except OUR_FAULT:
+            raise
         except Exception:                              # noqa: BLE001 - see below
             if strategy == "model":
                 # Asked for the model and only the model, but a routing
@@ -165,11 +167,17 @@ def classify(cfg, text: str, *, has_history: bool, last_question: str = "",
 # anything else is read as declining, which is the safe direction. A wrong
 # decline costs a sentence; a wrong accept puts a researcher somewhere they
 # did not ask to be.
-AFFIRM = (
-    "yes", "yeah", "yep", "yup", "ok", "okay", "sure", "please do", "please",
-    "go ahead", "go on", "start", "let's go", "lets go", "let's do", "lets do",
-    "do it", "sounds right", "that's right", "thats right", "correct", "right",
+# Split for the same reason the stop words are. "right", "correct", "ok" and
+# "sure" are discourse markers as often as they are agreement — "Right, which
+# sweeps have height?" opens with one and is a question — so they may only
+# carry a short message, and never one ending in a question mark.
+AFFIRM_OPENERS = (
+    "yes", "yeah", "yep", "yup", "please do", "go ahead", "go on",
+    "let's go", "lets go", "let's do", "lets do", "do it",
+    "sounds right", "that's right", "thats right",
 )
+AFFIRM_WEAK = ("ok", "okay", "sure", "right", "correct", "please", "start")
+AFFIRM = AFFIRM_OPENERS + AFFIRM_WEAK
 
 # Leaving a sticky intent. "stop" runs through this corpus mid-sentence —
 # stopping smoking, stopping work, stopping school — so a bare match anywhere
@@ -244,8 +252,30 @@ def _opens_with(text: str, phrases) -> bool:
 
 
 def is_affirmative(text: str) -> bool:
-    """Did they say yes to the proposal?"""
-    return _opens_with(text, AFFIRM)
+    """Did they say yes to the proposal?
+
+    Narrowed the same way `is_exit` is, and for the same reason: this is the
+    rule BEHIND the model, so it decides when the model is unreachable — the
+    moment things are already degrading. A question is never an acceptance
+    however it opens, and an ambiguous opener has to be the whole message
+    rather than the run-up to one.
+
+    The four that used to slip through: "Right, which sweeps have height?",
+    "Correct me if I'm wrong…", "Sure, but first — which sweeps?", and "ok
+    what about maternal smoking?". Every one of them a question.
+    """
+    body = (text or "").strip()
+    # Saying yes and asking something in the same breath is not a yes. They
+    # get an answer and can say yes again; the other way round they are in an
+    # interview they never agreed to.
+    if body.endswith("?"):
+        return False
+    if _opens_with(body, AFFIRM_OPENERS):
+        return True
+    words = _words(body)
+    if not words or len(words) > SHORT_MESSAGE_WORDS:
+        return False
+    return _opens_with(body, AFFIRM_WEAK)
 
 
 def is_exit(text: str) -> bool:
@@ -443,10 +473,19 @@ def _route(cfg, current, text: str, last_question: str, ask_model) -> Transition
     return Transition(chosen, how)
 
 
+# Exceptions that mean WE are wrong, not that the world is. A model call can
+# fail a hundred ways and the turn should survive all of them — but a typo in
+# an instruction builder is not one of them, and swallowing it degrades every
+# routing decision to the heuristic with nothing said anywhere. This module is
+# standard library, so it cannot name httpx's or LangChain's own errors;
+# naming the handful that are always our own bug is the way round that.
+OUR_FAULT = (AttributeError, TypeError, NameError)
+
+
 def _ask_yes_no(cfg, ask_model, sch: dict, key: str, instruct, rule) -> bool:
     """The model where it is wanted, the rule where it is not — or where the
     model failed. Same contract as `classify`: a routing failure degrades the
-    turn rather than ending it."""
+    turn rather than ending it, but a mistake in this file does not."""
     strategy = cfg.router_strategy
     if strategy in ("model", "auto") and ask_model is not None:
         try:
@@ -454,6 +493,8 @@ def _ask_yes_no(cfg, ask_model, sch: dict, key: str, instruct, rule) -> bool:
             value = (out or {}).get(key)
             if isinstance(value, bool):
                 return value
+        except OUR_FAULT:
+            raise
         except Exception:                              # noqa: BLE001 - see above
             pass
     return rule()

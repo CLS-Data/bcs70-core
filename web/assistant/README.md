@@ -156,6 +156,13 @@ else" yes, "go back to the 16y sweep" no); and anything else has to be four
 words or fewer. Six was the first threshold, and *"did they stop smoking by
 29y?"* is exactly six.
 
+**The rule for accepting a proposal is narrowed the same way, and it had the
+same hole.** `right`, `correct`, `ok` and `sure` are discourse markers as
+often as they are agreement, so *"Right, which sweeps have height?"* and
+*"Sure, but first — which sweeps?"* were both read as a yes and started an
+interview nobody had agreed to. A question is never an acceptance now, and an
+ambiguous opener has to be the whole message rather than the run-up to one.
+
 A two-word "stop smoking" still reads as an exit. That is the residue of a
 rule with no model behind it — the visible stop control is the reliable way
 out, this is the courtesy — and leaving is recoverable, since the draft is
