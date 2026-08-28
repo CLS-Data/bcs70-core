@@ -137,7 +137,7 @@ is decided before staying in it. Only a turn doing neither is free to route.
 | in | the question | costs |
 |---|---|---|
 | a first message | none — it is the fallback, whatever it says | nothing |
-| `chat` | is this a request to derive something? | one binary call |
+| `chat` | is any specialist being asked to start? | one call, whatever the number of them |
 | a proposal outstanding | did they say yes? | one binary call |
 | `interview` | do they want out? | **nothing at all** |
 
@@ -156,12 +156,26 @@ else" yes, "go back to the 16y sweep" no); and anything else has to be four
 words or fewer. Six was the first threshold, and *"did they stop smoking by
 29y?"* is exactly six.
 
+**The rule for accepting a proposal is narrowed the same way, and it had the
+same hole.** `right`, `correct`, `ok` and `sure` are discourse markers as
+often as they are agreement, so *"Right, which sweeps have height?"* and
+*"Sure, but first — which sweeps?"* were both read as a yes and started an
+interview nobody had agreed to. A question is never an acceptance now, and an
+ambiguous opener has to be the whole message rather than the run-up to one.
+
 A two-word "stop smoking" still reads as an exit. That is the residue of a
 rule with no model behind it — the visible stop control is the reliable way
 out, this is the courtesy — and leaving is recoverable, since the draft is
 kept and the interview is one sentence away.
 
 ## The tools
+
+**What an intent may call is enforced twice.** `schemas` narrows what the
+model is shown, which is the whole of the rule only while models call nothing
+they were not given — and they do not always. The executor takes the intent
+too and refuses anything outside the list, naming what *is* available so the
+model can correct itself rather than guess again.
+
 
 | | |
 |---|---|
@@ -303,7 +317,7 @@ reads, so `stream_mode="custom"` is the only mode used.
 
 | event | |
 |---|---|
-| `mode` | which intent, its label, and whether it advances the checklist |
+| `mode` | which intent, its label, whether it advances the checklist, whether it is sticky, and any proposal outstanding. The label is what the transcript prints above the reply, so an agent is named by its config and nowhere else |
 | `thinking` | the model's working — buffered and sent **once**, shown collapsed |
 | `content` | prose, streamed |
 | `tool_call` / `tool_result` | what it looked up, with arguments, and what came back |
@@ -406,6 +420,33 @@ another off. It names none when the intent does not advance, and none when
 every step is settled, since there is then no question: `first_unsettled`
 returns the last step as a fallback, and reading that as an answer offered the
 last step's stock replies under "the request is complete".
+
+## What the browser shows
+
+Two things about a turn used to be invisible, and both are now printed.
+
+**Which agent answered.** The reply carries the `label` from its intent —
+printed above the message, and only when it changes hands, so a run of replies
+from one agent is not stamped six times over. The browser never names an agent
+itself: rename one in `dataset.toml` and the transcript follows.
+
+**The way on, when there is one.** The completion message says to open the
+Draft; the panel tab that does it sits at the top of the drawer, away from
+where the conversation just ended. The reply slot — empty once a finished
+checklist stops offering answers — carries the action instead. It is
+prepended rather than substituted, because a completing turn may still have
+asked something, and its buttons are not this action's to swallow.
+
+It waits for the whole turn, not just the reply. `draft` lands *after* the
+prose, it is what settles the last step, and it can still reopen one when the
+extractor reports a revision — so a button gated on the checklist alone would
+appear a beat before it was true and then be taken away again.
+
+**Which lookup is running, and on what.** A search used to be a spinner saying
+"Searching the dictionaries". It now names the tool and its argument while the
+call is in flight — `search_variables self rated health` — and the finished
+card carries the tool's own name beside the paraphrase, so what the model
+actually called is legible rather than inferred.
 
 ## When something goes wrong
 

@@ -34,6 +34,15 @@ export function groupRows(groups) {
 
    A function rather than a lookup table because coverage's verb names the
    wave term, which belongs to the dataset and not to this file. */
+/* What this lookup was asked for, in one string. Was inline in the tool card;
+   the working row needs the same thing while the call is still in flight. */
+export function toolArg(name, args) {
+  const a = args || {};
+  return name === "inspect_variable"
+    ? (a.name || "")
+    : [a.query, a.concept, a[waveTerm()]].filter(Boolean).join(" · ");
+}
+
 export function toolVerb(name) {
   return {
     search_variables: "searched the dictionaries",
@@ -67,9 +76,7 @@ function coverageRows(waves) {
 
 export function toolCard(m) {
   const d = m.display || {};
-  const arg = m.name === "inspect_variable"
-    ? m.args?.name
-    : [m.args?.query, m.args?.concept, m.args?.[waveTerm()]].filter(Boolean).join(" · ");
+  const arg = toolArg(m.name, m.args);
 
   let body;
   if (!m.display) {
@@ -111,6 +118,7 @@ export function toolCard(m) {
   return `<div class="msg msg-tool${m.display ? "" : " is-running"}">
     <div class="msg-head">
       <span class="tool-mark">⌕</span>
+      <code class="tool-name">${esc(m.name)}</code>
       ${esc(toolVerb(m.name))}${arg ? ` <code>${esc(arg)}</code>` : ""}
       ${m.display?.note ? `<span class="msg-note">${esc(m.display.note)}</span>` : ""}
     </div>
@@ -210,6 +218,13 @@ export function renderTranscript() {
            m.thinking.trim().split(/\s+/).length} words</summary
          ><pre>${esc(m.thinking.trim())}</pre></details>`
       : "";
+    // Which agent answered. Only when it changes hands, so a run of replies
+    // from the same one is not stamped six times over.
+    const prev = chat.messages.slice(0, i).reverse()
+      .find((x) => x.role === "assistant" && x.agent);
+    const badge = m.agent && (!prev || prev.agent?.id !== m.agent.id)
+      ? `<span class="msg-agent">${esc(m.agent.label)}</span>` : "";
+
     const err = m.error ? `<div class="warn"><span>⚠</span><div>
          <strong>${esc(errorTitle(m.error, m.status))}</strong> ${esc(m.error)}
          <br>${errorHint(m.error, m.status)}${m.stack ? `
@@ -217,6 +232,7 @@ export function renderTranscript() {
            ><pre>${esc(m.stack)}</pre></details>` : ""}</div></div>` : "";
 
     return `<div class="msg msg-bot" data-i="${i}">
+      ${badge}
       ${think}
       <div class="msg-body">${m.content ? md(m.content) : ""}</div>
       ${err}
@@ -233,12 +249,22 @@ export function renderTranscript() {
 export function workingRow() {
   const label = {
     thinking: "Thinking",
-    searching: "Searching the dictionaries",
+    searching: "Searching",
     drafting: "Updating the draft",
   }[chat.phase];
   if (!label) return "";
   const quiet = chat.phase === "drafting" ? " is-quiet" : "";
-  return `<p class="working${quiet}" role="status">${esc(label)}<span class="ellipsis"
+
+  // Naming the agent and the lookup turns a spinner into something you can
+  // read: which of them is working, and on what.
+  const who = chat.agent && chat.phase !== "drafting"
+    ? `<span class="who">${esc(chat.agent.label)}</span>` : "";
+  const tool = chat.phase === "searching" && chat.tool
+    ? ` <code class="tool-name">${esc(chat.tool.name)}</code>${
+        toolArg(chat.tool.name, chat.tool.args)
+          ? ` <span class="tool-arg">${esc(toolArg(chat.tool.name, chat.tool.args))}</span>` : ""}`
+    : "";
+  return `<p class="working${quiet}" role="status">${who}${esc(label)}${tool}<span class="ellipsis"
     ><span>.</span><span>.</span><span>.</span></span></p>`;
 }
 

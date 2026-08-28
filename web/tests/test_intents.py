@@ -40,7 +40,7 @@ def config_with(*intents: dict) -> Config:
 
 
 INTERVIEW = {
-    "id": "interview", "label": "working on the request",
+    "id": "variable_interviewer", "label": "variable interviewer",
     "description": "answering us", "instructions": "Work the checklist.",
     "advances": True,
 }
@@ -71,8 +71,8 @@ class Defaults(unittest.TestCase):
         declaration rather than the id is."""
         from config import get as get_config
         by_id = {i.id: i for i in get_config().intents}
-        self.assertTrue(by_id["interview"].shows_checklist)
-        self.assertTrue(by_id["interview"].offers_choices)
+        self.assertTrue(by_id["variable_interviewer"].shows_checklist)
+        self.assertTrue(by_id["variable_interviewer"].offers_choices)
         self.assertFalse(by_id["chat"].shows_checklist)
         self.assertFalse(by_id["chat"].offers_choices)
 
@@ -120,8 +120,8 @@ class AThirdIntent(unittest.TestCase):
         self.assertIn("Read the draft back", self.system("review"))
 
     def test_an_unknown_mode_falls_back_to_the_first_intent(self):
-        self.assertEqual(self.cfg.intent("nonsense").id, "interview")
-        self.assertEqual(self.cfg.intent(None).id, "interview")
+        self.assertEqual(self.cfg.intent("nonsense").id, "variable_interviewer")
+        self.assertEqual(self.cfg.intent(None).id, "variable_interviewer")
 
 
 class NoIdComparisons(unittest.TestCase):
@@ -129,7 +129,7 @@ class NoIdComparisons(unittest.TestCase):
 
     def test_prompts_does_not_compare_against_an_intent_id(self):
         source = (WEB / "assistant" / "prompts.py").read_text("utf-8")
-        for name in ("interview", "explore"):
+        for name in ("chat", "variable_interviewer"):
             self.assertNotIn(f'== "{name}"', source)
             self.assertNotIn(f'!= "{name}"', source)
 

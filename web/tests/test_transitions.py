@@ -45,7 +45,7 @@ CHAT = {
     "advances": False,
 }
 INTERVIEW = {
-    "id": "interview", "label": "working on the request",
+    "id": "variable_interviewer", "label": "variable interviewer",
     "description": "a variable request being built",
     "instructions": "Work the checklist.",
     "advances": True,
@@ -82,9 +82,9 @@ class Defaults(unittest.TestCase):
         cfg = get_config()
         self.assertEqual(cfg.fallback_intent.id, "chat")
         self.assertEqual([i.id for i in cfg.router_intents], ["chat"])
-        self.assertEqual([i.id for i in cfg.handoff_intents], ["interview"])
+        self.assertEqual([i.id for i in cfg.handoff_intents], ["variable_interviewer"])
 
-        chat, interview = cfg.intent("chat"), cfg.intent("interview")
+        chat, interview = cfg.intent("chat"), cfg.intent("variable_interviewer")
         # The general agent answers and credits nothing, and the slowest node
         # in the graph does not run for it.
         self.assertFalse(chat.advances)
@@ -101,7 +101,7 @@ class Defaults(unittest.TestCase):
         """The buttons and the acceptance rule have to agree, or the obvious
         way to say yes does not work."""
         from config import get as get_config
-        yes, *rest = get_config().intent("interview").replies
+        yes, *rest = get_config().intent("variable_interviewer").replies
         self.assertTrue(router.is_affirmative(yes))
         self.assertFalse(any(router.is_affirmative(r) for r in rest))
 
@@ -160,7 +160,7 @@ class Reachability(unittest.TestCase):
                            saying="not an intent")
 
     def test_an_intent_may_not_exit_to_itself(self):
-        self.assertRefused(CHAT, {**INTERVIEW, "exits_to": "interview"},
+        self.assertRefused(CHAT, {**INTERVIEW, "exits_to": "variable_interviewer"},
                            saying="exits to itself")
 
     def test_sticky_may_not_exit_into_sticky(self):
@@ -188,10 +188,10 @@ class Accessors(unittest.TestCase):
 
     def test_the_router_is_never_offered_a_handoff_intent(self):
         self.assertEqual([i.id for i in self.cfg.router_intents], ["chat"])
-        self.assertEqual([i.id for i in self.cfg.handoff_intents], ["interview"])
+        self.assertEqual([i.id for i in self.cfg.handoff_intents], ["variable_interviewer"])
 
     def test_exit_honours_exits_to_and_falls_back_otherwise(self):
-        self.assertEqual(self.cfg.exit_intent(self.cfg.intent("interview")).id, "chat")
+        self.assertEqual(self.cfg.exit_intent(self.cfg.intent("variable_interviewer")).id, "chat")
         bare = config_with(CHAT, {**INTERVIEW, "exits_to": ""})
         self.assertEqual(bare.exit_intent(bare.intent("interview")).id, "chat")
 
@@ -269,12 +269,106 @@ class Recogniser(unittest.TestCase):
             self.assertTrue(router.is_exit(text), text)
 
     def test_only_a_plain_yes_accepts(self):
-        for text in ("yes", "Yes please", "sure, go ahead", "ok let's do that",
-                     "yep", "that's right"):
+        for text in ("yes", "Yes please", "Yes, start the request",
+                     "sure, go ahead", "ok let's do that", "yep",
+                     "that's right", "go ahead", "please do",
+                     "yes please, that is exactly what I want"):
             self.assertTrue(router.is_affirmative(text), text)
         for text in ("actually, which sweeps have height?", "not yet",
                      "no", "hold on", "what would that involve?"):
             self.assertFalse(router.is_affirmative(text), text)
+
+    def test_a_question_is_never_an_acceptance(self):
+        """The four that used to slip through, and why it matters.
+
+        `right`, `correct`, `ok` and `sure` are discourse markers as often as
+        they are agreement, and this is the rule BEHIND the model — it decides
+        when the model is unreachable, which is when things are already going
+        wrong. Each of these was read as a yes and put the researcher into an
+        interview they had not agreed to.
+        """
+        for text in ("Right, which sweeps have height?",
+                     "Right then, what does b8hlthgn mean?",
+                     "Correct me if I'm wrong, but isn't BMI already there?",
+                     "Sure, but first — which sweeps?",
+                     "ok what about maternal smoking?",
+                     "Yes — but which sweeps should I say?"):
+            self.assertFalse(router.is_affirmative(text), text)
+
+    def test_an_ambiguous_opener_must_be_the_whole_message(self):
+        """No question mark, but still not agreement."""
+        self.assertFalse(router.is_affirmative(
+            "Right, I also need housing tenure as well as this"))
+        self.assertTrue(router.is_affirmative("right"))
+
+
+class AnswerButtons(unittest.TestCase):
+    """Which step the buttons under a reply belong to.
+
+    `None` from `driving` means no step is in play — a non-advancing intent,
+    or a finished checklist — and the rescue that guesses buttons from the
+    prose used to be able to hand a step straight back. That parked the last
+    step's stock answers under a message saying the request was complete, on
+    every turn after it, with no way out but a reset.
+    """
+
+    def test_a_rescued_step_refines_the_one_being_worked_on(self):
+        self.assertEqual(router.step_for_options("coverage", "concept"), "concept")
+
+    def test_it_falls_back_to_the_driving_step(self):
+        self.assertEqual(router.step_for_options("coverage", None), "coverage")
+
+    def test_it_may_never_invent_one(self):
+        self.assertIsNone(router.step_for_options(None, "identity"))
+
+    def test_nothing_in_play_stays_nothing(self):
+        self.assertIsNone(router.step_for_options(None, None))
+
+
+class OfferingOneOfSeveral(unittest.TestCase):
+    """Which specialist a message asks to start.
+
+    Asking per intent cost a round trip each and made the order in
+    `dataset.toml` the tie-break — the first to say yes won, which is not a
+    decision that belongs in a list's order.
+    """
+
+    def setUp(self):
+        self.cfg = config_with(
+            CHAT, INTERVIEW,
+            {**INTERVIEW, "id": "verifier", "label": "verifier",
+             "description": "checking a variable against the real files"})
+        self.calls = []
+
+    def answering(self, start):
+        def ask(instruction, schema):
+            self.calls.append(schema["properties"]["start"]["enum"])
+            return {"start": start}
+        return ask
+
+    def test_one_call_however_many_there_are(self):
+        router.transition(self.cfg, "chat", "which sweeps measured height?",
+                          has_history=True, ask_model=self.answering(""))
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.calls[0],
+                         ["variable_interviewer", "verifier", ""])
+
+    def test_the_model_picks_not_the_config_order(self):
+        out = router.transition(self.cfg, "chat", "check bmi against the files",
+                                has_history=True, ask_model=self.answering("verifier"))
+        self.assertEqual(out.proposing, "verifier")
+
+    def test_an_empty_answer_proposes_nothing(self):
+        out = router.transition(self.cfg, "chat", "what does b8hlthgn mean?",
+                                has_history=True, ask_model=self.answering(""))
+        self.assertFalse(out.is_proposal)
+
+    def test_an_id_that_is_not_on_offer_is_ignored(self):
+        out = router.transition(self.cfg, "chat", "I want BMI harmonised",
+                                has_history=True, ask_model=self.answering("chat"))
+        # Falls through to the rule, which knows only "something wants
+        # deriving" and can therefore only offer the first.
+        self.assertEqual(out.proposing, "variable_interviewer")
 
 
 class Machine(unittest.TestCase):
@@ -302,30 +396,30 @@ class Machine(unittest.TestCase):
         """The confirmation is the whole point: wanting it is not being in it."""
         out = self.go("chat", "I want BMI harmonised across the sweeps")
         self.assertEqual(out.mode, "chat")
-        self.assertEqual(out.proposing, "interview")
+        self.assertEqual(out.proposing, "variable_interviewer")
         self.assertFalse(out.entering)
 
     def test_accepting_enters_and_flags_the_draft_for_seeding(self):
-        out = self.go("chat", "yes please", awaiting="interview")
-        self.assertEqual(out.mode, "interview")
+        out = self.go("chat", "yes please", awaiting="variable_interviewer")
+        self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(out.how, "accepted")
         self.assertTrue(out.entering)
 
     def test_anything_but_a_yes_declines(self):
         out = self.go("chat", "actually, which sweeps have height?",
-                      awaiting="interview")
+                      awaiting="variable_interviewer")
         self.assertEqual(out.mode, "chat")
         self.assertEqual(out.how, "declined")
         self.assertFalse(out.entering)
 
     def test_a_question_inside_the_interview_does_not_leave_it(self):
         """`explore` stops being a mode: the interviewer answers and carries on."""
-        out = self.go("interview", "Which sweeps have self-rated health?")
-        self.assertEqual(out.mode, "interview")
+        out = self.go("variable_interviewer", "Which sweeps have self-rated health?")
+        self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(out.how, "sticky")
 
     def test_an_explicit_stop_leaves(self):
-        out = self.go("interview", "stop for now")
+        out = self.go("variable_interviewer", "stop for now")
         self.assertEqual(out.mode, "chat")
         self.assertEqual(out.how, "exit")
 
@@ -357,40 +451,63 @@ class TheModelBehindIt(unittest.TestCase):
 
     def test_a_sticky_turn_asks_the_model_nothing(self):
         """The saving, and the reason stickiness is cheaper as well as steadier."""
-        out = router.transition(self.cfg, "interview", "Which sweeps have it?",
+        out = router.transition(self.cfg, "variable_interviewer", "Which sweeps have it?",
                                 has_history=True,
-                                ask_model=self.answering(start=True))
-        self.assertEqual(out.mode, "interview")
+                                ask_model=self.answering(start="variable_interviewer"))
+        self.assertEqual(out.mode, "variable_interviewer")
         self.assertEqual(self.calls, [])
 
     def test_the_model_can_propose_where_the_rule_would_not(self):
         out = router.transition(
             self.cfg, "chat", "could you put together age at first birth?",
-            has_history=True, ask_model=self.answering(start=True))
-        self.assertEqual(out.proposing, "interview")
+            has_history=True,
+            ask_model=self.answering(start="variable_interviewer"))
+        self.assertEqual(out.proposing, "variable_interviewer")
         self.assertEqual(len(self.calls), 1)
 
     def test_the_model_can_decline_where_the_rule_would_propose(self):
         out = router.transition(
             self.cfg, "chat", "I need to know which variables measure height",
-            has_history=True, ask_model=self.answering(start=False))
+            has_history=True, ask_model=self.answering(start=""))
         self.assertFalse(out.is_proposal)
+
+    def test_a_mistake_in_our_own_code_is_not_a_model_failure(self):
+        """The catch-all used to hide both.
+
+        A typo in an instruction builder degraded every routing decision to
+        the heuristic with nothing said anywhere — which is how a broken probe
+        for this very file reported zero model calls instead of an error.
+        """
+        def our_bug(instruction, schema):
+            raise AttributeError("typo in start_instruction")
+        with self.assertRaises(AttributeError):
+            router.transition(self.cfg, "chat", "please derive BMI",
+                              has_history=True, ask_model=our_bug)
+
+    def test_the_world_failing_still_degrades(self):
+        def network_down(instruction, schema):
+            raise ConnectionError("ollama unreachable")
+        out = router.transition(self.cfg, "chat", "please derive BMI",
+                                has_history=True, ask_model=network_down)
+        self.assertEqual(out.proposing, "variable_interviewer")
 
     def test_a_model_failure_degrades_to_the_rule_rather_than_the_turn(self):
         def explode(instruction, schema):
             raise RuntimeError("ollama is not running")
         out = router.transition(self.cfg, "chat", "please derive BMI",
                                 has_history=True, ask_model=explode)
-        self.assertEqual(out.proposing, "interview")
+        self.assertEqual(out.proposing, "variable_interviewer")
 
     def test_a_nonsense_answer_degrades_the_same_way(self):
-        out = router.transition(self.cfg, "chat", "please derive BMI",
-                                has_history=True,
-                                ask_model=self.answering(start="probably"))
-        self.assertEqual(out.proposing, "interview")
+        """Including a model that answers the old boolean shape."""
+        for answer in ("probably", True, None):
+            out = router.transition(self.cfg, "chat", "please derive BMI",
+                                    has_history=True,
+                                    ask_model=self.answering(start=answer))
+            self.assertEqual(out.proposing, "variable_interviewer", repr(answer))
 
     def test_the_proposal_it_is_answering_is_quoted_back(self):
-        router.transition(self.cfg, "chat", "go on", awaiting="interview",
+        router.transition(self.cfg, "chat", "go on", awaiting="variable_interviewer",
                           has_history=True, ask_model=self.answering(accepted=True))
         self.assertIn("Shall I take you through the request?",
                       self.calls[0]["instruction"])

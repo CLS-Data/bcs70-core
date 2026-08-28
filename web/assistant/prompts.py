@@ -16,12 +16,17 @@ from config import Config
 from .tools import COVERAGE, HARMONISED, INSPECT, SEARCH
 
 
-# ── The interviewer ─────────────────────────────────────────────────────
+# ── What an agent is told ───────────────────────────────────────────────
 
 def system(cfg: Config, step_index: int, covered: dict[str, bool],
            agentic: bool, facts: dict | None = None,
            mode: str | None = None, entering: bool = False) -> str:
-    """Standing instructions for one message, in whichever mode it is."""
+    """Standing instructions for one message, in whichever intent it is.
+
+    Every difference between the agents lives in what this returns: the
+    job block, whether the checklist is woven in, whether answer buttons
+    are allowed. Nothing downstream knows which agent it is talking for.
+    """
     facts = facts or {}
     step = cfg.steps[step_index]
     done = [s.title for s in cfg.steps if covered.get(s.id)]

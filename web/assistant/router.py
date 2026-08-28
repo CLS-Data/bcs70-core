@@ -143,6 +143,8 @@ def classify(cfg, text: str, *, has_history: bool, last_question: str = "",
             chosen = (out or {}).get("intent")
             if chosen in allowed:
                 return chosen, "model"
+        except OUR_FAULT:
+            raise
         except Exception:                              # noqa: BLE001 - see below
             if strategy == "model":
                 # Asked for the model and only the model, but a routing
@@ -165,11 +167,17 @@ def classify(cfg, text: str, *, has_history: bool, last_question: str = "",
 # anything else is read as declining, which is the safe direction. A wrong
 # decline costs a sentence; a wrong accept puts a researcher somewhere they
 # did not ask to be.
-AFFIRM = (
-    "yes", "yeah", "yep", "yup", "ok", "okay", "sure", "please do", "please",
-    "go ahead", "go on", "start", "let's go", "lets go", "let's do", "lets do",
-    "do it", "sounds right", "that's right", "thats right", "correct", "right",
+# Split for the same reason the stop words are. "right", "correct", "ok" and
+# "sure" are discourse markers as often as they are agreement — "Right, which
+# sweeps have height?" opens with one and is a question — so they may only
+# carry a short message, and never one ending in a question mark.
+AFFIRM_OPENERS = (
+    "yes", "yeah", "yep", "yup", "please do", "go ahead", "go on",
+    "let's go", "lets go", "let's do", "lets do", "do it",
+    "sounds right", "that's right", "thats right",
 )
+AFFIRM_WEAK = ("ok", "okay", "sure", "right", "correct", "please", "start")
+AFFIRM = AFFIRM_OPENERS + AFFIRM_WEAK
 
 # Leaving a sticky intent. "stop" runs through this corpus mid-sentence —
 # stopping smoking, stopping work, stopping school — so a bare match anywhere
@@ -244,8 +252,30 @@ def _opens_with(text: str, phrases) -> bool:
 
 
 def is_affirmative(text: str) -> bool:
-    """Did they say yes to the proposal?"""
-    return _opens_with(text, AFFIRM)
+    """Did they say yes to the proposal?
+
+    Narrowed the same way `is_exit` is, and for the same reason: this is the
+    rule BEHIND the model, so it decides when the model is unreachable — the
+    moment things are already degrading. A question is never an acceptance
+    however it opens, and an ambiguous opener has to be the whole message
+    rather than the run-up to one.
+
+    The four that used to slip through: "Right, which sweeps have height?",
+    "Correct me if I'm wrong…", "Sure, but first — which sweeps?", and "ok
+    what about maternal smoking?". Every one of them a question.
+    """
+    body = (text or "").strip()
+    # Saying yes and asking something in the same breath is not a yes. They
+    # get an answer and can say yes again; the other way round they are in an
+    # interview they never agreed to.
+    if body.endswith("?"):
+        return False
+    if _opens_with(body, AFFIRM_OPENERS):
+        return True
+    words = _words(body)
+    if not words or len(words) > SHORT_MESSAGE_WORDS:
+        return False
+    return _opens_with(body, AFFIRM_WEAK)
 
 
 def is_exit(text: str) -> bool:
@@ -293,28 +323,34 @@ def wants_derivation(text: str) -> bool:
             and any(n in low for n in WANT_NOUNS))
 
 
-def start_schema() -> dict:
+def proposal_schema(cfg) -> dict:
+    """Which specialist to offer, if any. One question, not one per intent."""
+    ids = [i.id for i in cfg.handoff_intents]
     return {
         "type": "object",
-        "properties": {"start": {"type": "boolean"}},
+        "properties": {"start": {"type": "string", "enum": [*ids, ""]}},
         "required": ["start"],
     }
 
 
-def start_instruction(cfg, intent, text: str) -> str:
+def proposal_instruction(cfg, text: str) -> str:
+    options = "\n".join(f"  {i.id} — {i.description}" for i in cfg.handoff_intents)
     return f"""A researcher is talking to an assistant about {cfg.name}.
 
 Their message:
 "{text}"
 
-Are they asking for a variable to be derived — that is, do they want work
-started that ends in {intent.description.lower() or "a variable request"}?
+Are they asking for work to be STARTED on their behalf, and if so which of
+these would do it?
 
-Answer true only if they are asking for something to be BUILT. A question
-about what the study measured, what a variable means, or where a concept
-appears is not a request to derive anything, however specific it is.
+{options}
 
-Answer {{"start": true}} or {{"start": false}}.
+Name one only if they are asking for something to be built or worked on. A
+question about what the study measured, what a variable means, or where a
+concept appears is not a request to start anything, however specific it is —
+answer with "" for those, and for anything you are unsure of.
+
+Answer {{"start": "<id>"}} or {{"start": ""}}.
 """
 
 
@@ -339,6 +375,27 @@ the offer, asks something else, or hedges is not agreement.
 
 Answer {{"accepted": true}} or {{"accepted": false}}.
 """
+
+
+def step_for_options(driving: str | None, rescued: str | None) -> str | None:
+    """Which checklist step the answer buttons belong to.
+
+    `driving` is the step the agent was told to work on, and `None` from it
+    means no step is in play at all — the intent does not advance one, or
+    every step is already settled. A rescued step may only ever REFINE that,
+    never introduce one, because the two Nones are load-bearing:
+
+    - In a non-advancing intent, naming a step credits it when the researcher
+      replies, which is how a question about coverage got filed as an answer
+      about naming.
+    - With the checklist complete there is no question, so there is nothing
+      for a step to be about. `_driving_step` returns None for exactly this,
+      and the rescue used to hand a step straight back — which parked the
+      last step's stock answers ("compare against the published CLS figures")
+      under a message saying the request was finished, on every turn after,
+      with no way out but a reset.
+    """
+    return (rescued or driving) if driving else None
 
 
 def transition(cfg, mode: str | None, text: str, *, has_history: bool,
@@ -393,15 +450,42 @@ def _answer_proposal(cfg, current, awaiting: str, text: str,
     return Transition(cfg.exit_intent(offered).id, "declined")
 
 
+def _proposal_for(cfg, text: str, ask_model) -> str:
+    """Which specialist this message is asking to start, or "".
+
+    One model call however many there are. Asking per intent cost a round trip
+    each and made the order in `dataset.toml` the tie-break — the first to say
+    yes won, which is not a decision that belongs in a list's order.
+    """
+    if not cfg.handoff_intents:
+        return ""
+    ids = [i.id for i in cfg.handoff_intents]
+
+    strategy = cfg.router_strategy
+    if strategy in ("model", "auto") and ask_model is not None:
+        try:
+            out = ask_model(proposal_instruction(cfg, text), proposal_schema(cfg))
+            chosen = (out or {}).get("start")
+            if chosen in ids:
+                return chosen
+            if chosen == "":
+                return ""
+        except OUR_FAULT:
+            raise
+        except Exception:                              # noqa: BLE001 - see above
+            pass
+
+    # The rule knows only that something wants deriving, not which of several
+    # would do it, so it can only offer the first. That is a fallback, not the
+    # normal path.
+    return ids[0] if wants_derivation(text) else ""
+
+
 def _route(cfg, current, text: str, last_question: str, ask_model) -> Transition:
     """Not in a sticky intent, and nothing pending. Route the message."""
-    for offered in cfg.handoff_intents:
-        starting = _ask_yes_no(
-            cfg, ask_model, start_schema(), "start",
-            lambda: start_instruction(cfg, offered, text),
-            lambda: wants_derivation(text))
-        if starting:
-            return Transition(current.id, "proposed", proposing=offered.id)
+    offered = _proposal_for(cfg, text, ask_model)
+    if offered:
+        return Transition(current.id, "proposed", proposing=offered)
 
     choices = cfg.router_intents
     if len(choices) < 2:
@@ -422,10 +506,19 @@ def _route(cfg, current, text: str, last_question: str, ask_model) -> Transition
     return Transition(chosen, how)
 
 
+# Exceptions that mean WE are wrong, not that the world is. A model call can
+# fail a hundred ways and the turn should survive all of them — but a typo in
+# an instruction builder is not one of them, and swallowing it degrades every
+# routing decision to the heuristic with nothing said anywhere. This module is
+# standard library, so it cannot name httpx's or LangChain's own errors;
+# naming the handful that are always our own bug is the way round that.
+OUR_FAULT = (AttributeError, TypeError, NameError)
+
+
 def _ask_yes_no(cfg, ask_model, sch: dict, key: str, instruct, rule) -> bool:
     """The model where it is wanted, the rule where it is not — or where the
     model failed. Same contract as `classify`: a routing failure degrades the
-    turn rather than ending it."""
+    turn rather than ending it, but a mistake in this file does not."""
     strategy = cfg.router_strategy
     if strategy in ("model", "auto") and ask_model is not None:
         try:
@@ -433,6 +526,8 @@ def _ask_yes_no(cfg, ask_model, sch: dict, key: str, instruct, rule) -> bool:
             value = (out or {}).get(key)
             if isinstance(value, bool):
                 return value
+        except OUR_FAULT:
+            raise
         except Exception:                              # noqa: BLE001 - see above
             pass
     return rule()

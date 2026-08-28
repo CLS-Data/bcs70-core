@@ -310,9 +310,9 @@ stopwords = [
 #
 # All three of the last ones default to whatever `advances` says, so an
 # intent only declares what differs. They exist because they used to be
-# decided by comparing the intent's id against "interview" in prompts.py and
-# "explore" in the browser, so an intent added here got whatever those
-# comparisons happened to give it.
+# decided by comparing the intent's id against a name in prompts.py and
+# another in the browser, so an intent added here got whatever those
+# comparisons happened to give it. Nothing compares against an id now.
 #
 # Four more decide how a turn gets into it and out again:
 #
@@ -353,8 +353,8 @@ Answer what they asked, and stop.
   answer."""
 
 [[intent]]
-id    = "interview"
-label = "working on the request"
+id    = "variable_interviewer"
+label = "variable interviewer"
 # Answering a question is progress; a step gets credited. Only one intent
 # should advance the checklist.
 advances = true

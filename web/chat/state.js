@@ -36,6 +36,12 @@ export const chat = {
   separate: [],
   knownVars: null,         // name -> bool, as validated by the server
 
+  // Which agent the current turn belongs to, and which lookup it is
+  // waiting on. Both are shown while they are true and then attached to
+  // the message, so scrolling back still says who answered and on what.
+  agent: null,        // {id, label} for the turn being streamed
+  tool: null,         // {name, args} of the lookup in flight
+
   busy: false,        // a request is in flight
   answered: false,    // …but the reply and its choices have already landed
   phase: "",          // what to show in the working indicator
@@ -99,6 +105,13 @@ export const capitaliseWave = () => wavePlural().replace(/^./, (c) => c.toUpperC
 // once the conversation has gone back to general questions.
 export function showsChecklist() {
   return chat.sticky || Object.values(chat.covered || {}).some(Boolean);
+}
+
+// Nothing is being asked once every step is settled, so nothing may be
+// offered as an answer to it.
+export function allSettled() {
+  const steps = chat.interview?.steps || [];
+  return steps.length > 0 && steps.every((s) => chat.covered[s.id]);
 }
 
 export function firstUnsettled() {
