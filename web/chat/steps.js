@@ -90,6 +90,17 @@ export function renderReplies() {
     return;
   }
 
+  // The assistant's last message says to open the Draft. Saying it is not
+  // the same as offering it: the panel tab sits at the top of the drawer,
+  // away from where the conversation just ended. Prepended rather than
+  // returned early, because a completing turn may still have asked a real
+  // question, and its own buttons are not this action's to swallow.
+  const done = allSettled() ? `
+    <button class="choice is-go" data-open-draft>
+      <span class="choice-key">→</span>
+      <span class="choice-text">Open the Draft to review it and file it</span>
+    </button>` : "";
+
   const direct = chat.options?.length ? chat.options : null;
   // Stock answers belong to a question. With the checklist complete there is
   // none, whatever step the last turn happened to name — and the name stuck
@@ -101,9 +112,16 @@ export function renderReplies() {
   const rows = direct || fallback || [];
   // With nothing to offer there is nothing to draw. The composer below is
   // the answer, and a header over an empty list only takes up room.
-  if (!rows.length) { el.hidden = true; return; }
+  if (!rows.length && !done) { el.hidden = true; return; }
 
-  el.innerHTML = `
+  if (!rows.length) {
+    el.innerHTML = `<p class="choices-head">The request is complete</p>${done}
+      <p class="choices-hint">or say something below to change any of it</p>`;
+    el.hidden = false;
+    return;
+  }
+
+  el.innerHTML = `${done}
     <p class="choices-head">${direct
       ? "Pick an answer, or say something else below"
       : `Common answers on ${esc(asked.title.toLowerCase())}, or say something else below`}</p>

@@ -416,6 +416,13 @@ printed above the message, and only when it changes hands, so a run of replies
 from one agent is not stamped six times over. The browser never names an agent
 itself: rename one in `dataset.toml` and the transcript follows.
 
+**The way on, when there is one.** The completion message says to open the
+Draft; the panel tab that does it sits at the top of the drawer, away from
+where the conversation just ended. The reply slot — empty once a finished
+checklist stops offering answers — carries the action instead. It is
+prepended rather than substituted, because a completing turn may still have
+asked something, and its buttons are not this action's to swallow.
+
 **Which lookup is running, and on what.** A search used to be a spinner saying
 "Searching the dictionaries". It now names the tool and its argument while the
 call is in flight — `search_variables self rated health` — and the finished

@@ -935,6 +935,20 @@ body.chat-open { padding-right: var(--chat-w); }
 .choice:hover .choice-key, .choice:focus-visible .choice-key { color: var(--contour); }
 .choice-text { flex: 1; }
 
+/* The one action left when the checklist is done. Reads as a destination
+   rather than as another thing to say. */
+.choice.is-go {
+  width: 100%; border-color: var(--contour); color: var(--contour);
+  background: var(--paper-2); font-weight: 600;
+}
+.choice.is-go:hover, .choice.is-go:focus-visible {
+  background: var(--contour); color: var(--paper-2);
+}
+.choice.is-go .choice-key { color: var(--contour); }
+.choice.is-go:hover .choice-key, .choice.is-go:focus-visible .choice-key {
+  color: var(--paper-2);
+}
+
 .choices-hint {
   margin: 6px 0 0;
   font-size: 10.5px; color: var(--ink-3);

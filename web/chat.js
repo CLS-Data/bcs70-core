@@ -565,6 +565,7 @@ function wireUp() {
 
   const choices = $("#chat-replies");
   choices.addEventListener("click", (e) => {
+    if (e.target.closest("[data-open-draft]")) return setPanel("draft");
     const b = e.target.closest("[data-reply]");
     if (b) useChoice(b.dataset.reply);
   });
