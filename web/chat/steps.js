@@ -2,7 +2,7 @@
 
 import { $, $$ } from "./dom.js";
 import { esc } from "./markup.js";
-import { chat, firstUnsettled, saveSession, showsChecklist, stepById } from "./state.js";
+import { allSettled, chat, firstUnsettled, saveSession, showsChecklist, stepById } from "./state.js";
 
 export function applyProgress(ev) {
   if (ev.covered && typeof ev.covered !== "object") return;
@@ -91,7 +91,11 @@ export function renderReplies() {
   }
 
   const direct = chat.options?.length ? chat.options : null;
-  const asked = chat.askedStep ? stepById(chat.askedStep) : null;
+  // Stock answers belong to a question. With the checklist complete there is
+  // none, whatever step the last turn happened to name — and the name stuck
+  // in localStorage, so without this the offer survived a reload and there
+  // was no way out of it but a reset.
+  const asked = chat.askedStep && !allSettled() ? stepById(chat.askedStep) : null;
   const fallback = direct ? null : (asked?.replies || null);
 
   const rows = direct || fallback || [];

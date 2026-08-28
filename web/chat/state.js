@@ -107,6 +107,13 @@ export function showsChecklist() {
   return chat.sticky || Object.values(chat.covered || {}).some(Boolean);
 }
 
+// Nothing is being asked once every step is settled, so nothing may be
+// offered as an answer to it.
+export function allSettled() {
+  const steps = chat.interview?.steps || [];
+  return steps.length > 0 && steps.every((s) => chat.covered[s.id]);
+}
+
 export function firstUnsettled() {
   const steps = chat.interview?.steps || [];
   const next = steps.findIndex((s) => !chat.covered[s.id]);

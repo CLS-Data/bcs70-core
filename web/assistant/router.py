@@ -341,6 +341,27 @@ Answer {{"accepted": true}} or {{"accepted": false}}.
 """
 
 
+def step_for_options(driving: str | None, rescued: str | None) -> str | None:
+    """Which checklist step the answer buttons belong to.
+
+    `driving` is the step the agent was told to work on, and `None` from it
+    means no step is in play at all — the intent does not advance one, or
+    every step is already settled. A rescued step may only ever REFINE that,
+    never introduce one, because the two Nones are load-bearing:
+
+    - In a non-advancing intent, naming a step credits it when the researcher
+      replies, which is how a question about coverage got filed as an answer
+      about naming.
+    - With the checklist complete there is no question, so there is nothing
+      for a step to be about. `_driving_step` returns None for exactly this,
+      and the rescue used to hand a step straight back — which parked the
+      last step's stock answers ("compare against the published CLS figures")
+      under a message saying the request was finished, on every turn after,
+      with no way out but a reset.
+    """
+    return (rescued or driving) if driving else None
+
+
 def transition(cfg, mode: str | None, text: str, *, has_history: bool,
                awaiting: str = "", last_question: str = "",
                ask_model=None) -> Transition:

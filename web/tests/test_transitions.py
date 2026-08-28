@@ -277,6 +277,29 @@ class Recogniser(unittest.TestCase):
             self.assertFalse(router.is_affirmative(text), text)
 
 
+class AnswerButtons(unittest.TestCase):
+    """Which step the buttons under a reply belong to.
+
+    `None` from `driving` means no step is in play — a non-advancing intent,
+    or a finished checklist — and the rescue that guesses buttons from the
+    prose used to be able to hand a step straight back. That parked the last
+    step's stock answers under a message saying the request was complete, on
+    every turn after it, with no way out but a reset.
+    """
+
+    def test_a_rescued_step_refines_the_one_being_worked_on(self):
+        self.assertEqual(router.step_for_options("coverage", "concept"), "concept")
+
+    def test_it_falls_back_to_the_driving_step(self):
+        self.assertEqual(router.step_for_options("coverage", None), "coverage")
+
+    def test_it_may_never_invent_one(self):
+        self.assertIsNone(router.step_for_options(None, "identity"))
+
+    def test_nothing_in_play_stays_nothing(self):
+        self.assertIsNone(router.step_for_options(None, None))
+
+
 class Machine(unittest.TestCase):
     """`transition()` itself, with no model behind it."""
 

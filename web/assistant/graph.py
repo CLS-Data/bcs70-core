@@ -246,7 +246,10 @@ def _publish_options(run: dict, question: str, options: list[str],
     # obliges by inventing an "answer" to a statement.
     if not options and "?" in (question or ""):
         options, rescued = _rescue_options(run, question)
-        step = rescued or step
+        # A rescued step refines the one being worked on; it may never invent
+        # one where `_driving_step` said there is none. See the reasoning on
+        # `router.step_for_options`.
+        step = router.step_for_options(driving, rescued)
 
     write({"type": "options", "options": options, "step": step})
     return options, step
