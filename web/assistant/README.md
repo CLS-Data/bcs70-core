@@ -137,7 +137,7 @@ is decided before staying in it. Only a turn doing neither is free to route.
 | in | the question | costs |
 |---|---|---|
 | a first message | none — it is the fallback, whatever it says | nothing |
-| `chat` | is this a request to derive something? | one binary call |
+| `chat` | is any specialist being asked to start? | one call, whatever the number of them |
 | a proposal outstanding | did they say yes? | one binary call |
 | `interview` | do they want out? | **nothing at all** |
 
@@ -169,6 +169,13 @@ out, this is the courtesy — and leaving is recoverable, since the draft is
 kept and the interview is one sentence away.
 
 ## The tools
+
+**What an intent may call is enforced twice.** `schemas` narrows what the
+model is shown, which is the whole of the rule only while models call nothing
+they were not given — and they do not always. The executor takes the intent
+too and refuses anything outside the list, naming what *is* available so the
+model can correct itself rather than guess again.
+
 
 | | |
 |---|---|
