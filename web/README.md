@@ -257,9 +257,23 @@ distinct.
 
 **Dormant: Pages will not serve from a private repository, and this one is
 private.** `.github/workflows/pages.yml` is kept because nothing about it has
-been made wrong — it publishes again as soon as the repository is public. Note
-that the assistant talks to Ollama on `localhost`, so a published copy carries
-the drawer but never connects.
+been made wrong — it publishes again as soon as the repository is public.
+
+**The assistant does not work on Pages, and cannot without being rewritten.**
+Everything it does goes through `/api` — `/api/health` at start-up, then
+`/api/interview`, `/api/chat`, `/api/models`. Pages serves files and has no
+`/api`, so the health check fails and the drawer disables itself with a message
+saying to start `web/server.py`. Everything else — search, the derived list,
+the R bundle, the download — is static JSON and works exactly as it does
+locally.
+
+The reason is not that Ollama is on `localhost`. It is that the browser never
+talks to Ollama at all: the model call, the LangGraph interview, the tools and
+the BM25 retrieval are all Python on the server, and the browser only ever
+posts a message and reads events. Making the assistant work on a static deploy
+would mean reimplementing that half in the browser — a second implementation of
+the interview and the retrieval, in another language. It has not been done, and
+the cost is the reason.
 
 The workflow runs `build_site.py` and uploads this directory on every push to
 `main` touching `web/`, `registry/`, or `bcs70/`. Three things about it:

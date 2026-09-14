@@ -728,6 +728,50 @@ body.is-dragging-var .view-tab[data-view="basket"] {
   font-family: var(--mono); font-size: 11px; color: var(--ochre);
 }
 
+/* ── The assistant's Setup panel ──────────────────────────────────────
+   Connection first, and every failure carries the one command that fixes it.
+   Everything else is tuning and folds away. */
+
+.cs-state {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 0 0 10px; padding: 9px 11px;
+  border-left: 2px solid var(--rule);
+  background: var(--paper-3);
+  font-size: 12.5px; line-height: 1.45;
+}
+.cs-dot {
+  flex: 0 0 auto; margin-top: 5px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink-3);
+}
+.cs-state.is-ok { border-left-color: var(--moss); }
+.cs-state.is-ok .cs-dot { background: var(--moss); }
+.cs-state.is-warn { border-left-color: var(--ochre); }
+.cs-state.is-warn .cs-dot { background: var(--ochre); }
+.cs-state.is-down { border-left-color: var(--contour); }
+.cs-state.is-down .cs-dot { background: var(--contour); }
+
+/* The command to type, set apart so it reads as one. */
+.cs-cmd {
+  margin: 0 0 8px; padding: 8px 11px;
+  background: var(--ink); color: var(--paper-2);
+  font-family: var(--mono); font-size: 12px;
+  border-radius: 2px; overflow-x: auto;
+  user-select: all;
+}
+
+.cs-more { margin: 18px 0 0; border-top: 1px solid var(--rule); padding-top: 6px; }
+.cs-more > summary {
+  cursor: pointer; list-style: none;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 6px 0;
+}
+.cs-more > summary::-webkit-details-marker { display: none; }
+.cs-more > summary::before { content: "▸ "; }
+.cs-more[open] > summary::before { content: "▾ "; }
+.cs-more > summary:hover { color: var(--ink); }
+
 /* ── Footer ───────────────────────────────────────────────────────── */
 
 .foot {
