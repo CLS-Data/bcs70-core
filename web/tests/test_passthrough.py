@@ -27,6 +27,7 @@ REPO = WEB.parent
 
 TEMPLATE = REPO / "templates" / "passthrough.R"
 RUN = REPO / "templates" / "run.R"
+RPROFILE = REPO / "templates" / "project-Rprofile.R"
 BUNDLER = WEB / "bundle.js"
 DISCOVERY = REPO / "R" / "lib" / "discovery.R"
 RUNNER = REPO / "R" / "runner.R"
@@ -261,13 +262,58 @@ class TheIdentifierIsNotAVariable(unittest.TestCase):
         self.assertIn("state.dataset?.identifier", body)
 
 
+class TheProjectProfile(unittest.TestCase):
+    """`templates/project-Rprofile.R` ships as `.Rprofile` in the bundle.
+
+    R sources a `.Rprofile` in the working directory for *every* session
+    started there, `Rscript run.R` included, and a project one SHADOWS the
+    user's own rather than adding to it. Both are easy to get wrong and neither
+    is visible until it bites someone else's machine.
+    """
+
+    def test_it_only_acts_in_an_interactive_session(self):
+        """Otherwise `Rscript run.R` prints a banner into whatever is parsing
+        its output, and registers a hook in a session that has no RStudio."""
+        body = RPROFILE.read_text("utf-8")
+        self.assertIn("if (interactive())", body,
+                      ".Rprofile no longer guards on interactive(), so a "
+                      "scripted run would see its side effects")
+
+    def test_it_chains_the_user_own_profile(self):
+        """R loads the FIRST profile it finds, so a project one silently
+        disables the user's CRAN mirror, prompt, and everything else."""
+        body = RPROFILE.read_text("utf-8")
+        self.assertIn('path.expand("~/.Rprofile")', body,
+                      ".Rprofile no longer loads the user's own, so opening "
+                      "this project would silently disable their settings")
+        self.assertIn("silent = TRUE", body,
+                      "a failure in the user's own profile must not stop ours")
+
+    def test_opening_the_readme_cannot_break_a_session(self):
+        """rstudioapi ships with RStudio but is an ordinary package and can be
+        missing; the hook fires in a session that may have no README."""
+        body = RPROFILE.read_text("utf-8")
+        self.assertIn("rstudio.sessionInit", body,
+                      "RStudio is not ready to be asked for anything at "
+                      "profile time — the request has to wait for the hook")
+        self.assertIn('requireNamespace("rstudioapi", quietly = TRUE)', body)
+        self.assertIn('file.exists("README.md")', body)
+
+    def test_the_bundler_writes_it_as_a_dotfile(self):
+        body = BUNDLER.read_text("utf-8")
+        self.assertIn("${folder}/.Rprofile", body,
+                      "the profile is not written as .Rprofile, so R would "
+                      "never source it")
+
+
 class BuildShipsIt(unittest.TestCase):
     """`build_site.py` has to put the template where the browser can fetch it."""
 
     def test_the_templates_are_listed_for_the_bundle(self):
         source = (WEB / "build_site.py").read_text("utf-8")
         for rel in ("templates/passthrough.R", "templates/run.R",
-                    "templates/project.Rproj", "templates/data-README.md"):
+                    "templates/project.Rproj", "templates/data-README.md",
+                    "templates/project-Rprofile.R"):
             self.assertIn(rel, source,
                           f"build_site.py no longer ships {rel}, so a download "
                           f"would be missing part of its project")

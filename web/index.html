@@ -21,8 +21,8 @@
   </div>
 
   <nav class="views" aria-label="Views">
-    <button class="view-tab is-current" data-view="metadata" aria-current="page">Metadata</button>
-    <button class="view-tab" data-view="derived">Derived</button>
+    <button class="view-tab is-current" data-view="metadata" aria-current="page">Raw variables</button>
+    <button class="view-tab" data-view="derived">Research ready</button>
     <button class="view-tab" data-view="basket" title="Drop a variable here to add it">R bundle <span class="tally" id="basket-tally" hidden>0</span></button>
   </nav>
 
@@ -48,12 +48,12 @@
 
 <main id="main">
 
-  <!-- ── Metadata ─────────────────────────────────────────────────── -->
+  <!-- ── Raw variables ────────────────────────────────────────────── -->
   <section class="view is-current" data-view="metadata">
     <div class="pane pane-list">
       <div class="finder">
         <label class="field">
-          <span class="field-label">Search variables</span>
+          <span class="field-label">Search raw variables</span>
           <input type="search" id="q" placeholder="search…" autocomplete="off" spellcheck="false">
         </label>
         <div class="facet-group" id="level-group">
@@ -69,21 +69,24 @@
       <ol class="results" id="results"></ol>
       <p class="more" id="more" hidden></p>
     </div>
+      <div class="grip" role="separator" aria-orientation="vertical"
+           tabindex="0" aria-label="Resize the list"
+           title="Drag to resize · double-click to reset"></div>
     <div class="pane pane-detail" id="detail" tabindex="-1">
       <div class="empty">
-        <h2>Find a variable</h2>
+        <h2>Find a raw variable</h2>
         <p>Search by name or by what it measures. Names are terse and inconsistent between waves, so searching the label usually works better than guessing the name.</p>
         <p class="empty-hint">Click a point on the spine above to narrow to one wave.</p>
       </div>
     </div>
   </section>
 
-  <!-- ── Derived ──────────────────────────────────────────────────── -->
+  <!-- ── Research ready ───────────────────────────────────────────── -->
   <section class="view" data-view="derived">
     <div class="pane pane-list">
       <div class="finder">
         <label class="field">
-          <span class="field-label">Search derived variables</span>
+          <span class="field-label">Search research-ready variables</span>
           <input type="search" id="dq" placeholder="housing tenure, smoking…" autocomplete="off" spellcheck="false">
         </label>
         <div class="facet-group">
@@ -104,12 +107,15 @@
       </div>
       <ol class="results" id="derived-list"></ol>
     </div>
+      <div class="grip" role="separator" aria-orientation="vertical"
+           tabindex="0" aria-label="Resize the list"
+           title="Drag to resize · double-click to reset"></div>
     <div class="pane pane-detail" id="derived-detail" tabindex="-1">
       <div class="empty">
-        <h2>What has been harmonised</h2>
-        <p>Each entry is one script that turns raw variables into a single harmonised column. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
+        <h2>What is research ready</h2>
+        <p>Each entry is one script that turns raw variables into a single research-ready column — harmonised across sweeps, recoded, and documented. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
         <p>Drag the ones you want into the bundle at the foot of the page — or use the <strong>＋</strong> beside each — and download them as R you can run on your own copy of the data: the runner, its libraries and one script per variable, with a README.</p>
-        <p class="empty-hint">Raw variables go in the same bundle. Search the metadata view and drag those in too — they come out as columns beside the harmonised ones.</p>
+        <p class="empty-hint">Raw variables go in the same bundle. Search <strong>Raw variables</strong> and drag those in too — they come out as columns beside the research-ready ones.</p>
         <p class="empty-hint">Status matters: <em>draft</em> means it has only been checked against fabricated data.</p>
       </div>
     </div>
@@ -123,7 +129,7 @@
     <div class="pane pane-list" id="basket-drop">
       <div class="finder">
         <span class="field-label">In the bundle</span>
-        <p class="finder-help">Drag variables here from the metadata or derived lists, or use the <strong>＋</strong> beside any row. Raw and harmonised variables go in the same bundle.</p>
+        <p class="finder-help">Drag variables here from <strong>Raw variables</strong> or <strong>Research ready</strong>, or use the <strong>＋</strong> beside any row. Both kinds go in the same bundle.</p>
         <div class="picked">
           <p class="picked-count" id="basket-count">Nothing collected yet</p>
           <div class="picked-actions">
@@ -138,6 +144,9 @@
       </p>
     </div>
 
+      <div class="grip" role="separator" aria-orientation="vertical"
+           tabindex="0" aria-label="Resize the list"
+           title="Drag to resize · double-click to reset"></div>
     <div class="pane pane-detail" id="basket-detail" tabindex="-1"></div>
   </section>
 

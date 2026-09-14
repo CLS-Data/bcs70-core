@@ -61,7 +61,9 @@ templates/
   passthrough.R                   skeleton the atlas fills in for a RAW variable download - not used by
                                   the repo's own pipeline, and never committed as a variable script
   run.R, project.Rproj,           the RStudio project an atlas download IS: run.R resolves the data
-  data-README.md                  root, reports what it cannot build and why, then sources the runner.
+  project-Rprofile.R,             root, reports what it cannot build and why, then sources the runner.
+  data-README.md                  project-Rprofile.R ships as .Rprofile - it chains the user's own, and
+                                  only acts when interactive(), so Rscript run.R is unaffected.
                                   All bundle-only; web/tests/test_passthrough.py holds them to what
                                   discovery.R and runner.R actually accept
 

@@ -300,7 +300,7 @@ function renderList() {
     : "";
 
   $("#basket-list").innerHTML =
-    group("Harmonised", "shipped as the repository's own scripts", derived, (b) => {
+    group("Research ready", "shipped as the repository's own scripts", derived, (b) => {
       const d = specFor(b);
       return `<li class="pickable">
         <button class="drop basket-x" data-remove="${esc(keyOf(b))}"
@@ -352,11 +352,12 @@ function renderDetail() {
       them as R you can run against your own copy of the deposits: the runner,
       its libraries, and one script per variable, with a README.</p>
       <p>Both kinds go in the same bundle and come out as columns of the same
-      CSV. A <strong>harmonised</strong> variable ships as the repository's own
-      script, unchanged. A <strong>raw</strong> variable is a deposited column
-      passed through as it stands — not recoded, missing-value sentinels and
-      all.</p>
-      <p class="empty-hint">Drag a row onto the ${esc(tabName())} tab, or use
+      CSV. A <strong>research-ready</strong> variable ships as the repository's
+      own script, unchanged. A <strong>raw</strong> variable is a deposited
+      column passed through as it stands — not recoded, missing-value sentinels
+      and all.</p>
+      <p class="empty-hint">Drag a row onto the ${esc(tabName())} tab from
+      <strong>Raw variables</strong> or <strong>Research ready</strong>, or use
       the ＋ beside it.</p>
     </div>`;
     return;
@@ -372,7 +373,7 @@ function renderDetail() {
 
   el.innerHTML = `
     <div class="detail-head">
-      <div class="detail-eyebrow">${derivedItems().length} harmonised · ${raw.length} raw</div>
+      <div class="detail-eyebrow">${derivedItems().length} research ready · ${raw.length} raw</div>
       <h1 class="detail-name">output/derived_variables.csv</h1>
       <p class="detail-label">One row per cohort member, one column per variable
         below, joined on <code>${esc(state.dataset.identifier || "the identifier")}</code>.</p>
@@ -417,14 +418,14 @@ function renderDetail() {
     </div>
     <p class="draft-status" id="basket-status" role="status"></p>
 
-    ${requestUrl() ? `<h2 class="section-title">Not harmonised yet?</h2>
+    ${requestUrl() ? `<h2 class="section-title">Not research ready yet?</h2>
     <p class="note">If you are about to recode one of these raw columns by hand,
-      that is the moment it is worth asking for a harmonised variable instead —
-      then everyone gets the same one, tested. The assistant writes the request
+      that is the moment it is worth asking for a research-ready one instead —
+      then everyone gets the same variable, tested. The assistant writes the request
       with you and checks every name against the dictionaries; this link is the
       plain version, carrying what is in the basket.</p>
     <div class="detail-actions">
-      <a class="btn" id="basket-issue" href="#" target="_blank" rel="noopener">Request a harmonised variable</a>
+      <a class="btn" id="basket-issue" href="#" target="_blank" rel="noopener">Request a research-ready variable</a>
     </div>` : ""}`;
 
   const button = $("#basket-download");
@@ -459,7 +460,7 @@ function identifierCol() {
 function derivedCol(b, bad) {
   const problem = bad.get(keyOf(b));
   return `<li class="col-row${problem ? " is-bad" : ""}">
-    <span class="col-kind col-kind-derived" title="Harmonised — shipped as its own script">H</span>
+    <span class="col-kind col-kind-derived" title="Research ready — shipped as its own script">R+</span>
     <span class="col-name">${esc(b.id)}</span>
     <span class="col-note">fixed — the script was tested under this name</span>
     ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}

@@ -62,7 +62,7 @@ export function renderDerivedList() {
 
   if (!state.derived.length) {
     $("#derived-list").innerHTML =
-      `<li><p class="basket-empty">No derived variables in the registry yet.
+      `<li><p class="basket-empty">No research-ready variables in the registry yet.
        Once a variable script is merged, it appears here with its source.</p></li>`;
     renderPicked();
     return;

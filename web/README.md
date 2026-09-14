@@ -18,6 +18,8 @@ web/
   atlas/          the atlas itself — one module per view
                   boot, state, dom, spine, views, metadata, derived,
                   basket (what you collected + the R you will download)
+                  Tab labels are "Raw variables" / "Research ready" / "R bundle";
+                  the data-view keys stay metadata/derived/basket.
   bundle.js       packages selected variables as a runnable zip [loaded on demand]
   chat.js         the assistant's turn loop and wiring
   chat/           one module per panel — state (incl. which intent the
@@ -132,7 +134,7 @@ optionally semantic, via `/api/search`. Neither subsumes the other:
 `cigarettes per day` is found by one and not the other, and `b960` the
 reverse.
 
-**Derived** — the harmonised variables, filterable by **category**. Each shows
+**Research ready** — the harmonised variables, filterable by **category**. Each shows
 the source that produces it, the files it draws on, and the raw variables it
 needs, all clickable back into the metadata. Add any of them and **download
 the R code** that produces them (below).
@@ -166,6 +168,7 @@ What comes out is an **RStudio project**, not a folder of scripts:
 ```
 bcs70-variables-<date>/
   bcs70-variables-<date>.Rproj   open this — it sets the working directory
+  .Rprofile                      prints what to do; opens README in RStudio
   run.R                          the one file to run: checks, then runs
   data/README.md                 the empty folder the deposits can go in
   README.md                      what it is, what is unverified, what to do if

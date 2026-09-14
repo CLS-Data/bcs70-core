@@ -230,11 +230,39 @@ code, kbd { font-family: var(--mono); font-size: .92em; }
 main { flex: 1; min-height: 0; }
 
 .view { display: none; height: 100%; }
-.view.is-current { display: grid; grid-template-columns: var(--rail) 1fr; }
+.view.is-current {
+  display: grid; grid-template-columns: var(--rail) 1fr;
+  position: relative;   /* the grip below is positioned against this */
+}
 
 .pane { min-height: 0; overflow-y: auto; }
 .pane-list { border-right: 1px solid var(--rule); background: var(--paper-2); }
 .pane-detail { padding: 24px 28px 60px; }
+
+/* ── The pane divider ─────────────────────────────────────────────────
+
+   Absolutely positioned over the border rather than made a third grid track:
+   the two-column layout stays exactly as it was, and the hit area can be
+   wider than the 1px rule it sits on without pushing anything around.
+
+   `--rail` lives on :root, so all three views share one width. That is
+   deliberate — the list column means the same thing in each, and a width you
+   set while reading raw variables should still be there when you switch to
+   research ready. It is the same arrangement the assistant drawer uses for
+   --chat-w. */
+.grip {
+  position: absolute; top: 0; bottom: 0;
+  left: calc(var(--rail) - 3px); width: 7px;
+  z-index: 5;
+  cursor: col-resize;
+  background: none; border: 0;
+}
+.grip:hover, .grip:focus-visible { background: var(--contour); opacity: .35; }
+.grip:focus-visible { outline: none; }
+/* While dragging, the whole page keeps the resize cursor and stops selecting
+   text under the pointer — otherwise a drag across the list highlights it. */
+body.is-resizing { cursor: col-resize; user-select: none; }
+body.is-resizing .grip { background: var(--contour); opacity: .5; }
 
 /* ── Finder ───────────────────────────────────────────────────────── */
 
@@ -1168,6 +1196,7 @@ body.is-dragging-var .chat-drawer { border-left-color: var(--contour); }
   .chat-grip { display: none; }
 
   .view.is-current { grid-template-columns: 1fr; }
+  .grip { display: none; }
   .pane-list { border-right: 0; border-bottom: 1px solid var(--rule); max-height: 42vh; }
   .pane { overflow-y: visible; }
   main { overflow-y: auto; }
