@@ -208,10 +208,16 @@ export function restoreBundle() {
   }
 }
 
-/* The ＋ beside a row, and the ✓ it becomes. Shared with the metadata view
-   so the same gesture looks the same wherever a variable is listed — the two
+/* The ＋ beside a row, and the ✓ it becomes. Shared with the metadata view so
+   the same gesture looks the same wherever a variable is listed — the two
    lists are the only places a variable can be picked up, and a control that
    differed between them would read as two different features.
+
+   It TOGGLES. A ✓ that could only be undone by finding the row again in the
+   bundle view was a one-way door on the control that looked most like a
+   checkbox, and the way out was somewhere else entirely. Hovering a ✓ shows ✕,
+   because "already in" and "click to remove" are not the same statement and
+   the glyph has to say which.
 
    `args` is what accept() needs to identify the thing: an id for a harmonised
    variable, a name and a file for a raw one. */
@@ -219,10 +225,28 @@ export function addButton(kind, id, isIn, aria, args = {}) {
   const data = Object.entries({ kind, id, ...args })
     .map(([k, v]) => `data-add-${k}="${esc(v)}"`).join(" ");
   return `<button class="add${isIn ? " is-in" : ""}" ${data}
-    ${isIn ? 'aria-disabled="true"' : ""}
-    title="${isIn ? "Already in the R bundle" : "Add to the R bundle"}"
-    aria-label="${isIn ? `${esc(aria)} is in the R bundle` : `Add ${esc(aria)} to the R bundle`}"
-    >${isIn ? "✓" : "＋"}</button>`;
+    aria-pressed="${isIn}"
+    title="${isIn ? "In the R bundle — click to remove" : "Add to the R bundle"}"
+    aria-label="${isIn ? `Remove ${esc(aria)} from the R bundle`
+                       : `Add ${esc(aria)} to the R bundle`}"
+    >${isIn ? '<span class="add-yes">✓</span><span class="add-no">✕</span>' : "＋"}</button>`;
+}
+
+/* One place decides what a click on that button means, so the two lists cannot
+   disagree about it. Takes the button's own dataset, which addButton() wrote. */
+export function toggleFromButton(data) {
+  // addButton() writes data-add-*, so the dataset keys arrive camel-cased with
+  // that prefix. Read them here rather than in each caller.
+  const { addKind: kind, addId: id, addFile: file,
+          addWave: wave, addLabel: label } = data;
+  if (kind === "derived") {
+    return inBundle("derived", id)
+      ? removeAt(`derived:${id}`)
+      : addDerived(id);
+  }
+  return inBundle("raw", id, file)
+    ? removeAt(`raw:${file}:${id}`)
+    : addRaw({ name: id, label, file, wave });
 }
 
 /* ── What cannot be packaged ─────────────────────────────────────────── */
@@ -398,6 +422,9 @@ function renderDetail() {
     </div></div>` : ""}
 
     <h2 class="section-title">Columns</h2>
+    <p class="note">In the order the runner writes them. A research-ready
+      variable's name is fixed — its script was tested under that name — so only
+      the raw columns are editable.</p>
     <ol class="cols">${identifierCol()}${state.bundle.map((b) => b.kind === "derived"
       ? derivedCol(b, bad) : rawCol(b, bad)).join("")}</ol>
 
@@ -452,33 +479,46 @@ function identifierCol() {
   if (!id) return "";
   return `<li class="col-row is-fixed">
     <span class="col-kind col-kind-id" title="The identifier">·</span>
-    <span class="col-name">${esc(id)}</span>
-    <span class="col-note">always included — the key every variable is joined on</span>
+    <span class="col-body">
+      <span class="col-name">${esc(id)}</span>
+      <span class="col-note">always included — the key every variable is joined on</span>
+    </span>
   </li>`;
 }
 
 function derivedCol(b, bad) {
   const problem = bad.get(keyOf(b));
+  // The label, not a note about why the name cannot be edited. That was the
+  // same sentence on every research-ready row, explaining an absence; this
+  // pane otherwise says nothing at all about what a column contains.
   return `<li class="col-row${problem ? " is-bad" : ""}">
     <span class="col-kind col-kind-derived" title="Research ready — shipped as its own script">R+</span>
-    <span class="col-name">${esc(b.id)}</span>
-    <span class="col-note">fixed — the script was tested under this name</span>
-    ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    <span class="col-body">
+      <span class="col-name">${esc(b.id)}</span>
+      <span class="col-note">${esc(specFor(b).label || "")}</span>
+      ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    </span>
   </li>`;
 }
 
+/* A raw column. The note names the source variable only when it differs from
+   the output name — until you rename it they are the same string, and printing
+   it twice per row is noise. */
 function rawCol(b, bad) {
   const key = keyOf(b);
   const problem = bad.get(key);
   return `<li class="col-row${problem ? " is-bad" : ""}">
     <span class="col-kind col-kind-raw" title="Raw — passed through unchanged">R</span>
-    <input class="col-input" type="text" value="${esc(b.column)}"
-           data-rename="${esc(key)}" spellcheck="false" autocomplete="off"
-           aria-label="Output column name for ${esc(b.name)}"
-           aria-invalid="${problem ? "true" : "false"}">
-    <span class="col-note"><code>${esc(b.name)}</code> from
-      <code>${esc(b.file)}</code> · ${esc(b.wave)}</span>
-    ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    <span class="col-body">
+      <input class="col-input" type="text" value="${esc(b.column)}"
+             data-rename="${esc(key)}" spellcheck="false" autocomplete="off"
+             aria-label="Output column name for ${esc(b.name)}"
+             aria-invalid="${problem ? "true" : "false"}">
+      <span class="col-note">${esc(b.label || "no label")} ·
+        ${b.column === b.name ? "" : `<code>${esc(b.name)}</code> in `}<code>${esc(b.file)}</code>
+        · ${esc(b.wave)}</span>
+      ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    </span>
   </li>`;
 }
 

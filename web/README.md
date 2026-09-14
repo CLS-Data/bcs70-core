@@ -158,8 +158,15 @@ give, not what is already on screen.
 ## Downloading variables as R code
 
 Drag variables from either list onto the **R bundle** tab, or use the `＋`
-beside any row. Its list pane is what you picked up; its detail pane is the
-output CSV's columns, which is where a name collision becomes visible.
+beside any row — which becomes a `✓`, and clicking that takes it back out. In
+**Research ready**, a concept measured at several waves is one item with its
+variables nested under it — a header carrying a control for all of them and a
+fold, and rows showing only what distinguishes each from its siblings (`10y`,
+`father_0y`). A variable with no siblings is just a row. Both the count and the
+control act on what is on screen, so a search narrows them.
+
+The bundle's list pane is what you picked up; its detail pane is the output
+CSV's columns, which is where a name collision becomes visible.
 
 What comes out is an RStudio project, not a folder of scripts:
 

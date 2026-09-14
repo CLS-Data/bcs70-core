@@ -32,6 +32,10 @@ export const state = {
   derivedQuery: "",
   derivedCategory: null, // category slug, or null
   derivedSelected: null,
+  // Families folded away in the derived list, by "<category>/<family>". Not
+  // persisted: it is a reading position, not a preference, and a fold you set
+  // last week is a variable you cannot find today.
+  collapsedFamilies: new Set(),
   // What the R bundle will contain, in the order it was collected. Both
   // kinds live in one list because they end up in one joined output: a
   // harmonised variable is {kind:"derived", id}, a raw column is

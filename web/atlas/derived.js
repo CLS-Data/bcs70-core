@@ -77,39 +77,118 @@ export function renderDerivedList() {
     return;
   }
 
-  let lastFamily = null;
-  $("#derived-list").innerHTML = list.map((d) => {
-    const head = d.family !== lastFamily
-      ? `<li><p class="more" style="border-bottom:1px solid var(--rule);margin:0">
-           ${esc(categoryName(d.category))} / <strong>${esc(d.family)}</strong></p></li>` : "";
-    lastFamily = d.family;
-    const cur = state.derivedSelected?.id === d.id ? " is-current" : "";
-    // Draggable too. Dropping a harmonised variable into the assistant is
-    // how you say "follow this one's precedent" - a different claim from
-    // dropping a raw variable, so the payload says which it is. The same
-    // payload is what the bundle dock reads, which is why one shape serves
-    // two drop targets.
-    const drag = dragAttr({
-      kind: "derived", name: d.id, label: d.label,
-      file: d.file, wave: d.family,
-    });
-    // The add control sits beside the row rather than inside it: a button
-    // cannot legally contain another button. It does exactly what dragging
-    // the row does, and exists so the bundle is reachable from the keyboard.
-    // The open-row marker goes on the <li> so it runs down the whole line.
-    return head + `<li class="pickable${cur}">
-      ${addButton("derived", d.id, basket.inBundle("derived", d.id), d.id)}
-      <button class="row" data-id="${esc(d.id)}"
-        draggable="true" data-drag="${drag}">
-        <span class="row-top">
-          <span class="row-name">${esc(d.id)}</span>
-          <span class="row-wave">${statusPill(d.status)}</span>
-        </span>
-        <span class="row-label">${esc(d.label)}</span>
-      </button></li>`;
-  }).join("");
+  // A family with siblings becomes one item with its rows nested under it;
+  // a lone variable stays a plain row. Giving a family of one the same header
+  // printed its name twice — once as the group, once as its only member — and
+  // offered to "add all 1" beside the row's own control.
+  $("#derived-list").innerHTML = groupByFamily(list).map((fam) =>
+    fam.members.length === 1
+      ? derivedRow(fam.members[0], null)
+      : familyHeader(fam) + (state.collapsedFamilies.has(fam.key)
+        ? ""
+        : fam.members.map((d) => derivedRow(d, fam.family)).join("")))
+    .join("");
 
   renderPicked();
+}
+
+/* One variable. Nested under a family header, it shows only what distinguishes
+   it from its siblings: ids are `<family>_<something>` by convention, so a row
+   under `bmi` reading `bmi_10y` spends most of its width repeating the header.
+   Stripped to `10y` — or `father_10y`, where that is what actually differs.
+
+   Standalone, it shows the whole id, because nothing above it has said what
+   the variable is.
+
+   `family` is the family name when nested, null when not. The full id stays in
+   the drag payload, the detail pane and the bundle: it is the output column
+   name and is never only implied. */
+function derivedRow(d, family) {
+  const cur = state.derivedSelected?.id === d.id ? " is-current" : "";
+  const shown = family && d.id.startsWith(`${family}_`)
+    ? d.id.slice(family.length + 1)
+    : d.id;
+
+  // Draggable too. Dropping a research-ready variable into the assistant is
+  // how you say "follow this one's precedent" - a different claim from
+  // dropping a raw variable, so the payload says which it is. The same payload
+  // is what the bundle reads, which is why one shape serves two drop targets.
+  const drag = dragAttr({
+    kind: "derived", name: d.id, label: d.label, file: d.file, wave: d.family,
+  });
+  // The add control sits beside the row rather than inside it: a button cannot
+  // legally contain another button. It does what dragging the row does, and
+  // exists so the bundle is reachable from the keyboard. The open-row marker
+  // goes on the <li> so it runs down the whole line.
+  return `<li class="pickable${family ? " is-nested" : ""}${cur}">
+    ${addButton("derived", d.id, basket.inBundle("derived", d.id), d.id)}
+    <button class="row" data-id="${esc(d.id)}"
+      draggable="true" data-drag="${drag}"
+      ${family ? `title="${esc(d.id)}"` : ""}>
+      <span class="row-top">
+        <span class="row-name">${esc(shown)}</span>
+        <span class="row-wave">${statusPill(d.status)}</span>
+      </span>
+      <span class="row-label">${esc(d.label)}</span>
+    </button></li>`;
+}
+
+/* The visible rows, in family order, with their category carried along. Built
+   from the list rather than from the registry so it reflects the search and
+   the category facet: "add all" must mean what is on screen. */
+function groupByFamily(list) {
+  const out = [];
+  let current = null;
+  for (const d of list) {
+    const key = `${d.category}/${d.family}`;
+    if (!current || current.key !== key) {
+      current = { key, category: d.category, family: d.family, members: [] };
+      out.push(current);
+    }
+    current.members.push(d);
+  }
+  return out;
+}
+
+/* A family's header: the concept, how much of it you have, and one control for
+   all of it. Only ever drawn for a family with more than one sibling — a lone
+   variable is just a row. */
+function familyHeader({ key, category, family, members }) {
+  const inCount = members.filter((d) => basket.inBundle("derived", d.id)).length;
+  const all = inCount === members.length;
+  const collapsed = state.collapsedFamilies.has(key);
+
+  const held = all ? "all in the bundle"
+    : inCount ? `${inCount} of ${members.length} in the bundle`
+      : `${members.length} variables`;
+
+  return `<li class="fam${collapsed ? " is-collapsed" : ""}">
+    <button class="fam-twist" data-fold="${esc(key)}"
+      aria-expanded="${!collapsed}"
+      aria-label="${collapsed ? "Show" : "Hide"} the ${esc(family)} variables">▾</button>
+    <span class="fam-what">
+      <span class="fam-name">${esc(family)}</span>
+      <span class="fam-meta">${esc(categoryName(category))} · ${esc(held)}</span>
+    </span>
+    <button class="fam-add${all ? " is-in" : ""}"
+      data-family="${esc(key)}" aria-pressed="${all}"
+      title="${all ? "Remove every one of these from the R bundle"
+                   : "Add every one of these to the R bundle"}">
+      ${all ? `Remove all ${members.length}` : `Add all ${members.length}`}
+    </button>
+  </li>`;
+}
+
+/* Add a whole family, or remove it. Partly-taken counts as not taken: the
+   button reads "Add all 12" until all twelve are in, so clicking it always
+   does what it says rather than removing the three you already had. */
+function toggleFamily(key) {
+  const members = visibleDerived().filter((d) => `${d.category}/${d.family}` === key);
+  const all = members.every((d) => basket.inBundle("derived", d.id));
+  members.forEach((d) => {
+    if (all) basket.removeAt(`derived:${d.id}`);
+    else basket.addDerived(d.id);
+  });
 }
 
 /* ── Adding variables to the bundle ──────────────────────────────────────
@@ -132,9 +211,11 @@ export function renderPicked() {
         ? ` · <span class="picked-warn">${drafts} unverified</span>` : ""}`
     : "None in the bundle";
 
+  // "shown", because each family header now has its own "Add all N" and two
+  // controls reading "Add all" at different scopes would be a guess.
   const all = $("#pick-all");
   all.hidden = missing === 0;
-  all.textContent = `Add all ${missing}`;
+  all.textContent = `Add all ${missing} shown`;
 }
 
 function statusPill(status) {
@@ -250,11 +331,24 @@ export function wire() {
     renderDerivedList();
   });
 
-  // The ＋ and the row are siblings, so one listener can serve both: the ＋
-  // is checked first because it is the more specific target.
+  // One listener for the whole list. The controls are siblings of the row, so
+  // the specific targets are checked first and the row is the fallthrough.
   $("#derived-list").addEventListener("click", (e) => {
+    const fold = e.target.closest("[data-fold]");
+    if (fold) {
+      const key = fold.dataset.fold;
+      if (state.collapsedFamilies.has(key)) state.collapsedFamilies.delete(key);
+      else state.collapsedFamilies.add(key);
+      renderDerivedList();
+      return;
+    }
+
+    const family = e.target.closest("[data-family]");
+    if (family) { toggleFamily(family.dataset.family); return; }
+
     const add = e.target.closest("[data-add-id]");
-    if (add) { basket.accept({ kind: "derived", name: add.dataset.addId }); return; }
+    if (add) { basket.toggleFromButton(add.dataset); return; }
+
     const btn = e.target.closest("[data-id]");
     if (btn) showDerived(state.derived.find((d) => d.id === btn.dataset.id));
   });

@@ -424,12 +424,67 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 }
 .pickable:hover .add, .add:focus-visible { opacity: 1; }
 .add:hover { border-color: var(--contour); color: var(--contour); }
-.add.is-in {
-  opacity: 1; color: var(--moss); border-color: transparent; cursor: default;
-}
+/* In the bundle, and removable. The ✓ becomes ✕ under the pointer because
+   "already in" and "click to remove" are different statements, and a control
+   that only ever says the first reads as a dead end. */
+.add.is-in { opacity: 1; color: var(--moss); border-color: transparent; }
+.add .add-no { display: none; }
+.add.is-in:hover, .add.is-in:focus-visible { color: var(--contour); }
+.add.is-in:hover .add-yes, .add.is-in:focus-visible .add-yes { display: none; }
+.add.is-in:hover .add-no, .add.is-in:focus-visible .add-no { display: inline; }
+
 /* Not a button: the identifier is in every download whether you ask or not,
    so this states a fact rather than offering an action. */
 .add.is-always { opacity: 1; color: var(--ink-3); cursor: default; }
+
+/* ── A family of research-ready variables ─────────────────────────────
+   One concept measured at each wave. People want all of it or none of it far
+   more often than one wave of it, so the header carries a control for the
+   whole family — and a disclosure, because twelve rows you have already taken
+   are twelve rows in the way of the next thing. */
+
+.fam {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px 8px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.fam-twist {
+  flex: 0 0 auto; width: 16px; height: 16px;
+  display: grid; place-items: center;
+  padding: 0; border: 0; background: none;
+  color: var(--ink-3); font-size: 10px; cursor: pointer;
+  transition: transform .12s;
+}
+.fam-twist:hover { color: var(--ink); }
+.fam.is-collapsed .fam-twist { transform: rotate(-90deg); }
+
+.fam-what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fam-name {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  letter-spacing: -.02em; color: var(--ink);
+}
+.fam-meta { font-size: 11px; color: var(--ink-3); }
+
+.fam-add {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper-2); color: var(--ink-2);
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .06em;
+  cursor: pointer; white-space: nowrap;
+}
+.fam-add:hover { border-color: var(--contour); color: var(--contour); }
+.fam-add.is-in { color: var(--moss); border-color: var(--moss); }
+.fam-add.is-in:hover { color: var(--contour); border-color: var(--contour); }
+
+/* A sibling sits under its header, and a rule down the left says which header
+   it belongs to - the list alternates grouped and ungrouped rows, so the
+   indent alone would leave a lone variable looking like a stray child. */
+.pickable.is-nested { padding-left: 16px; box-shadow: inset 1px 0 0 var(--rule); }
+.pickable.is-nested .add { margin-left: 6px; }
 .add.is-in:hover { color: var(--moss); border-color: transparent; }
 
 .row-top { display: flex; align-items: baseline; gap: 8px; }
@@ -620,13 +675,19 @@ body.is-dragging-var .view-tab[data-view="basket"] {
 
 .cols { list-style: none; margin: 0 0 16px; padding: 0; }
 
+/* Badge, then everything else stacked. It used to be three tracks with the
+   name pinned to 18ch, which is narrower than plenty of real ids -
+   parental_employment_status_father_0y is thirty-six characters - so a long
+   one ran straight over the text beside it. Nothing here has a fixed width
+   now, so no name can collide with anything at any length. */
 .col-row {
   display: grid;
-  grid-template-columns: auto 18ch minmax(0, 1fr);
-  align-items: center; gap: 4px 12px;
-  padding: 7px 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start; gap: 10px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--rule);
 }
+.col-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .col-row.is-bad { background: color-mix(in srgb, var(--ochre) 9%, transparent); }
 
 .col-kind {
@@ -648,9 +709,11 @@ body.is-dragging-var .view-tab[data-view="basket"] {
 .col-name {
   font-family: var(--mono); font-size: 12.5px; font-weight: 700;
   letter-spacing: -.02em; color: var(--ink);
+  /* A deposited name can be anything; wrap rather than overflow. */
+  overflow-wrap: anywhere;
 }
 .col-input {
-  width: 100%; padding: 3px 6px;
+  width: 24ch; max-width: 100%; padding: 3px 6px;
   border: 1px solid var(--rule); border-radius: 2px;
   background: var(--paper); color: var(--ink);
   font-family: var(--mono); font-size: 12.5px;
@@ -659,16 +722,10 @@ body.is-dragging-var .view-tab[data-view="basket"] {
 
 .col-note {
   font-size: 12px; color: var(--ink-3);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .col-problem {
-  grid-column: 2 / -1;
   font-family: var(--mono); font-size: 11px; color: var(--ochre);
-}
-
-@media (max-width: 720px) {
-  .col-row { grid-template-columns: auto minmax(0, 1fr); }
-  .col-note, .col-problem { grid-column: 2 / -1; white-space: normal; }
 }
 
 /* ── Footer ───────────────────────────────────────────────────────── */
