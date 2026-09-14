@@ -208,8 +208,8 @@ class TheIdentifierIsNotAVariable(unittest.TestCase):
     It is the key every variable is joined on and is already the first column
     of any download. Worse, a passthrough of it cannot run at all: `load_tab()`
     renames whichever column matches it case-insensitively to lower case, so a
-    spec declaring `BCSID` (the spelling two of this study's deposits use)
-    names a column that no longer exists by the time the runner narrows to it.
+    spec carrying a deposit's own casing of it names a column that no longer
+    exists by the time the runner narrows to it.
     """
 
     def test_the_basket_refuses_it(self):
@@ -242,8 +242,8 @@ class TheIdentifierIsNotAVariable(unittest.TestCase):
 
         The output column name is typed separately, by hand, in the bundle
         view. A raw column renamed to the identifier generates
-        `out[["bcsid"]] <- data[["<var>"]]` — overwriting the key with the raw
-        codes — and `runner.R` cannot catch it, because `derive()` did return
+        `out[[<identifier>]] <- data[["<var>"]]` — overwriting the key with the
+        raw codes — and `runner.R` cannot catch it, because `derive()` returned
         both of the names it requires: they are the same string.
         """
         body = (WEB / "atlas" / "basket.js").read_text("utf-8")

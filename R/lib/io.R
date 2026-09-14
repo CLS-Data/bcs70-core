@@ -1,65 +1,51 @@
-# Read-only helpers for loading BCS70 sweep data.
+# Read-only helpers for loading deposited data files.
 #
-# IMPORTANT: bcs70/ must never be written to by anything in this repo.
+# IMPORTANT: the deposits must never be written to by anything in this repo.
 # Every function here is read-only. It exists so variable scripts never
 # need to know file paths - they declare a file_name in `spec$source_files`
 # and the runner resolves + loads it via load_tab() below.
 
-.bcs70_lookup_cache <- NULL
-.bcs70_lookup_root <- NULL
+# lintr note: this file reads the constants in R/lib/dataset.R, which every
+# entry point source()s before it. lintr cannot follow a source(), so .lintr
+# disables object_usage_linter for this file only - every other linter applies.
 
-# Where the deposits are. Defaults to "bcs70" in the working directory, which
-# is the layout CONTRIBUTING.md documents: drop this R/ folder beside the
-# real bcs70/ and run. A code bundle downloaded from the atlas is run exactly
-# the same way - but on a machine where the deposits already live somewhere
-# else, and moving multi-GB licensed microdata to satisfy a relative path is
-# the wrong way round. So the root can be pointed elsewhere without editing
-# any script:
+.lookup_cache <- NULL
+.lookup_root <- NULL
+
+# Where the deposits are: the configured directory, unless the environment
+# points elsewhere. Licensed microdata is large, and moving it to satisfy a
+# relative path is the wrong way round.
 #
-#     BCS70_DATA=/path/to/deposits Rscript R/runner.R
-#
-# Read on each call rather than resolved once at load, so a session that
-# changes it does not have to be restarted.
+# Read on each call rather than at load, so changing it needs no restart.
 data_root <- function() {
-  root <- Sys.getenv("BCS70_DATA", unset = "")
-  if (nzchar(root)) root else "bcs70"
+  root <- if (nzchar(data_dir_env)) Sys.getenv(data_dir_env, unset = "") else ""
+  if (nzchar(root)) root else data_dir_default
 }
 
-# The cohort member identifier is "B"-prefixed in every deposited file, but
-# some files (sn3723 and bcs21yearsample are the known cases) carry rows
-# whose identifier does not follow that pattern. Such a row cannot be linked
-# to a cohort member, and left in place it is not harmless: runner.R joins
-# every variable's output with merge(..., all = TRUE), so an unlinkable id
-# survives as an extra output row with one sweep's column populated and all
-# others NA - indistinguishable from a genuine case seen at only one sweep.
-#
-# NOTE: this pattern is deliberately loose ("starts with B", after trimming
-# and upper-casing). It is a convention, not a documented format - no data
-# dictionary records a type or value labels for bcsid - so it is set wide
-# enough not to discard valid ids. Tighten it here once the real files have
-# been inspected and the exact shape of the bad values is known.
-bcsid_pattern <- "^B"
-
 # Normalise identifiers, then drop rows that still cannot be linked.
-# Whitespace and case are normalised first because both preserve identity;
-# only what survives that and still fails the pattern is dropped, and never
-# silently - the caller always gets a warning naming the file and counts.
 #
-# Counts only, never the offending values: warnings surface wherever this is
-# run, and a malformed serial number is still case-level data.
-clean_bcsid <- function(data, file_name, pattern = bcsid_pattern) {
-  data$bcsid <- toupper(trimws(as.character(data$bcsid)))
+# Trimming and upper-casing preserve identity, so they happen first; only what
+# survives them and still fails identifier_pattern is dropped. That matters
+# because runner.R joins with all = TRUE, so an unlinkable id would otherwise
+# survive as an output row with one sweep populated and the rest NA -
+# indistinguishable from a case genuinely seen once.
+#
+# Counts only, never the values: a malformed serial number is still
+# case-level data, and warnings surface wherever this runs.
+clean_identifiers <- function(data, file_name, pattern = identifier_pattern) {
+  ids <- toupper(trimws(as.character(data[[identifier_column]])))
+  data[[identifier_column]] <- ids
 
-  keep <- !is.na(data$bcsid) & nzchar(data$bcsid) & grepl(pattern, data$bcsid)
+  keep <- !is.na(ids) & nzchar(ids) & grepl(pattern, ids)
   dropped <- sum(!keep)
   if (dropped > 0) {
     warning(
       sprintf(
         paste(
-          "%s: dropped %d of %d row(s) whose bcsid does not match %s.",
+          "%s: dropped %d of %d row(s) whose %s does not match %s.",
           "These cases are absent from every variable derived from this file."
         ),
-        file_name, dropped, nrow(data), pattern
+        file_name, dropped, nrow(data), identifier_column, pattern
       ),
       call. = FALSE
     )
@@ -73,11 +59,11 @@ clean_bcsid <- function(data, file_name, pattern = bcsid_pattern) {
   # here, because whether two rows conflict depends on which columns the
   # variable actually uses. They are reported at load time for visibility
   # and resolved per-variable by resolve_duplicate_ids() below.
-  duplicated_ids <- unique(data$bcsid[duplicated(data$bcsid)])
+  duplicated_ids <- unique(ids[duplicated(ids)])
   if (length(duplicated_ids) > 0) {
     message(sprintf(
-      "%s: %d bcsid value(s) appear on more than one row; resolved per-variable after column narrowing.",
-      file_name, length(duplicated_ids)
+      "%s: %d %s value(s) appear on more than one row; resolved per-variable after column narrowing.",
+      file_name, length(duplicated_ids), identifier_column
     ))
   }
 
@@ -85,19 +71,17 @@ clean_bcsid <- function(data, file_name, pattern = bcsid_pattern) {
 }
 
 # Resolve duplicate identifiers for one variable, applied by runner.R after
-# each source file has been narrowed to bcsid + the columns that variable
-# declared. Narrowing first is the whole point: two rows sharing a bcsid may
-# differ only in columns this variable never reads, in which case they carry
-# the same information and collapse harmlessly. The same duplicate pair can
-# therefore collapse for one variable and conflict for another, which is
-# correct rather than inconsistent.
+# narrowing each file to the identifier + that variable's columns.
 #
-# Rows agreeing across every retained column collapse to one. An id whose
-# rows genuinely disagree cannot be resolved without knowing which record is
-# authoritative - nothing in the deposit says - so the case is dropped with a
-# warning rather than resolved by guesswork or by file order.
+# Narrowing first is the point: two rows sharing an id may differ only in
+# columns this variable never reads, so they carry the same information and
+# collapse. The same pair can therefore collapse for one variable and conflict
+# for another, which is correct rather than inconsistent.
+#
+# An id whose rows genuinely disagree is dropped with a warning: nothing in the
+# deposit says which record is authoritative, so the alternative is guesswork.
 resolve_duplicate_ids <- function(data, file_name) {
-  if (anyDuplicated(data$bcsid) == 0) {
+  if (anyDuplicated(data[[identifier_column]]) == 0) {
     return(data)
   }
 
@@ -105,7 +89,8 @@ resolve_duplicate_ids <- function(data, file_name) {
   data <- unique(data)
   collapsed <- before - nrow(data)
 
-  conflicting <- unique(data$bcsid[duplicated(data$bcsid)])
+  ids <- data[[identifier_column]]
+  conflicting <- unique(ids[duplicated(ids)])
   if (length(conflicting) > 0) {
     warning(
       sprintf(
@@ -117,7 +102,7 @@ resolve_duplicate_ids <- function(data, file_name) {
       ),
       call. = FALSE
     )
-    data <- data[!data$bcsid %in% conflicting, , drop = FALSE]
+    data <- data[!ids %in% conflicting, , drop = FALSE]
   } else if (collapsed > 0) {
     message(sprintf(
       "%s: collapsed %d redundant duplicate row(s); no conflicts.",
@@ -129,59 +114,58 @@ resolve_duplicate_ids <- function(data, file_name) {
   data
 }
 
-# The cache is keyed by the root it was read from, so pointing BCS70_DATA at
-# a different directory mid-session re-reads rather than silently serving the
-# previous study's index.
+# Keyed by the root it was read from, so repointing the data directory
+# mid-session re-reads rather than serving the previous study's index.
 get_lookup <- function() {
   root <- data_root()
-  if (is.null(.bcs70_lookup_cache) || !identical(.bcs70_lookup_root, root)) {
-    path <- file.path(root, "master_file_info_lookup.csv")
+  if (is.null(.lookup_cache) || !identical(.lookup_root, root)) {
+    path <- file.path(root, lookup_file)
     if (!file.exists(path)) {
       stop(sprintf(
         paste(
           "No lookup at %s. Run this from the directory that holds %s/,",
-          "or set BCS70_DATA to where the deposits are."
+          "or set %s to where the deposits are."
         ),
-        path, root
+        path, root, data_dir_env
       ), call. = FALSE)
     }
-    .bcs70_lookup_cache <<- read.csv(path, stringsAsFactors = FALSE)
-    .bcs70_lookup_root <<- root
+    .lookup_cache <<- read.csv(path, stringsAsFactors = FALSE)
+    .lookup_root <<- root
   }
-  .bcs70_lookup_cache
+  .lookup_cache
 }
 
-# Resolve and read a .tab file by its file_name, as it appears in
-# master_file_info_lookup.csv (e.g. "bcs7016x", "bcs_age46_main").
+# Resolve and read a .tab file by its file_name, as the lookup spells it.
 #
-# Some deposited files (e.g. bcs70_2012_flatfile, bcs_age46_main) use
-# "BCSID" rather than "bcsid" for the identifier column - normalised to
-# lowercase here so every other file in this codebase (runner.R, variable
-# scripts, tests) can always assume a single, consistent "bcsid" name.
-#
-# Identifier *values* are then normalised and checked by clean_bcsid()
-# above, which drops unlinkable rows with a warning. Variable scripts
-# therefore never have to defend against a malformed bcsid themselves.
+# Deposits are inconsistent about the identifier column's case, so whichever
+# column matches it case-insensitively is renamed to the configured spelling.
+# Its values are then normalised by clean_identifiers(). Variable scripts therefore
+# never have to defend against a malformed or oddly-spelled identifier.
 load_tab <- function(file_name) {
   lookup <- get_lookup()
-  row <- lookup[lookup$file_name == file_name & lookup$file_type == "tab", ]
+  is_wanted <- lookup[[lookup_columns$file_name]] == file_name &
+    lookup[[lookup_columns$file_type]] == "tab"
+  row <- lookup[is_wanted, ]
   if (nrow(row) == 0) {
     stop(sprintf(
-      "No .tab file found for file_name = '%s' in master_file_info_lookup.csv",
-      file_name
+      "No .tab file found for file_name = '%s' in %s",
+      file_name, lookup_file
     ))
   }
-  path <- file.path(data_root(), row$sweep[1], row$path[1])
+  path <- file.path(
+    data_root(),
+    row[[lookup_columns$wave]][1], row[[lookup_columns$path]][1]
+  )
   data <- read.delim(path, stringsAsFactors = FALSE, check.names = FALSE)
 
-  id_col <- which(tolower(names(data)) == "bcsid")
+  id_col <- which(tolower(names(data)) == tolower(identifier_column))
   if (length(id_col) != 1) {
     stop(sprintf(
-      "%s: expected exactly one bcsid-like identifier column, found %d",
-      file_name, length(id_col)
+      "%s: expected exactly one %s-like identifier column, found %d",
+      file_name, identifier_column, length(id_col)
     ))
   }
-  names(data)[id_col] <- "bcsid"
+  names(data)[id_col] <- identifier_column
 
-  clean_bcsid(data, file_name)
+  clean_identifiers(data, file_name)
 }

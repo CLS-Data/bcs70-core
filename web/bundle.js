@@ -230,7 +230,7 @@ function setRoot(env, root) {
 }`;
 }
 
-function passthrough(raw, template, today) {
+function passthrough(raw, template, today, identifier) {
   // Raw values here, escaped once on the way in below. Escaping a field as it
   // is collected AND again as it is substituted turns a label's quote into
   // `\\"` and its backslash into `\\\\`, which R reads back as literal
@@ -241,9 +241,10 @@ function passthrough(raw, template, today) {
     file: raw.file,
     wave: raw.wave || "",
     label: raw.label || raw.name,
+    identifier: identifier,
     created: today,
   };
-  return template.replace(/\{\{(id|var|file|wave|label|created)\}\}/g,
+  return template.replace(/\{\{(id|var|file|wave|label|identifier|created)\}\}/g,
                           (_, key) => rString(fill[key]));
 }
 
@@ -513,7 +514,8 @@ export async function build(picked, pipeline, meta) {
 
   for (const r of raw) {
     entries.push([`${folder}/${passthroughPath(r)}`,
-                  passthrough(r, template("templates/passthrough.R"), today)]);
+                  passthrough(r, template("templates/passthrough.R"), today,
+                              meta.dataset?.identifier || "id")]);
   }
 
   return { name: `${folder}.zip`, blob: await zip(entries) };

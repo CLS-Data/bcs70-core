@@ -6,7 +6,10 @@
 #
 # Usage: Rscript scripts/search_metadata.R "keyword one" "keyword two" ...
 #
-# Read-only: this script only ever reads under bcs70/, never writes to it.
+# Read-only: this script only ever reads the deposits, never writes to them.
+
+source("R/lib/dataset.R")
+source("R/lib/io.R")
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
@@ -23,12 +26,13 @@ matches_any <- function(text, keywords) {
   hit
 }
 
-cat(sprintf("Searching bcs70/ metadata for: %s\n\n", paste(keywords, collapse = ", ")))
+root <- data_root()
+cat(sprintf("Searching %s/ metadata for: %s\n\n", root, paste(keywords, collapse = ", ")))
 
-# 1. master_file_info_lookup.csv - which sweeps/files even exist -----------
-lookup <- read.csv("bcs70/master_file_info_lookup.csv", stringsAsFactors = FALSE)
+# 1. the master lookup - which sweeps/files even exist ----------------------
+lookup <- read.csv(file.path(root, lookup_file), stringsAsFactors = FALSE)
 lookup_hits <- lookup[matches_any(lookup$description, keywords) | matches_any(lookup$file_name, keywords), ]
-cat("== master_file_info_lookup.csv matches ==\n")
+cat(sprintf("== %s matches ==\n", lookup_file))
 if (nrow(lookup_hits) == 0) {
   cat("(none)\n\n")
 } else {
@@ -38,7 +42,7 @@ if (nrow(lookup_hits) == 0) {
 
 # 2. data dictionaries - the actual candidate variables ----------------------
 dict_files <- list.files(
-  "bcs70",
+  root,
   pattern = "_ukda_data_dictionary_variables\\.csv$", recursive = TRUE, full.names = TRUE
 )
 cat(sprintf("== data dictionary matches (%d dictionaries scanned) ==\n", length(dict_files)))
@@ -62,7 +66,7 @@ cat("\n")
 
 # 3. file_information tables - surfaces relevant PDFs/user guides -----------
 info_files <- list.files(
-  "bcs70",
+  root,
   pattern = "_file_information_table\\.csv$", recursive = TRUE, full.names = TRUE
 )
 cat(sprintf("== file_information matches (%d tables scanned) ==\n", length(info_files)))

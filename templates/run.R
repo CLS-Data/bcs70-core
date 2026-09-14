@@ -1,60 +1,25 @@
-# ==========================================================================
+# {{dataset}} — {{count}}
 #
-#   {{dataset}} — harmonised variables
+#   1. Open {{project}}.Rproj, so the working directory is this folder.
+#      (Not using RStudio? setwd() here instead.)
+#   2. Put your deposits in data/, or set DATA_DIR below.
+#   3. Run this file: "Source" in RStudio, or `Rscript run.R`.
 #
-#   Run this file. It checks everything first and tells you exactly what to
-#   fix if something is not ready, rather than failing part-way through.
+# Result: output/derived_variables.csv — one row per case, one column per
+# variable, joined on {{identifier}}.
 #
-# --------------------------------------------------------------------------
-#
-#   STEP 1 — open the project
-#
-#     Double-click {{project}}.Rproj. That opens RStudio with the working
-#     directory already set to this folder, which is the single most common
-#     thing to get wrong. If you are not using RStudio, just make sure your
-#     working directory is the folder this file is in:
-#
-#         setwd("/path/to/{{project}}")
-#
-#   STEP 2 — tell it where your data is. EITHER:
-#
-#     (a) PUT THE DATA HERE. Copy or move your deposit folders into the
-#         `data/` folder next to this file, so that you end up with:
-#
-#             {{project}}/data/{{lookup}}
-#             {{project}}/data/{{sample_wave}}/...
-#
-#         Nothing is copied, moved or written by this project — it only
-#         reads. See data/README.md.
-#
-#     (b) POINT AT THE DATA where it already lives. Licensed microdata is
-#         large and you should not have to duplicate it. Put the path in
-#         DATA_DIR below:
-#
-#             DATA_DIR <- "~/{{root}}"
-#
-#         (Only where this study's pipeline supports it - if it does not,
-#          option (a) is the whole story and DATA_DIR will say so.)
-#
-#   STEP 3 — run it
-#
-#     In RStudio: click "Source" (or Ctrl/Cmd + Shift + S).
-#     In a terminal: Rscript run.R
-#
-#   The answer lands in output/derived_variables.csv — one row per cohort
-#   member, one column per variable, joined on {{identifier}}.
-#
-# ==========================================================================
+# README.md has the detail, including what to do when something is missing.
+# This file checks the working directory, the data and the files it needs
+# before it starts, and says what to fix rather than failing part-way.
 
 
 # --- Settings -------------------------------------------------------------
 
-# Where your deposits are. Leave as "" to use the `data/` folder next to this
-# file. A `~` is fine. Windows paths: use forward slashes, "C:/data/{{root}}".
+# Where your deposits are. "" uses the data/ folder here. `~` is fine;
+# on Windows use forward slashes, "C:/data/{{root}}".
 DATA_DIR <- ""
 
-# Which variables to build. Leave empty for all of them. To build just one or
-# two while you check them, name them: c("{{sample_id}}")
+# Which to build. Empty means all; name them to build a few: c("{{sample_id}}")
 VARIABLES <- character(0)
 
 
@@ -62,20 +27,17 @@ VARIABLES <- character(0)
 # Nothing below here needs editing.
 # ==========================================================================
 
-# The deposited files these variables read. Every one has to be present, so
-# they are checked up front rather than discovered one failure at a time.
+# The deposited files these variables read, checked up front rather than
+# discovered one failure at a time.
 NEEDED <- {{files}}
 
-# Where load_tab() resolves file names through. Named here only so the checks
-# below can look for it before anything tries to read it.
+# Named here so the checks below can look for it before anything reads it.
 LOOKUP <- "{{lookup}}"
 
 
 # --- A readable failure ---------------------------------------------------
 
-# stop() with call. = FALSE and no "Error in ..." preamble: these messages are
-# addressed to a researcher who has just opened the project, not to whoever
-# wrote this file. Blank lines survive, so the message can breathe.
+# Addressed to a researcher who just opened this, not to whoever wrote it.
 fail <- function(...) {
   stop("\n\n", paste0(..., collapse = ""), "\n", call. = FALSE)
 }
@@ -98,10 +60,9 @@ if (!file.exists(file.path("R", "runner.R"))) {
 
 # --- Check 2: where is the data? ------------------------------------------
 
-# Tried in order, and the order is deliberate: an explicit setting in this
-# file beats the environment, which beats a guess. Each candidate has to
-# actually contain the lookup to count - a `data/` folder that exists but is
-# empty is the normal state of a fresh download, not an answer.
+# In order: an explicit setting beats the environment, which beats a guess.
+# Each has to actually contain the lookup - an empty data/ folder is the
+# normal state of a fresh download, not an answer.
 has_lookup <- function(path) nzchar(path) && file.exists(file.path(path, LOOKUP))
 
 env_dir <- if (nzchar("{{env}}")) Sys.getenv("{{env}}", unset = "") else ""
@@ -130,10 +91,8 @@ for (candidate in candidates) {
   }
 }
 
-# A very common near-miss: the deposits were unzipped into data/ but arrived
-# wrapped in their own folder, so the lookup is one level deeper than
-# expected. That is not a mistake worth a stop() - say what was assumed and
-# carry on.
+# A common near-miss: unzipped into data/ but wrapped in their own folder.
+# Not worth a stop() - say what was assumed and carry on.
 if (is.null(found) && dir.exists("data")) {
   nested <- list.dirs("data", recursive = FALSE)
   nested <- nested[vapply(nested, has_lookup, logical(1))]
@@ -182,19 +141,16 @@ say("Data:      ", data_dir, "  (from ", found$how, ")")
 
 # --- Check 3: which variables can actually be built? ----------------------
 
-# The runner is sourced rather than run: since the guard at the bottom of
-# R/runner.R, source()ing it defines its functions without also starting a
-# run. That matters here because the checks below need the SAME discovery and
-# spec-loading the run will use - find_variable_files(), load_variable() and
-# the placement validation - rather than a second copy of them that could
-# disagree about which scripts exist or what they declare.
+# Sourced, not run: R/runner.R guards its own invocation, so this gets its
+# functions without starting a run. The checks below then use the SAME
+# discovery and spec loading the run will, rather than a second copy.
 {{set_root}}
 
 suppressWarnings(source(file.path("R", "runner.R")))
 
 lookup <- utils::read.csv(file.path(data_dir, LOOKUP), stringsAsFactors = FALSE)
 
-required <- c("file_name", "file_type", "sweep", "path")
+required <- unlist(lookup_columns, use.names = FALSE)
 if (!all(required %in% names(lookup))) {
   fail(
     LOOKUP, " does not have the columns this expects.\n\n",
@@ -208,9 +164,10 @@ if (!all(required %in% names(lookup))) {
 # Resolved exactly the way load_tab() will resolve it, so a file that passes
 # here cannot fail to open there for a path reason.
 locate <- function(file_name) {
-  row <- lookup[lookup$file_name == file_name & lookup$file_type == "tab", ]
+  row <- lookup[lookup[[lookup_columns$file_name]] == file_name &
+                  lookup[[lookup_columns$file_type]] == "tab", ]
   if (nrow(row) == 0) return(NA_character_)
-  file.path(data_dir, row$sweep[1], row$path[1])
+  file.path(data_dir, row[[lookup_columns$wave]][1], row[[lookup_columns$path]][1])
 }
 
 paths <- vapply(NEEDED, locate, character(1))
@@ -228,20 +185,15 @@ if (!any(have)) {
   )
 }
 
-# What each variable declares it reads. Read through the runner's own loader,
-# so a script that would fail to load at run time fails here instead.
+# What each variable declares it reads, through the runner's own loader.
 specs <- lapply(find_variable_files("R/variables"), load_variable)
 ids <- vapply(specs, function(v) v$spec$id, character(1))
 
-# Why a variable cannot be built: a file that is not here, or a column that is
-# not in the files that are. Both are reported the same way, because from where
-# the researcher sits they are the same problem - something this variable needs
-# is not in their copy of the data.
-# Only file presence is checked here, and only from the lookup - no deposit is
-# opened. Anything deeper (a column a deposit does not have, a derive() that
-# throws) is the runner's to find and to report: since it isolates failures
-# per variable, a second copy of "can this one be built" living out here would
-# be one more thing to disagree with it.
+# Why a variable cannot be built, from where the researcher sits: something
+# it needs is not in their copy of the data.
+# File presence only, from the lookup - no deposit is opened. Anything deeper
+# is the runner's to find: it isolates failures per variable already, and a
+# second copy of "can this be built" would be one more thing to disagree.
 blocked_by <- lapply(specs, function(v) {
   wanted <- unique(v$spec$source_files)
   missing_files <- wanted[!wanted %in% NEEDED | !have[wanted]]
@@ -301,8 +253,7 @@ say("")
 
 result <- run_all(only_ids = runnable)
 
-# Anything the runner could not build is reported by the runner itself, in
-# detail, above. This only adds up what that means for the file just written.
+# The runner reports each failure above; this just adds them up.
 lost <- length(blocked) + length(attr(result, "failures"))
 
 say("")
@@ -317,9 +268,9 @@ say("")
 say("Warnings above about dropped or conflicting identifiers are expected and")
 say("are explained in README.md - they are the pipeline refusing to guess.")
 
-# A partial run is a failed run to anything scripting this, even though a file
-# was written. Interactive sessions are left alone - quitting RStudio's console
-# because two variables were skipped would be its own kind of rude.
+# A partial run is a failed run to anything scripting this. Interactive
+# sessions are spared - quitting the console over two skipped variables
+# would be its own kind of rude.
 if (lost > 0 && !interactive()) {
   quit(status = 1L)
 }

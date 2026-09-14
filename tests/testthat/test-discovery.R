@@ -7,6 +7,7 @@
 # ==========================================================================
 
 env <- new.env()
+sys.source("../../R/lib/dataset.R", envir = env)
 sys.source("../../R/lib/discovery.R", envir = env)
 
 # Build a fake R/variables tree and return its root. `paths` are given

@@ -19,15 +19,9 @@
 # Shared by R/runner.R and scripts/build_registry.R so discovery and the
 # layout rules are defined once rather than drifting between them.
 
-# The identifier column. Every deposited file carries it, load_tab() normalises
-# its name and its values, and runner.R prepends it to every variable's input -
-# so it is the one column a spec must never declare as a source variable. It is
-# not data: it is the key the data is joined on.
-#
-# Declared here rather than beside the reading code because this is the module
-# every spec-validating path already sources - runner.R and build_registry.R
-# both - and the rule it supports is a rule about specs.
-identifier_column <- "bcsid"
+# lintr note: this file reads the constants in R/lib/dataset.R, which every
+# entry point source()s before it. lintr cannot follow a source(), so .lintr
+# disables object_usage_linter for this file only - every other linter applies.
 
 variable_categories <- c(
   "demographic", "socio_economic", "health", "education",
@@ -102,22 +96,15 @@ check_variable_placement <- function(path, spec, variables_dir = "R/variables") 
 
 # Reject a spec that declares the identifier as one of its source variables.
 #
-# This is not a style rule. The identifier is already supplied to every
-# derive() and is already the output's key column, so declaring it is
-# meaningless - and both ways of writing it are broken rather than merely
-# redundant:
+# The identifier is already supplied to every derive() and is already the
+# output's key, so declaring it is meaningless - and both spellings are broken
+# rather than merely redundant. The deposit's own casing no longer matches once
+# load_tab() has normalised it, so the runner stops with "not found"; the
+# normalised spelling DOES match, and narrowing then yields two identifier
+# columns, which R silently renames and carries into the output.
 #
-#   source_vars = "BCSID"   load_tab() renames the column to lower case as it
-#                           loads, so runner.R looks for a column that no
-#                           longer exists and stops with "not found"
-#   source_vars = "bcsid"   the name DOES match, and runner.R's narrowing
-#                           produces two columns called bcsid - which R
-#                           silently renames to bcsid and bcsid.1, joins
-#                           without complaint, and carries into the output
-#
-# The second is the dangerous one, so this is checked rather than left to
-# whichever error happens to surface. Checked before any file is opened, in
-# both entry points, so a bad spec cannot reach a real-data run.
+# The second is the dangerous one, so this is checked by name rather than left
+# to whichever error surfaces.
 check_source_vars <- function(path, spec) {
   declared <- as.character(spec$source_vars)
   offending <- unique(declared[tolower(declared) == tolower(identifier_column)])
