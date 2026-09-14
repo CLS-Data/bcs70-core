@@ -72,7 +72,6 @@ scripts/
   build_registry.R                 regenerates registry/ from every variable spec; also validates placement.
                                    R because a spec IS R: it sys.source()s each script and validates it with
                                    R/lib/discovery.R's own functions, the same ones runner.R uses
-  verify_variables.py              applies committed .verification/<sha>/ harness results to specs
 
 registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit

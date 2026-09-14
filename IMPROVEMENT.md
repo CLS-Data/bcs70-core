@@ -26,19 +26,19 @@ and workflow around the pipeline, not the data itself.
   convention in the skill file would make this step reliable regardless of
   which agent or person runs it.
 
-- **Automate the status/notes edit.** Marking a family of siblings
-  "verified" by hand means transcribing n/missing_pct/checks out of each
-  result JSON into `spec$notes` - mechanical, and one mistyped number away
-  from a wrong record. `scripts/verify_variables.py` (added in this PR)
-  automates it: given a `.verification/<sha>/` directory already committed
-  on the branch, it cross-references `registry/variables.json` for each
-  variable's file path (no R parsing needed), flips `status` to
-  `"verified"` for every harness "success" result, and generates the note
-  block from the JSON's own summary fields. It leaves harness failures and
-  unknown ids untouched, and is idempotent (an already-verified variable is
-  skipped, not re-written). Still requires running `format-r`, `lint-r`,
-  the test suite, and `update-registry` afterward, same as the manual
-  process.
+- **Automate the status/notes edit.** ~~Proposed, and withdrawn.~~
+  `scripts/verify_variables.py` was added to flip `spec$status` from a
+  committed `.verification/<sha>/` directory. It was never wired into the
+  `verify-variable` skill, and it gated on the harness reporting
+  `status == "success"` - which no run in this repository does, because
+  `lookup_unambiguous` fails for every variable while
+  `bcs70_age16_school_type` appears twice in the master lookup. It would have
+  reported all twelve correctly-verified `region` siblings as bugs.
+
+  Deciding that a variable is verified is a human judgement by design, and
+  that is the step it automated. The script is deleted; what was actually
+  missing - where the results live, and how to read a harness `failure` -
+  is now written into the skill itself.
 
 ## Suggested additions to the `.verification/<sha>/*.json` schema
 
