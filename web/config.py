@@ -311,6 +311,15 @@ class Config:
         return self._section("metadata").get("dictionary_suffix", "")
 
     @cached_property
+    def file_information_suffix(self) -> str:
+        """Suffix of the tables listing a deposit's non-tabular contents.
+
+        Read by scripts/search_metadata.py, which surfaces the user guides and
+        derivation notes worth opening; the atlas indexes only the dictionaries.
+        """
+        return self._section("metadata").get("file_information_suffix", "")
+
+    @cached_property
     def measurement_levels(self) -> tuple[str, ...]:
         return tuple(self._section("metadata").get("measurement_levels") or ())
 

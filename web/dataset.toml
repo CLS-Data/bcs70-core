@@ -101,6 +101,12 @@ cross_note = "holds cross-sweep files"
 lookup            = "master_file_info_lookup.csv"
 dictionary_suffix = "_ukda_data_dictionary_variables.csv"
 
+# Suffix of the per-study-number tables listing a deposit's non-tabular
+# contents - user guides, derivation notes, the PDFs worth opening before
+# trusting a coding scheme. Only scripts/search_metadata.py reads these; the
+# atlas does not index them.
+file_information_suffix = "_file_information_table.csv"
+
 # In increasing order of information, not alphabetical, so the site's filter
 # reads nominal -> ordinal -> scale. An unseen level is appended rather than
 # dropped, so a new deposit inventing one shows up.
