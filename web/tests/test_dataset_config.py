@@ -80,9 +80,9 @@ class NothingElseNamesTheStudy(unittest.TestCase):
           edits for THIS dataset's variables. They have no substitution
           mechanism, and the identifier appearing in their example fixture is
           the same category as it appearing in R/variables/.
-      scripts/search_metadata.R               reads dataset.R, but its usage
-          text names the dictionary file suffix, which is a UKDS convention
-          rather than a study name.
+      scripts/build_registry.R                R, because a spec IS R -- it
+          evaluates each script and validates it with R/lib/discovery.R's own
+          functions. It reads dataset.R and names nothing itself.
 
     Porting therefore means editing R/lib/dataset.R, web/dataset.toml, and
     those two skeletons -- and nothing else in the framework.

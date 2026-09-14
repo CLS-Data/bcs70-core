@@ -134,7 +134,7 @@ wins over the one shipped here.
    what it should capture, and any known source variables/coding notes.
 2. **Search.** Before writing any logic, exhaustively search all sweeps for
    candidate source variables/files - not just the sweep(s) named in the
-   issue. The `metadata-search` skill runs this via `scripts/search_metadata.R`.
+   issue. The `metadata-search` skill runs this via `scripts/search_metadata.py`.
 3. **Develop.** On a branch, scaffold and fill in `R/variables/<category>/<family>/<id>.R` (spec +
    `derive()` logic) and `tests/testthat/test-<id>.R` (synthetic-data tests),
    following `templates/variable.R` / `templates/variable_test.R`. The
@@ -503,7 +503,7 @@ Rscript -e 'testthat::test_dir("tests/testthat")'
 Rscript R/runner.R
 
 # Search all sweeps' metadata for candidate source variables/files
-Rscript scripts/search_metadata.R "keyword one" "keyword two"
+python3 scripts/search_metadata.py "keyword one" "keyword two"
 
 # Regenerate the variable registry from R/variables/*/*/*.R
 Rscript scripts/build_registry.R

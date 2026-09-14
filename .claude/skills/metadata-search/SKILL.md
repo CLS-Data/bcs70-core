@@ -19,7 +19,7 @@ things.
 1. Pull 3-6 keyword variants from the issue/request: the exact concept name, synonyms, and related survey-instrument terms (e.g. for "childhood social class" also try "occupation", "socio-economic", "registrar general", "social class").
 2. Run:
 
-       Rscript scripts/search_metadata.R "<keyword1>" "<keyword2>" ...
+       python3 scripts/search_metadata.py "<keyword1>" "<keyword2>" ...
 
 3. Read the full output - it covers three independent sources, all worth checking:
    - `master_file_info_lookup.csv` description/file_name matches (which sweeps/files exist at all)

@@ -68,8 +68,11 @@ tests/testthat/test-<id>.R        synthetic-data unit tests, one file per variab
                                   script. Tests stay FLAT here however deeply the script itself is nested.
 
 scripts/
-  search_metadata.R                cross-sweep keyword search over dictionaries/lookup/file_information (read-only)
-  build_registry.R                 regenerates registry/ from every variable spec; also validates placement
+  search_metadata.py               cross-sweep keyword search over dictionaries/lookup/file_information (read-only)
+  build_registry.R                 regenerates registry/ from every variable spec; also validates placement.
+                                   R because a spec IS R: it sys.source()s each script and validates it with
+                                   R/lib/discovery.R's own functions, the same ones runner.R uses
+  verify_variables.py              applies committed .verification/<sha>/ harness results to specs
 
 registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
@@ -160,7 +163,7 @@ The file must live at `R/variables/<category>/<family>/<id>.R` — see `R/variab
 
 `status` only ever becomes `"verified"` after a human reports back a real-data test result from outside this repo (via the `verify-variable` skill) — never from synthetic tests alone, since no real data exists here to verify against.
 
-Before writing `source_files`/`source_vars` for any new variable, run an exhaustive cross-sweep search (the `metadata-search` skill / `scripts/search_metadata.R`) rather than only checking the sweep(s) named in the request — relevant variables are often in a different sweep than the one that prompted the request. After adding or changing a spec, regenerate `registry/` (the `update-registry` skill / `scripts/build_registry.R`) so it never drifts from the specs it's derived from.
+Before writing `source_files`/`source_vars` for any new variable, run an exhaustive cross-sweep search (the `metadata-search` skill / `scripts/search_metadata.py`) rather than only checking the sweep(s) named in the request — relevant variables are often in a different sweep than the one that prompted the request. After adding or changing a spec, regenerate `registry/` (the `update-registry` skill / `scripts/build_registry.R`) so it never drifts from the specs it's derived from.
 
 ## Commands
 
@@ -172,7 +175,7 @@ Rscript -e 'print(c(lintr::lint_dir("R"), lintr::lint_dir("tests")))'  # lint
 Rscript -e 'testthat::test_dir("tests/testthat")'                  # test (synthetic fixtures only)
 Rscript R/runner.R                                                  # run all variables end to end
 Rscript R/runner.R <id>                                             # run just one variable (see CONTRIBUTING.md real-data section)
-Rscript scripts/search_metadata.R "keyword" ...                     # cross-sweep metadata search
+python3 scripts/search_metadata.py "keyword" ...                    # cross-sweep metadata search
 Rscript scripts/build_registry.R                                    # regenerate registry/
 ```
 

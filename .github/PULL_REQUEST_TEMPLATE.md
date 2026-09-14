@@ -8,7 +8,7 @@ Closes #<issue number>
 
 ## Checklist
 
-- [ ] Ran a cross-sweep metadata search (`scripts/search_metadata.R` / `metadata-search` skill) before settling on source files/vars
+- [ ] Ran a cross-sweep metadata search (`scripts/search_metadata.py` / `metadata-search` skill) before settling on source files/vars
 - [ ] `R/variables/<id>.R` added, `spec` fields filled in (id, label, category, github_issue, author, created, source_files, source_vars)
 - [ ] `tests/testthat/test-<id>.R` added, covering typical values, every documented missing/sentinel code, and NA
 - [ ] `styler::style_dir("R")` / `styler::style_dir("tests")` run, no diffs left
