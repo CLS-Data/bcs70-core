@@ -13,6 +13,24 @@ Leave the edit to the user; it is hand-maintained.
 
 Use this after a maintainer reports back real-data test results for a variable that was previously merged with `spec$status = "draft"` or `"ready_for_real_data_test"`. This repo never contains real data, so this status change is always driven by a human reporting an external result (see `CONTRIBUTING.md#running-the-scripts-against-the-real-data` for how they produce it) - never set `status = "verified"` from synthetic-test results alone.
 
+## Where the results are
+
+A maintainer's harness writes one JSON per variable, plus `_integration.json`
+for the cross-variable run, under `.verification/<commit-sha>/` on the branch.
+If that directory is present, read it rather than asking for numbers to be
+retyped. It contains aggregates only - counts, percentages, per-check verdicts
+- never a row of data.
+
+**A harness `status` of `"failure"` does not mean the variable is wrong.** Read
+the `checks` map and decide per check. In particular `lookup_unambiguous` fails
+for *every* variable in this repo, because `bcs70_age16_school_type` appears
+twice in `master_file_info_lookup.csv`; it says nothing about the variable
+under test. `skip` is not a failure either. Treat a check as damning only when
+it is about this variable's own output - `columns_exact`, `not_all_missing`,
+`no_residual_sentinels`, `identifier_unique`, `reproducible`.
+
+If a check that IS about the variable failed, that is step 3 below.
+
 ## Steps
 
 1. Ask for (or read from the issue/PR comment) the outcome: pass/fail, and any discrepancies found on real data. This should already be an *aggregate* summary (e.g. "12,432 non-missing, distribution matches expected labels" or a named missing column) - if a real row-level value, respondent-level data, or a raw export shows up in what you're given, stop and flag it rather than repeating or logging it anywhere; ask the reporter to resend an aggregate-only summary instead.
