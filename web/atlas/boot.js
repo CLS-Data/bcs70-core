@@ -55,6 +55,85 @@ async function boot() {
   basket.render();
 }
 
+/* ── Resizing the list column ─────────────────────────────────────────
+
+   One width for all three views, because the list column means the same thing
+   in each and a width set while reading raw variables should survive a switch
+   to research ready. Stored per dataset, like the theme.
+
+   Dragged with pointer events rather than mouse ones, so a trackpad, a touch
+   screen and a pen all work; keyboard-resizable too, because a separator that
+   only a mouse can move is a separator half the users cannot reach. */
+const RAIL_MIN = 260;
+const RAIL_DEFAULT = 400;      // must match --rail in styles.css
+const railMax = () => Math.max(RAIL_MIN, Math.round(window.innerWidth * 0.7));
+
+function setRail(px, remember = true) {
+  const w = Math.min(railMax(), Math.max(RAIL_MIN, Math.round(px)));
+  document.documentElement.style.setProperty("--rail", `${w}px`);
+  $$(".grip").forEach((g) => g.setAttribute("aria-valuenow", String(w)));
+  if (!remember) return;
+  try { localStorage.setItem(storeKey("rail"), `${w}px`); } catch { /* fine */ }
+}
+
+function wireGrips() {
+  try {
+    const saved = localStorage.getItem(storeKey("rail"));
+    if (saved) setRail(parseInt(saved, 10) || RAIL_DEFAULT, false);
+  } catch { /* private browsing — the default width is fine */ }
+
+  $$(".grip").forEach((grip) => {
+    grip.setAttribute("aria-valuemin", String(RAIL_MIN));
+
+    grip.addEventListener("pointerdown", (e) => {
+      // Captured so the drag keeps tracking once the pointer leaves the 7px
+      // grip, which it does immediately.
+      grip.setPointerCapture(e.pointerId);
+      document.body.classList.add("is-resizing");
+      e.preventDefault();
+    });
+
+    grip.addEventListener("pointermove", (e) => {
+      if (!grip.hasPointerCapture(e.pointerId)) return;
+      // Measured from the view's own left edge rather than the window's, so a
+      // chat drawer or any future gutter cannot skew it.
+      setRail(e.clientX - grip.parentElement.getBoundingClientRect().left, false);
+    });
+
+    const end = (e) => {
+      if (!grip.hasPointerCapture(e.pointerId)) return;
+      grip.releasePointerCapture(e.pointerId);
+      document.body.classList.remove("is-resizing");
+      setRail(parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue("--rail"), 10));
+    };
+    grip.addEventListener("pointerup", end);
+    grip.addEventListener("pointercancel", end);
+
+    // Back to the default, for anyone who has dragged themselves into a corner.
+    grip.addEventListener("dblclick", () => setRail(RAIL_DEFAULT));
+
+    grip.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 64 : 16;
+      const now = parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue("--rail"), 10);
+      if (e.key === "ArrowLeft") setRail(now - step);
+      else if (e.key === "ArrowRight") setRail(now + step);
+      else if (e.key === "Home") setRail(RAIL_DEFAULT);
+      else return;
+      e.preventDefault();
+    });
+  });
+
+  // A window narrow enough to make the stored width absurd gets it clamped,
+  // rather than a list column wider than the window.
+  window.addEventListener("resize", () => {
+    const now = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue("--rail"), 10);
+    if (now > railMax()) setRail(railMax());
+  });
+}
+
 /* The dataset's own name, everywhere the markup left a placeholder. */
 function applyBranding() {
   const d = state.dataset;
@@ -86,6 +165,8 @@ function wire() {
     else renderDerivedList();
   });
   basket.onFileOpened(runSearch);
+
+  wireGrips();
 
   const theme = $("#theme");
   const stored = localStorage.getItem(storeKey("theme"));

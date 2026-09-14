@@ -480,6 +480,8 @@ export async function build(picked, pipeline, meta) {
     set_root: setRoot(env, root),
     files: rVector(needed),
     wave_plural: meta.dataset?.wave?.plural || "sweeps",
+    count: `${derived.length + raw.length} variable${derived.length + raw.length === 1 ? "" : "s"}` +
+           ` (${derived.length} research ready, ${raw.length} raw)`,
     sample_wave: meta.dataset?.wave?.order?.[0] || "<wave>",
     sample_id: derived[0]?.id || raw[0]?.column || "<id>",
   };
@@ -493,6 +495,11 @@ export async function build(picked, pipeline, meta) {
   entries.push([`${folder}/run.R`,
                 scaffold(template("templates/run.R"), escapeForR(scaffoldFill))]);
   entries.push([`${folder}/${folder}.Rproj`, template("templates/project.Rproj")]);
+  // Named with the leading dot only here: a dotfile in templates/ would be
+  // invisible to anyone browsing the repository, and this is R that somebody
+  // should be able to read before they run it.
+  entries.push([`${folder}/.Rprofile`,
+                scaffold(template("templates/project-Rprofile.R"), escapeForR(scaffoldFill))]);
   entries.push([`${folder}/data/README.md`,
                 scaffold(template("templates/data-README.md"), scaffoldFill)]);
 

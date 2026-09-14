@@ -250,6 +250,10 @@ TEMPLATES = {
     # directory — the single most common thing to get wrong. No placeholders:
     # the name carries the identity, and the name is the bundle folder's.
     "templates/project.Rproj": (),
+    # Shipped as `.Rprofile`: prints what to do, and opens the README in
+    # RStudio so the instructions are on screen rather than in a file someone
+    # has to think to open.
+    "templates/project-Rprofile.R": ("dataset", "count"),
 }
 
 
