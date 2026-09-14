@@ -153,6 +153,22 @@ class FamiliesAreGrouped(unittest.TestCase):
                       "the family headers are built from something other than "
                       "the visible list, so the count and the control disagree")
 
+    def test_a_lone_variable_gets_no_header(self):
+        """A family of one printed its name twice -- once as the group, once as
+        its only member -- and offered to "add all 1" beside the row's own
+        control. A lone variable is just a row."""
+        body = DERIVED.read_text("utf-8")
+        self.assertIn("fam.members.length === 1", body,
+                      "the renderer no longer special-cases a family of one")
+
+    def test_a_nested_row_shows_only_what_differs(self):
+        """Ids are `<family>_<something>`, so a row under `bmi` reading
+        `bmi_10y` spends most of its width repeating the header. The full id
+        still drives the bundle and still appears on the row's title."""
+        body = DERIVED.read_text("utf-8")
+        self.assertIn("d.id.startsWith(`${family}_`)", body)
+        self.assertIn("d.id.slice(family.length + 1)", body)
+
     def test_a_family_is_keyed_by_category_and_family(self):
         """Two categories could hold a family of the same name; the key has to
         separate them or folding one would fold the other."""

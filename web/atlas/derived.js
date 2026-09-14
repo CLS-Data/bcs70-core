@@ -77,26 +77,42 @@ export function renderDerivedList() {
     return;
   }
 
-  // Grouped rather than run together, because a family IS a group: one concept
-  // measured at each wave, which is how people want it — all twelve region
-  // siblings or none, far more often than one of them. The header carries the
-  // whole-family control and a disclosure, so twelve rows can also be folded
-  // away once you have taken them.
+  // A family with siblings becomes one item with its rows nested under it;
+  // a lone variable stays a plain row. Giving a family of one the same header
+  // printed its name twice — once as the group, once as its only member — and
+  // offered to "add all 1" beside the row's own control.
   $("#derived-list").innerHTML = groupByFamily(list).map((fam) =>
-    familyHeader(fam) + (state.collapsedFamilies.has(fam.key)
-      ? ""
-      : fam.members.map(derivedRow).join("")))
+    fam.members.length === 1
+      ? derivedRow(fam.members[0], null)
+      : familyHeader(fam) + (state.collapsedFamilies.has(fam.key)
+        ? ""
+        : fam.members.map((d) => derivedRow(d, fam.family)).join("")))
     .join("");
 
   renderPicked();
 }
 
-function derivedRow(d) {
+/* One variable. Nested under a family header, it shows only what distinguishes
+   it from its siblings: ids are `<family>_<something>` by convention, so a row
+   under `bmi` reading `bmi_10y` spends most of its width repeating the header.
+   Stripped to `10y` — or `father_10y`, where that is what actually differs.
+
+   Standalone, it shows the whole id, because nothing above it has said what
+   the variable is.
+
+   `family` is the family name when nested, null when not. The full id stays in
+   the drag payload, the detail pane and the bundle: it is the output column
+   name and is never only implied. */
+function derivedRow(d, family) {
   const cur = state.derivedSelected?.id === d.id ? " is-current" : "";
-  // Draggable too. Dropping a harmonised variable into the assistant is how
-  // you say "follow this one's precedent" - a different claim from dropping a
-  // raw variable, so the payload says which it is. The same payload is what
-  // the bundle reads, which is why one shape serves two drop targets.
+  const shown = family && d.id.startsWith(`${family}_`)
+    ? d.id.slice(family.length + 1)
+    : d.id;
+
+  // Draggable too. Dropping a research-ready variable into the assistant is
+  // how you say "follow this one's precedent" - a different claim from
+  // dropping a raw variable, so the payload says which it is. The same payload
+  // is what the bundle reads, which is why one shape serves two drop targets.
   const drag = dragAttr({
     kind: "derived", name: d.id, label: d.label, file: d.file, wave: d.family,
   });
@@ -104,28 +120,17 @@ function derivedRow(d) {
   // legally contain another button. It does what dragging the row does, and
   // exists so the bundle is reachable from the keyboard. The open-row marker
   // goes on the <li> so it runs down the whole line.
-  return `<li class="pickable${cur}">
+  return `<li class="pickable${family ? " is-nested" : ""}${cur}">
     ${addButton("derived", d.id, basket.inBundle("derived", d.id), d.id)}
     <button class="row" data-id="${esc(d.id)}"
-      draggable="true" data-drag="${drag}">
+      draggable="true" data-drag="${drag}"
+      ${family ? `title="${esc(d.id)}"` : ""}>
       <span class="row-top">
-        <span class="row-name">${esc(d.id)}</span>
+        <span class="row-name">${esc(shown)}</span>
         <span class="row-wave">${statusPill(d.status)}</span>
       </span>
       <span class="row-label">${esc(d.label)}</span>
     </button></li>`;
-}
-
-/* Add a whole family, or remove it. Partly-taken counts as not taken: the
-   button reads "Add all 12" until all twelve are in, so clicking it always
-   does what it says rather than removing the three you already had. */
-function toggleFamily(key) {
-  const members = visibleDerived().filter((d) => `${d.category}/${d.family}` === key);
-  const all = members.every((d) => basket.inBundle("derived", d.id));
-  members.forEach((d) => {
-    if (all) basket.removeAt(`derived:${d.id}`);
-    else basket.addDerived(d.id);
-  });
 }
 
 /* The visible rows, in family order, with their category carried along. Built
@@ -145,40 +150,45 @@ function groupByFamily(list) {
   return out;
 }
 
-/* A family's header: what it is, how many of it you have, and one control for
-   all of it.
-
-   A family of one gets no group control — "add all 1" beside the row's own ＋
-   is two buttons doing the same thing — and no disclosure, because there is
-   nothing to fold. Its header stays, since it still says which category and
-   concept the row belongs to. */
+/* A family's header: the concept, how much of it you have, and one control for
+   all of it. Only ever drawn for a family with more than one sibling — a lone
+   variable is just a row. */
 function familyHeader({ key, category, family, members }) {
-  const ids = members.map((d) => d.id);
-  const inCount = ids.filter((id) => basket.inBundle("derived", id)).length;
-  const all = inCount === ids.length;
+  const inCount = members.filter((d) => basket.inBundle("derived", d.id)).length;
+  const all = inCount === members.length;
   const collapsed = state.collapsedFamilies.has(key);
-  const lone = members.length === 1;
 
-  const state_word = all ? "all in the bundle"
+  const held = all ? "all in the bundle"
     : inCount ? `${inCount} of ${members.length} in the bundle`
-      : `${members.length} ${members.length === 1 ? "variable" : "waves"}`;
+      : `${members.length} variables`;
 
   return `<li class="fam${collapsed ? " is-collapsed" : ""}">
-    ${lone ? '<span class="fam-twist"></span>' : `
-      <button class="fam-twist" data-fold="${esc(key)}"
-        aria-expanded="${!collapsed}"
-        aria-label="${collapsed ? "Show" : "Hide"} the ${esc(family)} variables">▾</button>`}
+    <button class="fam-twist" data-fold="${esc(key)}"
+      aria-expanded="${!collapsed}"
+      aria-label="${collapsed ? "Show" : "Hide"} the ${esc(family)} variables">▾</button>
     <span class="fam-what">
       <span class="fam-name">${esc(family)}</span>
-      <span class="fam-meta">${esc(categoryName(category))} · ${esc(state_word)}</span>
+      <span class="fam-meta">${esc(categoryName(category))} · ${esc(held)}</span>
     </span>
-    ${lone ? "" : `<button class="fam-add${all ? " is-in" : ""}"
+    <button class="fam-add${all ? " is-in" : ""}"
       data-family="${esc(key)}" aria-pressed="${all}"
-      title="${all ? "Remove every wave of this variable from the R bundle"
-                   : "Add every wave of this variable to the R bundle"}">
+      title="${all ? "Remove every one of these from the R bundle"
+                   : "Add every one of these to the R bundle"}">
       ${all ? `Remove all ${members.length}` : `Add all ${members.length}`}
-    </button>`}
+    </button>
   </li>`;
+}
+
+/* Add a whole family, or remove it. Partly-taken counts as not taken: the
+   button reads "Add all 12" until all twelve are in, so clicking it always
+   does what it says rather than removing the three you already had. */
+function toggleFamily(key) {
+  const members = visibleDerived().filter((d) => `${d.category}/${d.family}` === key);
+  const all = members.every((d) => basket.inBundle("derived", d.id));
+  members.forEach((d) => {
+    if (all) basket.removeAt(`derived:${d.id}`);
+    else basket.addDerived(d.id);
+  });
 }
 
 /* ── Adding variables to the bundle ──────────────────────────────────────

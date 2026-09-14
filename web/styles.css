@@ -479,6 +479,12 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 .fam-add:hover { border-color: var(--contour); color: var(--contour); }
 .fam-add.is-in { color: var(--moss); border-color: var(--moss); }
 .fam-add.is-in:hover { color: var(--contour); border-color: var(--contour); }
+
+/* A sibling sits under its header, and a rule down the left says which header
+   it belongs to - the list alternates grouped and ungrouped rows, so the
+   indent alone would leave a lone variable looking like a stray child. */
+.pickable.is-nested { padding-left: 16px; box-shadow: inset 1px 0 0 var(--rule); }
+.pickable.is-nested .add { margin-left: 6px; }
 .add.is-in:hover { color: var(--moss); border-color: transparent; }
 
 .row-top { display: flex; align-items: baseline; gap: 8px; }
