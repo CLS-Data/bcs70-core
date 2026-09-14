@@ -35,6 +35,10 @@ load_entry <- function(path) {
   # the file name disagrees with spec$id.
   # nolint next: object_usage_linter. comes from source("R/lib/discovery.R") above
   location <- check_variable_placement(path, spec)
+  # Same spec rules as R/runner.R. CI runs this script but never runs the
+  # pipeline against data, so a spec this does not check is a spec that goes
+  # green here and fails on someone's real-data run instead.
+  check_source_vars(path, spec)
   list(
     id = spec$id,
     label = spec$label,

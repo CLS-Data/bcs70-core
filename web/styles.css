@@ -336,14 +336,20 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 }
 .picked-count strong { color: var(--ink); }
 .picked-warn { color: var(--ochre); }
+/* The count line doubling as a status line — see say() in atlas/basket.js. */
+.picked-count.is-saying { color: var(--ochre); }
 .picked-actions { display: flex; gap: 10px; grid-row: 1; grid-column: 2; justify-self: end; }
 .picked .btn { grid-column: 1 / -1; width: 100%; }
-.picked-status {
-  grid-column: 1 / -1;
-  margin: 0; min-height: 1em;
-  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-  overflow-wrap: anywhere;
+/* The affirmative twin of .warn — for telling someone the thing they were
+   about to look for is already handled. */
+.note-box {
+  display: flex; gap: 10px;
+  margin: 0 0 16px; padding: 10px 12px;
+  border-left: 2px solid var(--moss);
+  background: color-mix(in srgb, var(--moss) 8%, transparent);
+  font-size: 13px;
 }
+.note-box > span { color: var(--moss); font-weight: 700; }
 
 /* ── Result list ──────────────────────────────────────────────────── */
 
@@ -358,11 +364,11 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 .row:hover { background: var(--paper-3); }
 .row.is-current { background: var(--paper); box-shadow: inset 3px 0 0 var(--contour); }
 
-/* A checkbox beside the row, sharing its bottom rule so the two read as one
-   line rather than as a control floating over a list. The hover and the
+/* An add control beside the row, sharing its bottom rule so the two read as
+   one line rather than as a control floating over a list. The hover and the
    open-row marker belong to the whole line for the same reason: anything
-   drawn on the button alone starts to the right of the checkbox and leaves
-   it stranded outside. */
+   drawn on the button alone starts to the right of the control and leaves it
+   stranded outside. */
 .pickable {
   display: flex; align-items: stretch;
   border-bottom: 1px solid var(--rule);
@@ -374,14 +380,29 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
   box-shadow: inset 3px 0 0 var(--contour);
 }
 .pickable.is-current .row { background: none; }
-.pickable .pick {
+
+/* The ＋, and the ✓ it becomes. Quiet until the row is hovered or it is
+   focused: 300 result rows each shouting an affordance is noise, but the
+   gesture still has to be discoverable and reachable without a mouse. */
+.add {
   flex: 0 0 auto; align-self: center;
-  margin: 0 0 0 14px;
-  width: 13px; height: 13px;
-  accent-color: var(--contour);
+  margin-left: 10px; width: 22px; height: 22px;
+  display: grid; place-items: center;
+  padding: 0; border: 1px solid transparent; border-radius: 2px;
+  background: none; color: var(--ink-3);
+  font-family: var(--mono); font-size: 13px; line-height: 1;
   cursor: pointer;
+  opacity: .45; transition: opacity .12s, color .12s, border-color .12s;
 }
-.pickable .pick:focus-visible { outline: 2px solid var(--contour); outline-offset: 2px; }
+.pickable:hover .add, .add:focus-visible { opacity: 1; }
+.add:hover { border-color: var(--contour); color: var(--contour); }
+.add.is-in {
+  opacity: 1; color: var(--moss); border-color: transparent; cursor: default;
+}
+/* Not a button: the identifier is in every download whether you ask or not,
+   so this states a fact rather than offering an action. */
+.add.is-always { opacity: 1; color: var(--ink-3); cursor: default; }
+.add.is-in:hover { color: var(--moss); border-color: transparent; }
 
 .row-top { display: flex; align-items: baseline; gap: 8px; }
 .row-name {
@@ -523,17 +544,12 @@ pre.code {
 
 .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; }
 
-/* ── Scratchpad ───────────────────────────────────────────────────── */
+/* ── Request form ─────────────────────────────────────────────────────
+   Drawn only by the assistant's draft panel now; the atlas's own copy of
+   this form became the R bundle view. */
 
 .basket-empty { padding: 16px; margin: 0; font-size: 13px; color: var(--ink-3); }
 
-.draft { max-width: 62ch; }
-.draft h2 {
-  margin: 0 0 6px;
-  font-family: var(--mono); font-size: 20px; font-weight: 700; letter-spacing: -.035em;
-}
-.draft-intro { margin: 0 0 22px; font-size: 14px; color: var(--ink-2); }
-.draft .field { margin-bottom: 18px; }
 .draft-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
 .draft-status { margin: 12px 0 0; font-family: var(--mono); font-size: 12px; color: var(--moss); min-height: 1.2em; }
 
@@ -543,6 +559,89 @@ pre.code {
   padding: 2px 6px;
 }
 .drop:hover { color: var(--contour); }
+
+/* ── The R bundle ─────────────────────────────────────────────────────
+
+   The view's own list pane is a drop target while you are in it; the TAB is a
+   drop target from anywhere else, which is the only way a drag from the
+   metadata list can reach a view you are not currently on. Both advertise
+   themselves only while something is in flight, so neither sits there as
+   decoration.
+   ------------------------------------------------------------------- */
+
+body.is-dragging-var .view-tab[data-view="basket"] {
+  border-color: var(--contour); color: var(--contour);
+}
+.view-tab.is-dropping, .pane.is-dropping {
+  background: color-mix(in srgb, var(--contour) 10%, transparent);
+  box-shadow: inset 0 0 0 2px var(--contour);
+}
+
+/* The remove control on a collected row. Mirrors the ＋ that put it there:
+   same size, same column, so adding and removing land in the same place. */
+.basket-x {
+  flex: 0 0 auto; align-self: center;
+  margin-left: 10px; width: 22px; height: 22px;
+}
+
+/* ── The output columns ───────────────────────────────────────────────
+   What the CSV will actually contain. A collision between two deposits that
+   both call something `sex` is the normal case, not the exception, and it is
+   invisible until the two are listed side by side — which is what this is
+   for. */
+
+.cols { list-style: none; margin: 0 0 16px; padding: 0; }
+
+.col-row {
+  display: grid;
+  grid-template-columns: auto 18ch minmax(0, 1fr);
+  align-items: center; gap: 4px 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.col-row.is-bad { background: color-mix(in srgb, var(--ochre) 9%, transparent); }
+
+.col-kind {
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  border-radius: 2px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+}
+.col-kind-derived { background: var(--moss); color: var(--paper-2); }
+.col-kind-raw { background: none; color: var(--ink-3); border: 1px solid var(--rule); }
+.col-kind-id { background: var(--ink-3); color: var(--paper-2); }
+
+/* The identifier's row: present, permanent, and plainly not yours to change. */
+.col-row.is-fixed { opacity: .75; }
+
+/* A harmonised variable's script is shipped verbatim, so its output name is
+   not ours to change. Set in the same column as the editable ones, but plainly
+   not a field. */
+.col-name {
+  font-family: var(--mono); font-size: 12.5px; font-weight: 700;
+  letter-spacing: -.02em; color: var(--ink);
+}
+.col-input {
+  width: 100%; padding: 3px 6px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper); color: var(--ink);
+  font-family: var(--mono); font-size: 12.5px;
+}
+.col-input[aria-invalid="true"] { border-color: var(--ochre); }
+
+.col-note {
+  font-size: 12px; color: var(--ink-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.col-problem {
+  grid-column: 2 / -1;
+  font-family: var(--mono); font-size: 11px; color: var(--ochre);
+}
+
+@media (max-width: 720px) {
+  .col-row { grid-template-columns: auto minmax(0, 1fr); }
+  .col-note, .col-problem { grid-column: 2 / -1; white-space: normal; }
+}
 
 /* ── Footer ───────────────────────────────────────────────────────── */
 

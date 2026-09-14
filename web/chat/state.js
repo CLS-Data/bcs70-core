@@ -3,6 +3,9 @@
    loop writes. It imports nothing of its own so it can never take part in a
    cycle. */
 
+// Must match atlas/state.js, which declares the same string for the other
+// half of the site. Two drop targets read it now — this drawer and the R
+// bundle dock — so they cannot disagree about what a dragged variable is.
 export const DRAG_MIME = "application/x-atlas-variable";
 
 export const A = () => window.Atlas;

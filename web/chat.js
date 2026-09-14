@@ -371,15 +371,20 @@ function wireDrop() {
   let depth = 0;
   const accepts = (e) => [...(e.dataTransfer?.types || [])].includes(DRAG_MIME);
 
+  // Opening on drag is the whole point of a docked panel: you should not have
+  // to set the variable down, open the assistant, and go back for it. But the
+  // drawer is no longer the only target — the R bundle dock is the other — so
+  // an auto-open is provisional: if the drag ends anywhere but in here, the
+  // drawer goes back to however the researcher had left it.
+  let autoOpened = false;
+
   document.addEventListener("dragstart", (e) => {
     const src = e.target.closest?.("[data-drag]");
     if (!src) return;
     e.dataTransfer.setData(DRAG_MIME, src.dataset.drag);
     e.dataTransfer.setData("text/plain", JSON.parse(src.dataset.drag).name || "");
     e.dataTransfer.effectAllowed = "copy";
-    // Opening on drag is the whole point of a docked panel: you should not
-    // have to set the variable down, open the assistant, and go back for it.
-    if (!chat.open) setOpen(true);
+    if (!chat.open) { setOpen(true); autoOpened = true; }
     document.body.classList.add("is-dragging-var");
   });
 
@@ -387,6 +392,7 @@ function wireDrop() {
     document.body.classList.remove("is-dragging-var");
     drawer.classList.remove("is-dropping");
     depth = 0;
+    if (autoOpened) { setOpen(false); autoOpened = false; }
   });
 
   drawer.addEventListener("dragenter", (e) => {
@@ -404,6 +410,7 @@ function wireDrop() {
     if (!accepts(e)) return;
     e.preventDefault(); depth = 0;
     drawer.classList.remove("is-dropping");
+    autoOpened = false;   // it was dropped in here after all, so it stays open
     try { pin(JSON.parse(e.dataTransfer.getData(DRAG_MIME))); }
     catch { /* something else was dropped */ }
   });

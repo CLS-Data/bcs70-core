@@ -183,7 +183,7 @@ export function renderTranscript() {
           : "This model can't call tools, so it can't search for itself. Pick a " +
             "tools-capable model in <strong>Setup</strong>."}</p>
         <p class="chat-intro-hint">Drag any variable from the search results,
-           the derived list or the scratchpad into this panel to pin it as
+           the derived list or the R bundle into this panel to pin it as
            context.</p>
         <p class="chat-intro-hint">Or start from one of these:</p>
         <div class="chat-seeds">

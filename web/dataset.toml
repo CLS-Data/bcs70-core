@@ -184,9 +184,9 @@ template     = "variable_request.yml"
 title_prefix = "[variable] "
 
 # Which fields must be filled in before an issue can be opened, named by their
-# key in [issue.fields] below. Here rather than in the JavaScript because both
-# routes to an issue — the scratchpad form and the assistant's draft panel —
-# gate on it, and each of them used to carry its own copy of the list.
+# key in [issue.fields] below. Here rather than in the JavaScript because a
+# required field is a property of the issue template, which this file already
+# describes — not of the assistant's draft panel, which happens to collect it.
 required     = ["name", "waves", "category", "description"]
 
 [issue.fields]

@@ -35,15 +35,35 @@ R/
                                   <family> groups the same concept's variables (e.g. housing_tenure/),
                                   always present even for a lone variable; <id> must equal spec$id
   lib/discovery.R                 single definition of that layout - finds variable scripts and validates
-                                  their placement; shared by runner.R and scripts/build_registry.R
+                                  them; shared by runner.R and scripts/build_registry.R. Also owns
+                                  `identifier_column` and check_source_vars(): a spec must NEVER declare the
+                                  identifier in source_vars. It is the key, not data - derive() already receives
+                                  it and the output column is added automatically. Declaring it breaks two
+                                  different ways (the deposit's own spelling no longer matches after load_tab()
+                                  lower-cases it; the lower-case spelling DOES match and silently yields a
+                                  duplicated bcsid.1 column), so it is rejected by name rather than left to
+                                  whichever error surfaces
   lib/io.R                        read-only helpers (load_tab()) that resolve files via master_file_info_lookup.csv.
                                   data_root() looks for the deposits in bcs70/ unless BCS70_DATA names
                                   somewhere else - the atlas's downloadable bundles rely on that
   lib/utils.R                     small shared recoding helpers, reused across variable scripts
-  runner.R                        discovers R/variables/*/*/*.R, joins each one's declared source data, writes output/
+  runner.R                        discovers R/variables/*/*/*.R, joins each one's declared source data, writes output/.
+                                  Per-variable failure is ISOLATED: a script that is invalid or whose data is
+                                  missing is skipped, every failure is reported together, the output is written
+                                  with whatever succeeded and carries attr(,"failures"), and the run exits
+                                  non-zero. One variable never denies you the others - but a partial output is
+                                  always named as partial. Also guarded with sys.nframe() == 0L, so source()ing
+                                  it defines run_all() WITHOUT running it; that is how a bundle's run.R reuses
+                                  the real discovery and spec loading instead of copying them
 
 templates/
   variable.R, variable_test.R     starting point for a new variable + its test (see the new-variable skill)
+  passthrough.R                   skeleton the atlas fills in for a RAW variable download - not used by
+                                  the repo's own pipeline, and never committed as a variable script
+  run.R, project.Rproj,           the RStudio project an atlas download IS: run.R resolves the data
+  data-README.md                  root, reports what it cannot build and why, then sources the runner.
+                                  All bundle-only; web/tests/test_passthrough.py holds them to what
+                                  discovery.R and runner.R actually accept
 
 tests/testthat/test-<id>.R        synthetic-data unit tests, one file per variable, paired 1:1 with each variable
                                   script. Tests stay FLAT here however deeply the script itself is nested.
@@ -56,16 +76,29 @@ registry/
   variables.json, variables.csv    generated, grouped-by-category index of every variable + its file location — never hand-edit
 
 web/                              the variable atlas: search the metadata, read derived variables and their source,
-                                  draft a variable request, or talk to an assistant that builds the request with you.
+                                  collect variables and download them as runnable R, or talk to an assistant that
+                                  drafts a variable request with you.
                                   build_site.py generates web/data/ from bcs70/ and registry/; that output is gitignored.
                                   CI rebuilds it when publishing to Pages, but Pages is dormant while the repo is private,
                                   so run build_site.py yourself after adding a variable. See web/README.md.
   index.html, styles.css          the atlas front end (no framework, no build step)
   atlas/                          one module per view: boot, state, dom, spine, views,
-                                  metadata, derived, scratchpad — mirrors chat/
-  bundle.js                       packages selected harmonised variables as a runnable zip -
-                                  the R/ tree verbatim, so a download runs the tested code;
-                                  written in the browser, so it works on a static deploy
+                                  metadata, derived, basket — mirrors chat/. `basket` is BOTH the
+                                  model of what you have collected and the view of it; the other
+                                  two views feed it and read it back to draw their ＋ controls,
+                                  via a callback boot.js injects rather than an import, so there
+                                  is no cycle. It replaced a request-drafting form: requests are
+                                  written in the assistant's draft panel, which checks every name
+                                  against the index as it goes
+  bundle.js                       packages selected variables as a runnable zip - the R/ tree
+                                  verbatim, so a download runs the tested code; written in the
+                                  browser, so it works on a static deploy. A RAW variable has no
+                                  script to copy, so it is generated from templates/passthrough.R
+                                  as a variable script whose derive() is the identity - runner.R
+                                  then resolves, cleans, de-duplicates and joins it exactly as it
+                                  does a harmonised one, so nothing about the pipeline is
+                                  reimplemented. Passthroughs land under R/variables/other/raw_<file>/
+                                  because discovery.R only accepts the fixed categories
   dataset.toml                    everything dataset-specific — the study, its sweeps, categories, issue fields,
                                   the assistant's capabilities and its whole interview. Change behaviour here first.
   config.py                       loads it; the one place defaults live

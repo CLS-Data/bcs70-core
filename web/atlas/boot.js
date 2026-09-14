@@ -4,17 +4,15 @@
    imports downwards or sideways, never back up here. */
 
 import { $, $$ } from "./dom.js";
-import { capitalise, categories, esc, payload, state, storeKey } from "./state.js";
+import { categories, issueUrl, payload, requiredFields, state, storeKey } from "./state.js";
 import { renderSpine } from "./spine.js";
 import { switchView } from "./views.js";
 import * as metadata from "./metadata.js";
 import * as derived from "./derived.js";
-import * as scratchpad from "./scratchpad.js";
+import * as basket from "./basket.js";
 
 const { runSearch, openVariable } = metadata;
-const { renderDerivedList, restorePicked, openDerived } = derived;
-const { addToBasket, buildCategorySelect, fillDraft, issueUrl, renderBasket,
-        requiredFields, restoreDraft } = scratchpad;
+const { renderDerivedList, openDerived } = derived;
 
 /* ── Boot ────────────────────────────────────────────────────────────── */
 
@@ -49,14 +47,12 @@ async function boot() {
     `${c.waves} ${waves} · ${c.derived} derived · built ${state.manifest.built}`;
   $("#foot-repo").href = `https://github.com/${state.dataset.issue.repo}`;
 
-  restoreDraft();
-  restorePicked();
-  buildCategorySelect();
+  basket.restoreBundle();
   wire();
   renderSpine();
   runSearch();
   renderDerivedList();
-  renderBasket();
+  basket.render();
 }
 
 /* The dataset's own name, everywhere the markup left a placeholder. */
@@ -66,9 +62,6 @@ function applyBranding() {
   $(".mark-name").textContent = d.name;
   $(".mark-sub").textContent = d.tagline;
   $("#spine").setAttribute("aria-label", `Coverage by ${d.wave.term}`);
-  $("#f-waves-label").innerHTML =
-    `${esc(capitalise(d.wave.plural))} involved <em>required</em>`;
-  $("#f-waves").placeholder = d.wave.order?.slice(0, 2).join(", ") || "";
   const meta = document.querySelector('meta[name="description"]');
   if (meta && d.blurb) meta.setAttribute("content", d.blurb);
 }
@@ -82,7 +75,17 @@ function wire() {
 
   metadata.wire();
   derived.wire();
-  scratchpad.wire();
+  basket.wire();
+
+  // The bundle is fed from both lists and drawn in a third view, so a change
+  // has to redraw all three. basket.js calls these rather than importing the
+  // views, which would close a cycle — see the notes there.
+  basket.onChange(() => {
+    derived.renderPicked();
+    if (state.view === "metadata") runSearch();
+    else renderDerivedList();
+  });
+  basket.onFileOpened(runSearch);
 
   const theme = $("#theme");
   const stored = localStorage.getItem(storeKey("theme"));
@@ -100,7 +103,11 @@ function wire() {
    stops describing the contract and starts describing the file. */
 window.Atlas = {
   state, categories, issueUrl, storeKey, payload, requiredFields,
-  switchView, addToBasket, fillDraft, openVariable, openDerived,
+  switchView, openVariable, openDerived,
+  // The assistant's one write into the atlas: handing its pinned raw
+  // variables over to the bundle. It used to hand a whole drafted issue to a
+  // form that no longer exists.
+  addToBundle: basket.accept,
 };
 
 /* The assistant is a separate module and may load before or after this
