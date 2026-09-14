@@ -14,6 +14,7 @@
 #
 # Usage: Rscript scripts/build_registry.R
 
+source("R/lib/dataset.R")
 source("R/lib/discovery.R")
 
 allowed_categories <- variable_categories
@@ -33,11 +34,12 @@ load_entry <- function(path) {
   }
   # Fails if the file's directory disagrees with the spec it declares, or if
   # the file name disagrees with spec$id.
-  # nolint next: object_usage_linter. comes from source("R/lib/discovery.R") above
+  # nolint next: object_usage_linter. comes from the libs source()d above
   location <- check_variable_placement(path, spec)
   # Same spec rules as R/runner.R. CI runs this script but never runs the
   # pipeline against data, so a spec this does not check is a spec that goes
   # green here and fails on someone's real-data run instead.
+  # nolint next: object_usage_linter. comes from the libs source()d above
   check_source_vars(path, spec)
   list(
     id = spec$id,

@@ -157,116 +157,76 @@ give, not what is already on screen.
 
 ## Downloading variables as R code
 
-Drag variables from either list onto the **R bundle** tab — or use the `＋`
-beside any row — then open that view to review what you are about to download.
-Both kinds of variable go in the same bundle and come out as columns of the
-same CSV. Its list pane is what you picked up; its detail pane is the output
-CSV's columns, which is where a name collision becomes visible.
+Drag variables from either list onto the **R bundle** tab, or use the `＋`
+beside any row. Its list pane is what you picked up; its detail pane is the
+output CSV's columns, which is where a name collision becomes visible.
 
-What comes out is an **RStudio project**, not a folder of scripts:
+What comes out is an RStudio project, not a folder of scripts:
 
 ```
-bcs70-variables-<date>/
-  bcs70-variables-<date>.Rproj   open this — it sets the working directory
+<key>-variables-<date>/
+  <key>-variables-<date>.Rproj   open this — it sets the working directory
   .Rprofile                      prints what to do; opens README in RStudio
   run.R                          the one file to run: checks, then runs
   data/README.md                 the empty folder the deposits can go in
-  README.md                      what it is, what is unverified, what to do if
+  README.md
   R/runner.R                     \  the pipeline, verbatim
-  R/lib/{io,utils,discovery}.R   /
-  R/variables/<category>/<family>/<id>.R       harmonised — copied verbatim
-  R/variables/other/raw_<file>/<column>.R      raw — generated from a template
+  R/lib/{dataset,io,utils,discovery}.R  /
+  R/variables/<category>/<family>/<id>.R    research ready — copied verbatim
+  R/variables/other/raw_<file>/<column>.R   raw — generated from a template
 ```
 
-Base R, no packages, no repository checkout. Open the `.Rproj`, either drop the
-deposits into `data/` or set `DATA_DIR` at the top of `run.R`, and run it.
+Base R, no packages, no checkout. Open the `.Rproj`, either drop the deposits
+into `data/` or set `DATA_DIR` at the top of `run.R`, and run it.
 
-Five things about this are deliberate:
+Four things about this are deliberate.
 
-- **The R is shipped verbatim, never regenerated.** A bundle-specific runner
-  would be a second implementation of the join, the identifier cleaning and the
-  duplicate resolution — and the day it drifted, the researcher's numbers would
-  quietly stop matching this repository's.
-- **A raw variable is a variable script whose `derive()` is the identity.**
-  There is nothing to copy for a deposited column, so `bundle.js` writes one
-  from `templates/passthrough.R` — and writes nothing else. Because it declares
-  `source_files` and `source_vars` like any other script, `runner.R` resolves,
-  cleans, de-duplicates and joins it with the same code it uses for a
-  harmonised one. The rule above survives: no second implementation of
-  anything, only a second kind of leaf. `web/tests/test_passthrough.py` holds
-  that template to what `R/lib/discovery.R` will accept.
-- **The zip is written in the browser**, so no server is involved. `bundle.js`
-  writes the archive format itself rather than taking a dependency, and fetches
-  the pipeline source only when someone actually downloads something.
-- **The README names what is unverified, and what was never harmonised.** A
-  `draft` variable has passed synthetic tests, which cannot tell you its codes
-  are the codes your deposit uses. A raw column has not been recoded at all —
-  its missing-value sentinels are still in it. The view warns about both before
-  the download; the README repeats them after it.
+**The R is shipped verbatim, never regenerated.** A bundle-specific runner
+would be a second implementation of the join, the identifier cleaning and the
+duplicate resolution, and the day it drifted the researcher's numbers would
+quietly stop matching this repository's.
 
-- **`run.R` checks before it reads, and each failure says what to do.** Almost
-  every way this goes wrong is one of three things, and all three are caught
-  before a single file is opened: the working directory is not the project, the
-  data is not where it was expected, or a deposited file is missing. The first
-  two stop with the paths they tried and the two ways to fix it. The third does
-  not stop at all — the variables that need the missing file are named and
-  skipped, and the rest still build, because a partial answer beats a traceback
-  three quarters of the way through a run.
+**A raw variable is a variable script whose `derive()` is the identity.** There
+is nothing to copy for a deposited column, so `bundle.js` writes one from
+`templates/passthrough.R` — and writes nothing else. It declares `source_files`
+and `source_vars` like any other script, so the rule above survives: no second
+implementation of anything, only a second kind of leaf.
 
-  It gets to do that without duplicating anything: `R/runner.R` guards its own
-  invocation with `sys.nframe() == 0L`, so sourcing it defines `run_all()`
-  without starting a run, and `run.R` uses the runner's own
-  `find_variable_files()` and `load_variable()` to read what each script
-  declares. A second copy of discovery would be a second thing to be wrong —
-  which is why `run.R` stops at *where is the data*. Deciding which variables
-  can actually be built belongs to `run_all()`.
+**`run.R` checks before it reads.** The working directory, the data root and
+the files it needs, all before a deposit is opened, each failure saying what to
+do. It reuses the runner's own discovery to do it — `R/runner.R` guards its
+invocation with `sys.nframe() == 0L`, so sourcing it defines `run_all()`
+without starting a run.
 
-- **One variable never denies you the others.** `run_all()` isolates failure
-  per variable: a script that is invalid, or whose deposit lacks a column it
-  declares, is skipped rather than aborting the batch. Every failure is
-  reported together, the output is written with whatever succeeded, and the run
-  exits non-zero — so a researcher gets their other twenty-nine columns and CI
-  still fails. A partial output is always named as partial, because under the
-  usual file name it is otherwise indistinguishable from a complete one.
-
-  The invariant behind the case that prompted this lives in
-  `R/lib/discovery.R`: **a spec must never declare the identifier in
-  `source_vars`.** It is the key, not data — `derive()` already receives it and
-  the output column is added automatically. Declaring it breaks two different
-  ways (the deposit's own `BCSID` no longer matches once `load_tab()` lowercases
-  it; `bcsid` *does* match and silently yields a duplicated `bcsid.1` column),
-  so it is rejected by name rather than left to whichever error surfaces first.
+**One variable never denies you the others.** `run_all()` isolates failure per
+variable: an invalid script, or one whose deposit lacks a column it declares,
+is skipped rather than aborting the batch. Every failure is reported, the
+output is written with whatever succeeded and named as partial, and the run
+exits non-zero — a researcher gets their other twenty-nine columns and CI still
+fails.
 
 ### Naming a raw column
 
-A harmonised variable's output name is its `spec$id` and is fixed: renaming it
-would mean editing a script that was tested under that name. A raw column has
-no such claim on a name, so the dock lets you choose one — defaulting to the
-variable's own name, qualified with the wave only when that would collide.
-Collisions are what the detail pane is really for: two deposits both calling
-something `sex` is the normal case, not the exception, and `runner.R` joins on
-column name. A bundle with a duplicate or unusable name cannot be downloaded
-until it is fixed.
+A research-ready variable's output name is its `spec$id` and is fixed: renaming
+it would mean editing a script tested under that name. A raw column has no such
+claim, so you choose — defaulting to the variable's own name, qualified by wave
+only when that would collide. Two deposits both calling something `sex` is the
+normal case, and `runner.R` joins on column name, so a bundle with a duplicate
+or unusable name cannot be downloaded until it is fixed. The identifier is
+reserved too: a column renamed onto it would overwrite the join key.
+
+A spec must never declare the identifier in `source_vars` either — it is the
+key, not data. `R/lib/discovery.R` rejects it by name, because the two
+spellings fail differently and one of them fails silently.
 
 ### Where variable requests went
 
 This view used to be a request-drafting form. Collecting variables and asking
-for a new one to be derived looked like one gesture and are not: one ends in a
+for one to be derived looked like the same gesture and are not: one ends in a
 zip you run this afternoon, the other in an issue someone works on for a week.
-Requests are written in **the assistant's draft panel**, which was always the
-better form — it checks every name against the 32,000-row index before showing
-it, so a model that helpfully invents `bmi10` is caught. The bundle view keeps
-a single plain link that opens the issue template carrying whatever is in the
-basket, so the route survives when the `assistant` extra is not installed.
-
-Raw variables from files with no row in `master_file_info_lookup.csv` are
-refused at the point of the gesture: `load_tab()` resolves a `file_name`
-through that lookup and nothing else, so the generated script would fail on the
-first line of the run.
-
-The environment variable is named in `dataset.toml` (`[dataset] data_env`) and
-read by `R/lib/io.R`; leave it empty for a pipeline with no such override and
-the README documents only the alongside layout.
+Requests are written in the assistant's draft panel, which checks every name
+against the index before showing it. The bundle view keeps one plain link to
+the issue template, so the route survives without the `assistant` extra.
 
 ## The sweep spine
 

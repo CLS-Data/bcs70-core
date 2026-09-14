@@ -225,7 +225,8 @@ def collect_derived() -> list[dict]:
 # the code a researcher runs on real data is then byte-identical to the code
 # CI lints and tests here, and there is no second implementation of the join,
 # the identifier cleaning or the duplicate resolution to drift out of step.
-PIPELINE = ("R/runner.R", "R/lib/discovery.R", "R/lib/io.R", "R/lib/utils.R")
+PIPELINE = ("R/runner.R", "R/lib/dataset.R", "R/lib/discovery.R",
+            "R/lib/io.R", "R/lib/utils.R")
 
 # Skeletons the bundler fills in, rather than ships. A raw variable has no
 # script in the repository to copy — it is a deposited column, not a
@@ -237,13 +238,14 @@ PIPELINE = ("R/runner.R", "R/lib/discovery.R", "R/lib/io.R", "R/lib/utils.R")
 # silently stopped being substituted would ship `{{id}}` into a researcher's
 # bundle, and R would run it as a literal.
 TEMPLATES = {
-    "templates/passthrough.R": ("id", "label", "file", "var", "wave", "created"),
+    "templates/passthrough.R": ("id", "label", "file", "var", "wave",
+                               "identifier", "created"),
     # The bundle's own scaffolding: the file a researcher opens and runs, and
     # the note in the empty folder their data goes into. Both exist so that
     # "where is the data" is answered before anything tries to read it.
-    "templates/run.R": ("dataset", "project", "root", "lookup", "env",
+    "templates/run.R": ("dataset", "count", "project", "root", "lookup", "env",
                         "set_root", "files", "identifier", "wave_plural",
-                        "sample_wave", "sample_id"),
+                        "sample_id"),
     "templates/data-README.md": ("dataset", "project", "root", "lookup",
                                  "env", "sample_wave"),
     # An RStudio project file, so opening the download sets the working

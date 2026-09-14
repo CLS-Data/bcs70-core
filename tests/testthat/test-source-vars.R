@@ -5,6 +5,7 @@
 # error happens to surface first. See env$check_source_vars() in discovery.R.
 
 env <- new.env()
+sys.source("../../R/lib/dataset.R", envir = env)
 sys.source("../../R/lib/discovery.R", envir = env)
 
 spec_with <- function(vars) {

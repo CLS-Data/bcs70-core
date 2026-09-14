@@ -96,7 +96,7 @@ spec <- list(
     "contain them in the real file. Note also that bcs21yearsample is one of",
     "the two files DATA_KNOWLEDGE.md flags for `bcsid` values that do not",
     "match the study's usual B-prefixed pattern; that is handled upstream by",
-    "clean_bcsid() in R/lib/io.R and needs nothing here.",
+    "clean_identifiers() in R/lib/io.R and needs nothing here.",
     "",
     "VERIFIED against real data on 2026-07-29 (harness run 5063c1fe, branch",
     "variable/region, schema 5). Aggregate: n = 1,645 rows in this sweep's",

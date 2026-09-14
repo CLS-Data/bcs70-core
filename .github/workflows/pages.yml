@@ -16,6 +16,8 @@ on:
     paths:
       - "web/**"
       - "registry/**"
+      # Spelled out because a workflow path filter cannot be computed. If the
+      # deposits directory is renamed in web/dataset.toml, change it here too.
       - "bcs70/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -41,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # build_site.py is stdlib-only and deterministic, and reads only
-      # committed inputs (bcs70/ metadata and registry/variables.json), so this
+      # committed inputs (the deposits' metadata and registry/variables.json), so this
       # reproduces exactly the data the published commit describes. It never
       # opens a .tab file, so no row of study data can reach the artifact.
       - name: Build site data

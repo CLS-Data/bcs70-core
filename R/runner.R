@@ -2,9 +2,10 @@
 # R/variables/. This is the only entry point that should be run to
 # produce output - individual variable scripts are never run directly.
 #
-# READ-ONLY with respect to bcs70/: this script (and everything it calls)
-# must never write to, move, or delete anything under bcs70/.
+# READ-ONLY with respect to the deposits: this script, and everything it
+# calls, must never write to, move, or delete anything under them.
 
+source("R/lib/dataset.R")
 source("R/lib/discovery.R")
 source("R/lib/io.R")
 source("R/lib/utils.R")
@@ -20,19 +21,19 @@ load_variable <- function(path) {
   env
 }
 
-# Loads the declared source files for one variable, narrows each one to just
-# bcsid + the columns this variable declared (before merging, so files with
-# hundreds of unrelated columns can't collide with each other), then joins
-# them on bcsid and hands the result to the variable's derive() function.
+# Loads the declared source files for one variable, narrows each to the
+# identifier + the columns that variable declared (before merging, so files
+# with hundreds of unrelated columns cannot collide), joins them on the
+# identifier and hands the result to derive().
 #
 # If the same raw variable name is declared across more than one source file
 # (e.g. several sweeps each have their own column literally called "sex"),
 # only THOSE colliding columns are renamed to "<file_name>.<var>" so they
 # stay distinguishable after the join - everything else keeps its bare name,
 # so the common single-file case is unaffected.
-# nolint start: object_usage_linter. load_tab() and resolve_duplicate_ids() come
-# from source("R/lib/io.R") at the top of this file, and identifier_column from
-# source("R/lib/discovery.R"); lintr cannot see across either.
+# nolint start: object_usage_linter. load_tab() and resolve_duplicate_ids()
+# come from R/lib/io.R and identifier_column from R/lib/dataset.R, both
+# source()d above; lintr cannot see across a source().
 build_variable <- function(variable) {
   spec <- variable$spec
   needed_files <- unique(spec$source_files)
@@ -87,7 +88,7 @@ build_variable <- function(variable) {
 # name (without .R) matches - e.g. to verify one newly added variable against
 # real data without needing every other variable's inputs to be present too.
 run_all <- function(variables_dir = "R/variables", output_dir = "output", only_ids = character(0)) {
-  # nolint start: object_usage_linter. these come from source("R/lib/discovery.R") above
+  # nolint start: object_usage_linter. these come from the libs source()d above
   variable_files <- find_variable_files(variables_dir)
 
   # Validate every script, not just the ones this run targets, so a misplaced
@@ -194,7 +195,7 @@ run_all <- function(variables_dir = "R/variables", output_dir = "output", only_i
     ), call. = FALSE)
   }
 
-  # nolint next: object_usage_linter. identifier_column comes from discovery.R
+  # nolint next: object_usage_linter. identifier_column comes from dataset.R
   output <- Reduce(function(x, y) merge(x, y, by = identifier_column, all = TRUE), results)
 
   dir.create(output_dir, showWarnings = FALSE)

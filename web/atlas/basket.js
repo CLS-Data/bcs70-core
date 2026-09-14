@@ -77,7 +77,7 @@ function defaultColumn(name, wave, taken) {
 
    The IDENTIFIER is in here for a worse reason. It is not in `state.bundle`
    and never can be, but it is column one of the output — and a passthrough
-   named after it generates `out[["bcsid"]] <- data[["<var>"]]`, which
+   named after it generates `out[[<identifier>]] <- data[["<var>"]]`, which
    overwrites the key with the raw variable's codes. `runner.R`'s check that
    derive() returned both columns passes, because both names are the same
    string, and the final merge then joins every other variable on those codes.
@@ -109,9 +109,9 @@ export function addDerived(id) {
    variable, though: it is the key every variable is joined on and it is
    already the first column of the output. A passthrough of it cannot even be
    built, because `load_tab()` normalises the identifier column's name to
-   lower case as it loads, so a spec declaring the dictionary's spelling
-   (`BCSID` in two of this study's deposits) names a column that no longer
-   exists by the time the runner looks for it. */
+   the configured spelling as it loads, so a spec carrying the dictionary's
+   own casing names a column that no longer exists by the time the runner
+   looks for it. */
 export const isIdentifier = (name) => {
   const id = String(state.dataset?.identifier || "").toLowerCase();
   return Boolean(id) && String(name).toLowerCase() === id;
@@ -444,9 +444,9 @@ function renderDetail() {
 /* The identifier, drawn first and always. It is not in `state.bundle` and
    cannot be put there — it is supplied by the runner, not selected — but
    leaving it off the list made this pane claim the output has columns it does
-   not have, and sent people to the metadata search looking for `bcsid`. Which
-   they find: it is row one of all 85 dictionaries, indistinguishable from a
-   real variable. */
+   not have, and sent people to the search looking for the identifier. Which
+   they find: it is row one of every dictionary, indistinguishable from a real
+   variable. */
 function identifierCol() {
   const id = state.dataset?.identifier;
   if (!id) return "";

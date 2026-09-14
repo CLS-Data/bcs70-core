@@ -1,2 +1,2 @@
 linters: linters_with_defaults(line_length_linter(120))
-exclusions: list("templates")
+exclusions: list("templates", "R/lib/io.R" = list(object_usage_linter = Inf), "R/lib/discovery.R" = list(object_usage_linter = Inf))
