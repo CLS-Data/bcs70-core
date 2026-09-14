@@ -267,13 +267,7 @@ export function wire() {
   // The ＋ and the row are siblings; the more specific target is checked first.
   $("#results").addEventListener("click", (e) => {
     const add = e.target.closest("[data-add-id]");
-    if (add) {
-      basket.accept({
-        kind: "variable", name: add.dataset.addId, label: add.dataset.addLabel,
-        file: add.dataset.addFile, wave: add.dataset.addWave,
-      });
-      return;
-    }
+    if (add) { basket.toggleFromButton(add.dataset); return; }
     const btn = e.target.closest("[data-i]");
     if (btn) showVariable(state.matches[Number(btn.dataset.i)]);
   });

@@ -208,10 +208,16 @@ export function restoreBundle() {
   }
 }
 
-/* The ＋ beside a row, and the ✓ it becomes. Shared with the metadata view
-   so the same gesture looks the same wherever a variable is listed — the two
+/* The ＋ beside a row, and the ✓ it becomes. Shared with the metadata view so
+   the same gesture looks the same wherever a variable is listed — the two
    lists are the only places a variable can be picked up, and a control that
    differed between them would read as two different features.
+
+   It TOGGLES. A ✓ that could only be undone by finding the row again in the
+   bundle view was a one-way door on the control that looked most like a
+   checkbox, and the way out was somewhere else entirely. Hovering a ✓ shows ✕,
+   because "already in" and "click to remove" are not the same statement and
+   the glyph has to say which.
 
    `args` is what accept() needs to identify the thing: an id for a harmonised
    variable, a name and a file for a raw one. */
@@ -219,10 +225,28 @@ export function addButton(kind, id, isIn, aria, args = {}) {
   const data = Object.entries({ kind, id, ...args })
     .map(([k, v]) => `data-add-${k}="${esc(v)}"`).join(" ");
   return `<button class="add${isIn ? " is-in" : ""}" ${data}
-    ${isIn ? 'aria-disabled="true"' : ""}
-    title="${isIn ? "Already in the R bundle" : "Add to the R bundle"}"
-    aria-label="${isIn ? `${esc(aria)} is in the R bundle` : `Add ${esc(aria)} to the R bundle`}"
-    >${isIn ? "✓" : "＋"}</button>`;
+    aria-pressed="${isIn}"
+    title="${isIn ? "In the R bundle — click to remove" : "Add to the R bundle"}"
+    aria-label="${isIn ? `Remove ${esc(aria)} from the R bundle`
+                       : `Add ${esc(aria)} to the R bundle`}"
+    >${isIn ? '<span class="add-yes">✓</span><span class="add-no">✕</span>' : "＋"}</button>`;
+}
+
+/* One place decides what a click on that button means, so the two lists cannot
+   disagree about it. Takes the button's own dataset, which addButton() wrote. */
+export function toggleFromButton(data) {
+  // addButton() writes data-add-*, so the dataset keys arrive camel-cased with
+  // that prefix. Read them here rather than in each caller.
+  const { addKind: kind, addId: id, addFile: file,
+          addWave: wave, addLabel: label } = data;
+  if (kind === "derived") {
+    return inBundle("derived", id)
+      ? removeAt(`derived:${id}`)
+      : addDerived(id);
+  }
+  return inBundle("raw", id, file)
+    ? removeAt(`raw:${file}:${id}`)
+    : addRaw({ name: id, label, file, wave });
 }
 
 /* ── What cannot be packaged ─────────────────────────────────────────── */

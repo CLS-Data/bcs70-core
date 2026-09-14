@@ -424,12 +424,61 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 }
 .pickable:hover .add, .add:focus-visible { opacity: 1; }
 .add:hover { border-color: var(--contour); color: var(--contour); }
-.add.is-in {
-  opacity: 1; color: var(--moss); border-color: transparent; cursor: default;
-}
+/* In the bundle, and removable. The ✓ becomes ✕ under the pointer because
+   "already in" and "click to remove" are different statements, and a control
+   that only ever says the first reads as a dead end. */
+.add.is-in { opacity: 1; color: var(--moss); border-color: transparent; }
+.add .add-no { display: none; }
+.add.is-in:hover, .add.is-in:focus-visible { color: var(--contour); }
+.add.is-in:hover .add-yes, .add.is-in:focus-visible .add-yes { display: none; }
+.add.is-in:hover .add-no, .add.is-in:focus-visible .add-no { display: inline; }
+
 /* Not a button: the identifier is in every download whether you ask or not,
    so this states a fact rather than offering an action. */
 .add.is-always { opacity: 1; color: var(--ink-3); cursor: default; }
+
+/* ── A family of research-ready variables ─────────────────────────────
+   One concept measured at each wave. People want all of it or none of it far
+   more often than one wave of it, so the header carries a control for the
+   whole family — and a disclosure, because twelve rows you have already taken
+   are twelve rows in the way of the next thing. */
+
+.fam {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px 8px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.fam-twist {
+  flex: 0 0 auto; width: 16px; height: 16px;
+  display: grid; place-items: center;
+  padding: 0; border: 0; background: none;
+  color: var(--ink-3); font-size: 10px; cursor: pointer;
+  transition: transform .12s;
+}
+.fam-twist:hover { color: var(--ink); }
+.fam.is-collapsed .fam-twist { transform: rotate(-90deg); }
+
+.fam-what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fam-name {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  letter-spacing: -.02em; color: var(--ink);
+}
+.fam-meta { font-size: 11px; color: var(--ink-3); }
+
+.fam-add {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--rule); border-radius: 2px;
+  background: var(--paper-2); color: var(--ink-2);
+  font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .06em;
+  cursor: pointer; white-space: nowrap;
+}
+.fam-add:hover { border-color: var(--contour); color: var(--contour); }
+.fam-add.is-in { color: var(--moss); border-color: var(--moss); }
+.fam-add.is-in:hover { color: var(--contour); border-color: var(--contour); }
 .add.is-in:hover { color: var(--moss); border-color: transparent; }
 
 .row-top { display: flex; align-items: baseline; gap: 8px; }

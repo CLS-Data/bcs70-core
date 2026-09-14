@@ -18,6 +18,9 @@ WEB = Path(__file__).resolve().parent.parent
 CSS = WEB / "styles.css"
 HTML = WEB / "index.html"
 BOOT = WEB / "atlas" / "boot.js"
+BASKET = WEB / "atlas" / "basket.js"
+DERIVED = WEB / "atlas" / "derived.js"
+METADATA = WEB / "atlas" / "metadata.js"
 
 
 class TheResizableListColumn(unittest.TestCase):
@@ -85,6 +88,84 @@ class TheViewTabs(unittest.TestCase):
             self.assertIn(f'data-view="{key}"', html,
                           f'the "{key}" view key has been renamed — every '
                           f'switchView() caller and CSS selector uses it')
+
+
+class TheAddControlToggles(unittest.TestCase):
+    """The ✓ has to be a way back out, not a dead end.
+
+    It is the control that looks most like a checkbox, so a click that could
+    only be undone somewhere else entirely was the wrong shape. Both lists
+    route through one function, because two lists deciding separately what a
+    click means is how they come to disagree.
+    """
+
+    def test_the_tick_is_not_disabled(self):
+        body = BASKET.read_text("utf-8")
+        add = body[body.index("export function addButton"):]
+        add = add[:add.index("\n}")]
+        self.assertNotIn("aria-disabled", add,
+                         "the in-bundle state is aria-disabled again, so it "
+                         "cannot be clicked to remove")
+        self.assertIn('aria-pressed="${isIn}"', add,
+                      "the control no longer reports its pressed state")
+
+    def test_the_tick_says_it_removes(self):
+        body = BASKET.read_text("utf-8")
+        self.assertIn("click to remove", body)
+        self.assertRegex(body, r"Remove \$\{esc\(aria\)\} from the R bundle")
+
+    def test_both_lists_route_through_one_decision(self):
+        for path in (DERIVED, METADATA):
+            self.assertIn("toggleFromButton", path.read_text("utf-8"),
+                          f"{path.name} decides for itself what clicking the "
+                          f"add control means")
+
+    def test_the_hover_swap_has_both_glyphs(self):
+        """✓ and ✕ are different statements; the markup carries both and CSS
+        chooses, so there is no second render on hover."""
+        self.assertIn("add-yes", BASKET.read_text("utf-8"))
+        self.assertIn("add-no", BASKET.read_text("utf-8"))
+        css = CSS.read_text("utf-8")
+        self.assertIn(".add .add-no { display: none; }", css)
+        self.assertIn(".add.is-in:hover .add-no", css)
+
+
+class FamiliesAreGrouped(unittest.TestCase):
+    """A family is one concept measured at each wave.
+
+    People want all of it or none of it far more often than one wave, so the
+    header carries a control for the whole family. What that control acts on
+    must be what is on screen -- the same rule "Add all N shown" already
+    followed -- or a search would silently add siblings you filtered out.
+    """
+
+    def test_the_family_control_acts_on_what_is_visible(self):
+        body = DERIVED.read_text("utf-8")
+        fn = body[body.index("function toggleFamily"):]
+        fn = fn[:fn.index("\n}")]
+        self.assertIn("visibleDerived()", fn,
+                      "toggleFamily reads the whole registry, so a search would "
+                      "add siblings that are filtered out of view")
+
+    def test_the_header_counts_come_from_the_same_list(self):
+        body = DERIVED.read_text("utf-8")
+        self.assertIn("groupByFamily(list)", body,
+                      "the family headers are built from something other than "
+                      "the visible list, so the count and the control disagree")
+
+    def test_a_family_is_keyed_by_category_and_family(self):
+        """Two categories could hold a family of the same name; the key has to
+        separate them or folding one would fold the other."""
+        body = DERIVED.read_text("utf-8")
+        self.assertIn("`${d.category}/${d.family}`", body)
+
+    def test_folds_are_not_persisted(self):
+        """A fold is a reading position. One set last week is a variable you
+        cannot find today."""
+        state = (WEB / "atlas" / "state.js").read_text("utf-8")
+        self.assertIn("collapsedFamilies", state)
+        self.assertNotIn('storeKey("collapsedFamilies")', state)
+        self.assertNotIn("collapsedFamilies", BOOT.read_text("utf-8"))
 
 
 if __name__ == "__main__":
