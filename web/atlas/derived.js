@@ -1,14 +1,17 @@
-/* The harmonised variables: the list, the category facet, and packaging a
-   selection as runnable R.
+/* The harmonised variables: the list, the category facet, and adding them to
+   the R bundle.
 
-   The selection is by id and independent of the filters, so narrowing to a
-   category to tick two more does not silently drop what was already chosen. */
+   What goes in the bundle lives in basket.js and is independent of the filters,
+   so narrowing to a category to add two more does not silently drop what was
+   already collected. */
 
 import { $, $$ } from "./dom.js";
-import { categories, categoryName, dragAttr, esc, state, storeKey } from "./state.js";
+import { categories, categoryName, dragAttr, esc, state } from "./state.js";
 import { renderSpine } from "./spine.js";
 import { switchView } from "./views.js";
 import { runSearch } from "./metadata.js";
+import * as basket from "./basket.js";
+const { addButton } = basket;
 
 /* ── Derived variables ───────────────────────────────────────────────── */
 
@@ -83,20 +86,19 @@ export function renderDerivedList() {
     const cur = state.derivedSelected?.id === d.id ? " is-current" : "";
     // Draggable too. Dropping a harmonised variable into the assistant is
     // how you say "follow this one's precedent" - a different claim from
-    // dropping a raw variable, so the payload says which it is.
+    // dropping a raw variable, so the payload says which it is. The same
+    // payload is what the bundle dock reads, which is why one shape serves
+    // two drop targets.
     const drag = dragAttr({
       kind: "derived", name: d.id, label: d.label,
       file: d.file, wave: d.family,
     });
-    // A real checkbox beside the row rather than inside it: a button cannot
-    // legally contain one, and the native control brings its own keyboard
-    // handling and screen-reader semantics. The open-row marker goes on the
-    // <li> rather than the button, so it runs down the whole line with the
-    // checkbox inside it instead of starting after it.
+    // The add control sits beside the row rather than inside it: a button
+    // cannot legally contain another button. It does exactly what dragging
+    // the row does, and exists so the bundle is reachable from the keyboard.
+    // The open-row marker goes on the <li> so it runs down the whole line.
     return head + `<li class="pickable${cur}">
-      <input type="checkbox" class="pick" data-pick="${esc(d.id)}"
-             ${state.picked.has(d.id) ? "checked" : ""}
-             aria-label="Include ${esc(d.id)} in the download">
+      ${addButton("derived", d.id, basket.inBundle("derived", d.id), d.id)}
       <button class="row" data-id="${esc(d.id)}"
         draggable="true" data-drag="${drag}">
         <span class="row-top">
@@ -110,124 +112,29 @@ export function renderDerivedList() {
   renderPicked();
 }
 
-/* ── Selecting variables to download ─────────────────────────────────────
+/* ── Adding variables to the bundle ──────────────────────────────────────
 
-   The selection is by id and independent of the filters, so narrowing to a
-   category to tick two more variables does not silently drop what was
-   already chosen. "Select all" therefore says how many it will add and
-   applies only to what is on screen. */
+   The bundle itself is basket.js; this view only feeds it. "Add all" therefore
+   says how many it will add and applies to what is on screen rather than to
+   the whole registry. */
 
-// Ids that no longer exist are dropped on load: a saved selection can outlive
-// a variable being renamed, and a bundle cannot include what is not there.
-export function restorePicked() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storeKey("picked")) || "[]");
-    const known = new Set(state.derived.map((d) => d.id));
-    state.picked = new Set(saved.filter((id) => known.has(id)));
-  } catch {
-    state.picked = new Set();
-  }
-}
+/* The line under the filters, and the state of every ＋ on screen. Called by
+   basket.js whenever the bundle changes, so the two stay in step without this
+   view having to watch for it. */
+export function renderPicked() {
+  const inBundle = state.derived.filter((d) => basket.inBundle("derived", d.id));
+  const n = inBundle.length;
+  const missing = visibleDerived().filter((d) => !basket.inBundle("derived", d.id)).length;
+  const drafts = inBundle.filter((d) => d.status !== "verified").length;
 
-function savePicked() {
-  localStorage.setItem(storeKey("picked"), JSON.stringify([...state.picked]));
-}
-
-function togglePick(id, on) {
-  if (on) state.picked.add(id);
-  else state.picked.delete(id);
-  savePicked();
-  renderPicked();
-  if (state.derivedSelected?.id === id) showDerived(state.derivedSelected);
-}
-
-function renderPicked() {
-  const n = state.picked.size;
-  const visible = visibleDerived();
-  const unpicked = visible.filter((d) => !state.picked.has(d.id)).length;
-  const drafts = state.derived.filter((d) =>
-    state.picked.has(d.id) && d.status !== "verified").length;
-
-  $("#picked-count").innerHTML = n
-    ? `<strong>${n}</strong> selected${drafts
+  $("#derived-picked").innerHTML = n
+    ? `<strong>${n}</strong> in the bundle${drafts
         ? ` · <span class="picked-warn">${drafts} unverified</span>` : ""}`
-    : "Nothing selected";
+    : "None in the bundle";
 
   const all = $("#pick-all");
-  all.hidden = unpicked === 0;
-  all.textContent = `Select all ${unpicked}`;
-  $("#pick-none").hidden = n === 0;
-  $("#pick-download").disabled = n === 0;
-  $("#pick-download").textContent = n
-    ? `Download ${n} variable${n === 1 ? "" : "s"}`
-    : "Download R code";
-
-  $$("#derived-list [data-pick]").forEach((box) => {
-    box.checked = state.picked.has(box.dataset.pick);
-  });
-}
-
-function pickStatus(msg) {
-  $("#picked-status").textContent = msg;
-}
-
-/* Build the archive in the browser. Everything it needs — each script's
-   source, and the runner around it — is already static JSON, so this works on
-   a deploy with no server behind it. */
-async function downloadBundle() {
-  const picked = state.derived.filter((d) => state.picked.has(d.id));
-  if (!picked.length) return;
-
-  const button = $("#pick-download");
-  button.disabled = true;
-  pickStatus("Packaging…");
-
-  try {
-    // Both fetched only now: the zip writer and ~17 KB of pipeline source are
-    // dead weight for the majority who never download anything.
-    // `../` because an import specifier resolves against THIS module, while
-    // the fetches below resolve against the page. The two look alike and are
-    // not: bundle.js sits beside index.html, not beside this file.
-    const [{ build }, pipeline] = await Promise.all([
-      import("../bundle.js"),
-      state.pipeline ? Promise.resolve(state.pipeline) : loadPipeline(),
-    ]);
-    state.pipeline = pipeline;
-
-    const { name, blob } = await build(picked, pipeline, {
-      dataset: state.dataset,
-      repo: state.manifest.repo,
-      built: state.manifest.built,
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = Object.assign(document.createElement("a"), { href: url, download: name });
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    // Revoked late rather than immediately: some browsers have not finished
-    // reading the blob when click() returns.
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-
-    pickStatus(`${name} — ${(blob.size / 1024).toFixed(0)} KB. Its README says how to run it.`);
-  } catch (err) {
-    console.error(err);
-    pickStatus(`Could not build the download: ${err.message}`);
-  } finally {
-    button.disabled = state.picked.size === 0;
-  }
-}
-
-async function loadPipeline() {
-  const res = await fetch("data/pipeline.json");
-  if (!res.ok) {
-    throw new Error("pipeline.json is missing — rebuild with python3 web/build_site.py");
-  }
-  const pipeline = await res.json();
-  if (!pipeline?.files || !Object.keys(pipeline.files).length) {
-    throw new Error("pipeline.json has no runner in it — rebuild the site");
-  }
-  return pipeline;
+  all.hidden = missing === 0;
+  all.textContent = `Add all ${missing}`;
 }
 
 function statusPill(status) {
@@ -289,14 +196,21 @@ function showDerived(d) {
     <pre class="code">${esc(d.source || "Source not available.")}</pre>
 
     <div class="detail-actions">
-      <button class="btn ${state.picked.has(d.id) ? "" : "btn-primary"}" id="pick-this">
-        ${state.picked.has(d.id) ? "Remove from download" : "Add to download"}
+      <button class="btn ${basket.inBundle("derived", d.id) ? "" : "btn-primary"}" id="pick-this">
+        ${basket.inBundle("derived", d.id) ? "Remove from the R bundle" : "Add to the R bundle"}
       </button>
       <a class="btn" href="${repoUrl}/blob/main/${esc(d.file)}" target="_blank" rel="noopener">View on GitHub</a>
     </div>`;
 
-  $("#pick-this").addEventListener("click", () =>
-    togglePick(d.id, !state.picked.has(d.id)));
+  // Redrawn afterwards, like the metadata view's equivalent: the bundle's own
+  // change hook refreshes the two lists but not this pane, so without it the
+  // button still reads "Add" after adding - and a second click silently
+  // removes what you just added.
+  $("#pick-this").addEventListener("click", () => {
+    if (basket.inBundle("derived", d.id)) basket.removeAt(`derived:${d.id}`);
+    else basket.accept({ kind: "derived", name: d.id });
+    showDerived(d);
+  });
 
   $$("#derived-detail [data-file]").forEach((b) =>
     b.addEventListener("click", () => {
@@ -336,33 +250,18 @@ export function wire() {
     renderDerivedList();
   });
 
+  // The ＋ and the row are siblings, so one listener can serve both: the ＋
+  // is checked first because it is the more specific target.
   $("#derived-list").addEventListener("click", (e) => {
+    const add = e.target.closest("[data-add-id]");
+    if (add) { basket.accept({ kind: "derived", name: add.dataset.addId }); return; }
     const btn = e.target.closest("[data-id]");
     if (btn) showDerived(state.derived.find((d) => d.id === btn.dataset.id));
   });
 
-  // "change", not "click": a checkbox is also toggled by the keyboard, and
-  // clicking its label counts too.
-  $("#derived-list").addEventListener("change", (e) => {
-    const box = e.target.closest("[data-pick]");
-    if (box) togglePick(box.dataset.pick, box.checked);
-  });
-
   $("#pick-all").addEventListener("click", () => {
-    visibleDerived().forEach((d) => state.picked.add(d.id));
-    savePicked();
-    renderPicked();
-    if (state.derivedSelected) showDerived(state.derivedSelected);
+    visibleDerived().forEach((d) => basket.addDerived(d.id));
   });
-
-  $("#pick-none").addEventListener("click", () => {
-    state.picked.clear();
-    savePicked();
-    renderPicked();
-    if (state.derivedSelected) showDerived(state.derivedSelected);
-  });
-
-  $("#pick-download").addEventListener("click", downloadBundle);
 
   $("#category-facets").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-category]");

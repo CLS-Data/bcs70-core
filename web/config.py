@@ -452,8 +452,10 @@ class Config:
     def issue_required(self) -> list[str]:
         """Field keys that must be filled in before an issue can be opened.
 
-        Both routes to an issue gate on this — the scratchpad form and the
-        assistant's draft panel — and each used to carry its own copy.
+        The assistant's draft panel gates on this. It is the only route to
+        an issue now, but the list stays here rather than in the JavaScript:
+        a required field is a property of the issue template, which this file
+        already describes, not of the panel that happens to collect it.
         """
         wanted = self.issue.get("required")
         if not isinstance(wanted, list):

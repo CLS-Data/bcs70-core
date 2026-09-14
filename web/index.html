@@ -23,7 +23,7 @@
   <nav class="views" aria-label="Views">
     <button class="view-tab is-current" data-view="metadata" aria-current="page">Metadata</button>
     <button class="view-tab" data-view="derived">Derived</button>
-    <button class="view-tab" data-view="scratch">Scratchpad <span class="tally" id="scratch-tally" hidden>0</span></button>
+    <button class="view-tab" data-view="basket" title="Drop a variable here to add it">R bundle <span class="tally" id="basket-tally" hidden>0</span></button>
   </nav>
 
   <button class="chat-toggle" id="chat-toggle" type="button"
@@ -94,15 +94,12 @@
           <span id="derived-count">—</span>
           <button class="link-btn" id="clear-category" hidden>Clear category</button>
         </div>
-        <!-- Tick variables in the list to build a runnable R bundle of them. -->
-        <div class="picked" id="picked-bar">
-          <p class="picked-count" id="picked-count">Nothing selected</p>
+        <!-- Add variables to the R bundle dock at the foot of the page. -->
+        <div class="picked">
+          <p class="picked-count" id="derived-picked">None in the bundle</p>
           <div class="picked-actions">
-            <button class="link-btn" id="pick-all">Select all</button>
-            <button class="link-btn" id="pick-none" hidden>Clear</button>
+            <button class="link-btn" id="pick-all">Add all</button>
           </div>
-          <button class="btn btn-primary" id="pick-download" disabled>Download R code</button>
-          <p class="picked-status" id="picked-status" role="status"></p>
         </div>
       </div>
       <ol class="results" id="derived-list"></ol>
@@ -111,69 +108,37 @@
       <div class="empty">
         <h2>What has been harmonised</h2>
         <p>Each entry is one script that turns raw variables into a single harmonised column. Open one to read the code that produces it, the deposited files it draws on, and the raw variables it needs.</p>
-        <p>Tick the ones you want and download them as R you can run on your own copy of the data — the runner, its libraries and one script per variable, with a README.</p>
+        <p>Drag the ones you want into the bundle at the foot of the page — or use the <strong>＋</strong> beside each — and download them as R you can run on your own copy of the data: the runner, its libraries and one script per variable, with a README.</p>
+        <p class="empty-hint">Raw variables go in the same bundle. Search the metadata view and drag those in too — they come out as columns beside the harmonised ones.</p>
         <p class="empty-hint">Status matters: <em>draft</em> means it has only been checked against fabricated data.</p>
       </div>
     </div>
   </section>
 
-  <!-- ── Scratchpad ───────────────────────────────────────────────── -->
-  <section class="view" data-view="scratch">
-    <div class="pane pane-list">
+  <!-- ── The R bundle ─────────────────────────────────────────────────
+       What you collected, and what the R you download will contain. The
+       list pane is the drop target while you are in this view; the tab
+       above is the drop target from anywhere else. -->
+  <section class="view" data-view="basket">
+    <div class="pane pane-list" id="basket-drop">
       <div class="finder">
-        <span class="field-label">Candidate variables</span>
-        <p class="finder-help">Added from the metadata view. These become the “known source variables” on the issue.</p>
-      </div>
-      <ol class="results" id="basket"></ol>
-      <p class="basket-empty" id="basket-empty">Nothing collected yet. Search the metadata, open a variable, and choose <strong>Add to scratchpad</strong>.</p>
-    </div>
-
-    <div class="pane pane-detail">
-      <form class="draft" id="draft" autocomplete="off">
-        <h2>Draft a variable request</h2>
-        <p class="draft-intro">This composes an issue against the repository’s request template. Nothing is submitted until you review it on GitHub.</p>
-
-        <label class="field">
-          <span class="field-label">Proposed name <em>required</em></span>
-          <input id="f-name" placeholder="highest_qualification_age30" spellcheck="false">
-          <span class="field-help">snake_case. Becomes the output column name.</span>
-        </label>
-
-        <label class="field">
-          <span class="field-label" id="f-waves-label">Waves involved <em>required</em></span>
-          <input id="f-waves" spellcheck="false">
-          <span class="field-help">Fills in from your candidates.</span>
-        </label>
-
-        <label class="field">
-          <span class="field-label">Category <em>required</em></span>
-          <select id="f-category"></select>
-        </label>
-
-        <label class="field">
-          <span class="field-label">What should this capture? <em>required</em></span>
-          <textarea id="f-description" rows="4" placeholder="The concept this should represent, and why it is useful."></textarea>
-        </label>
-
-        <label class="field">
-          <span class="field-label">Known source variables</span>
-          <textarea id="f-sources" rows="4" spellcheck="false"></textarea>
-          <span class="field-help">Auto-filled from your candidates. Edit freely.</span>
-        </label>
-
-        <label class="field">
-          <span class="field-label">Coding and edge cases</span>
-          <textarea id="f-notes" rows="3" placeholder="Missing-value handling, waves to exclude, precedent to follow."></textarea>
-        </label>
-
-        <div class="draft-actions">
-          <a class="btn btn-primary" id="submit" href="#" target="_blank" rel="noopener">Open as GitHub issue</a>
-          <button class="btn" id="copy" type="button">Copy as text</button>
-          <button class="btn btn-quiet" id="reset" type="button">Clear draft</button>
+        <span class="field-label">In the bundle</span>
+        <p class="finder-help">Drag variables here from the metadata or derived lists, or use the <strong>＋</strong> beside any row. Raw and harmonised variables go in the same bundle.</p>
+        <div class="picked">
+          <p class="picked-count" id="basket-count">Nothing collected yet</p>
+          <div class="picked-actions">
+            <button class="link-btn" id="basket-clear" hidden>Clear</button>
+          </div>
         </div>
-        <p class="draft-status" id="draft-status" role="status"></p>
-      </form>
+      </div>
+      <ol class="results" id="basket-list"></ol>
+      <p class="basket-empty" id="basket-empty">
+        Nothing collected yet. Search the metadata for a raw variable, or open
+        the derived list for a harmonised one, and add it with <strong>＋</strong>.
+      </p>
     </div>
+
+    <div class="pane pane-detail" id="basket-detail" tabindex="-1"></div>
   </section>
 
 </main>

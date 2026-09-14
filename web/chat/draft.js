@@ -1,5 +1,10 @@
-/* The request being assembled, and the two ways out of it: a prefilled issue,
-   or the scratchpad. */
+/* The request being assembled, and the ways out of it: a prefilled issue, the
+   clipboard, or handing the raw variables it names over to the R bundle.
+
+   This is now the only place a variable request is written. The atlas used to
+   carry a plain form beside it; that view builds downloadable R instead, and a
+   request drafted here is better than one drafted there ever was, because
+   every name in it is checked against the index before it is shown. */
 
 import { $, $$ } from "./dom.js";
 import { esc } from "./markup.js";
@@ -29,9 +34,8 @@ export function checkNames(names) {
 export function refreshGate() {
   const issue = $("#cd-issue");
   if (!issue) return;
-  // The same list the scratchpad form gates on, from the config. Two copies
-  // of "what an issue needs" is one copy too many, and the drifting one is
-  // always the one you are not reading.
+  // From the config, via the atlas. Two copies of "what an issue needs" is one
+  // copy too many, and the drifting one is always the one you are not reading.
   const missing = A().requiredFields()
     .filter((k) => !String(chat.draft[k] || "").trim());
   const ready = missing.length === 0;
@@ -104,7 +108,7 @@ export function renderDraft() {
 
     <div class="draft-actions">
       <a class="btn btn-primary" id="cd-issue" href="#" target="_blank" rel="noopener">Open as GitHub issue</a>
-      <button class="btn" id="cd-scratch" type="button">Send to scratchpad</button>
+      <button class="btn" id="cd-bundle" type="button">Add sources to R bundle</button>
       <button class="btn" id="cd-copy" type="button">Copy markdown</button>
     </div>
     <p class="draft-status" id="cd-status" role="status"></p>`;
@@ -128,7 +132,7 @@ export function renderDraft() {
     d.source_vars.splice(Number(b.dataset.dropvar), 1);
     renderDraft(); saveSession();
   }));
-  $("#cd-scratch")?.addEventListener("click", toScratchpad);
+  $("#cd-bundle")?.addEventListener("click", toBundle);
   $("#cd-copy")?.addEventListener("click", copyMarkdown);
 
   if (caret) {
@@ -162,17 +166,29 @@ export function issueUrl() {
   });
 }
 
-export function toScratchpad() {
-  const d = chat.draft;
-  A().fillDraft({
-    name: d.name, waves: d.waves, category: d.category,
-    description: d.description, sources: sourceLines(), notes: d.notes,
-  });
-  chat.pinned.filter((p) => p.kind !== "derived").forEach((p) => A().addToBasket({
-    name: p.name, label: p.label, file: p.file, wave: p.wave,
-  }));
-  A().switchView("scratch");
-  $("#cd-status").textContent = "Copied into the scratchpad form.";
+/* The raw variables this request names, handed to the R bundle.
+
+   A request is for a variable that does not exist yet, so there is nothing
+   here to download — but its candidate sources are real deposited columns, and
+   wanting to look at them before waiting on a derivation is the ordinary next
+   thought. Harmonised variables among the pinned are precedents rather than
+   sources and are deliberately not sent: they belong in the request's notes,
+   not in a bundle the researcher did not ask for. */
+export function toBundle() {
+  const sources = chat.pinned.filter((p) => p.kind !== "derived");
+  if (!sources.length) {
+    $("#cd-status").textContent =
+      "No raw variables pinned yet — this request has no sources to download.";
+    return;
+  }
+  const added = sources
+    .filter((p) => A().addToBundle({
+      kind: "variable", name: p.name, label: p.label, file: p.file, wave: p.wave,
+    })).length;
+  A().switchView("basket");
+  $("#cd-status").textContent = added
+    ? `Added ${added} raw variable${added === 1 ? "" : "s"} to the bundle.`
+    : "Those are already in the bundle.";
 }
 
 export async function copyMarkdown() {

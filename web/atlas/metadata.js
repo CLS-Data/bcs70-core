@@ -11,7 +11,8 @@ import {
 } from "./state.js";
 import { renderSpine } from "./spine.js";
 import { switchView } from "./views.js";
-import { addToBasket } from "./scratchpad.js";
+import * as basket from "./basket.js";
+const { addButton } = basket;
 
 /* ── Metadata search ─────────────────────────────────────────────────── */
 
@@ -70,11 +71,29 @@ function renderResults() {
   $("#results").innerHTML = shown.map((row, i) => {
     const file = state.manifest.files[row[2]];
     const cur = state.selected === row ? " is-current" : "";
-    return `<li><button class="row${cur}" data-i="${i}" draggable="true"
+    const wave = state.manifest.waves[row[3]];
+    // A raw variable can be packaged as a passthrough column, so it gets the
+    // same ＋ as a harmonised one.
+    //
+    // The identifier gets a ✓ instead — it is in every download already, and
+    // there are 85 of these rows (one per file), so someone searching for it
+    // will always find one. A blank space there reads as "not offered yet" and
+    // sends them looking for the control; the tick says the job is done.
+    //
+    // A file with no lookup row gets nothing at all: that one really is
+    // unavailable, and the detail pane explains why.
+    const add = basket.isIdentifier(row[0])
+      ? `<span class="add is-always" title="Always included in every download"
+           aria-label="${esc(row[0])} is included in every download">✓</span>`
+      : file && file.inLookup !== false
+        ? addButton("raw", row[0], basket.inBundle("raw", row[0], file.name), row[0],
+                    { file: file.name, wave, label: row[1] || "" })
+        : "";
+    return `<li class="pickable${cur}">${add}<button class="row" data-i="${i}" draggable="true"
       data-drag="${esc(JSON.stringify(rowPayload(row)))}">
       <span class="row-top">
         <span class="row-name">${highlight(row[0], q)}</span>
-        <span class="row-wave">${esc(state.manifest.waves[row[3]])}</span>
+        <span class="row-wave">${esc(wave)}</span>
       </span>
       <span class="row-label">${highlight(row[1] || "—", q)}</span>
       <span class="row-file">${esc(file ? file.name : "?")}</span>
@@ -128,7 +147,8 @@ async function showVariable(row) {
     entry = dict.variables.find((v) => v.variable === name);
   } catch { /* fall through to the minimal view below */ }
 
-  const inBasket = state.basket.some((b) => b.name === name && b.file === file.name);
+  const inBundle = basket.inBundle("raw", name, file.name);
+  const isId = basket.isIdentifier(name);
 
   const values = entry && entry.values ? entry.values : null;
   const valueRows = values ? values.map((v) => {
@@ -144,6 +164,12 @@ async function showVariable(row) {
       <h1 class="detail-name">${esc(name)}</h1>
       <p class="detail-label">${esc(label || "No label recorded in the dictionary.")}</p>
     </div>
+
+    ${isId ? `<div class="note-box"><span>✓</span><div>
+      <strong>Already in every download.</strong> This is the identifier: it is
+      the first column of the output and every variable is joined on it, so it
+      is supplied automatically. You do not need to add it — and it cannot be
+      added on its own, because it is the key rather than a variable.</div></div>` : ""}
 
     ${file.inLookup === false ? `<div class="warn"><span>⚠</span><div>
       <strong>Not in the master lookup.</strong> This file has a data dictionary and
@@ -179,22 +205,24 @@ async function showVariable(row) {
       <p class="note">${esc(file.description)}</p>` : ""}
 
     <div class="detail-actions">
-      <button class="btn ${inBasket ? "" : "btn-primary"}" id="add-basket" ${inBasket ? "disabled" : ""}>
-        ${inBasket ? "In scratchpad" : "Add to scratchpad"}
-      </button>
+      ${file.inLookup === false || isId ? "" : `<button class="btn ${inBundle ? "" : "btn-primary"}" id="add-bundle">
+        ${inBundle ? "Remove from the R bundle" : "Add to the R bundle"}
+      </button>`}
       <button class="btn" id="filter-file">Show all in ${esc(file.name)}</button>
       <button class="btn" id="pin-chat">Pin to assistant</button>
     </div>`;
+
+  $("#add-bundle")?.addEventListener("click", () => {
+    if (basket.inBundle("raw", name, file.name)) basket.removeAt(`raw:${file.name}:${name}`);
+    else basket.accept({ kind: "variable", name, label, file: file.name, wave });
+    showVariable(row);
+  });
 
   $("#pin-chat")?.addEventListener("click", () => {
     window.AtlasChat?.pin(payload({ name, label, file: file.name, wave }));
     window.AtlasChat?.open();
   });
 
-  $("#add-basket")?.addEventListener("click", () => {
-    addToBasket({ name, label, file: file.name, wave });
-    showVariable(row);
-  });
   $("#filter-file")?.addEventListener("click", () => {
     state.fileFilter = fileIdx;
     state.waveFilter = null;
@@ -236,7 +264,16 @@ export function wire() {
     timer = setTimeout(() => { state.query = e.target.value; runSearch(); }, 120);
   });
 
+  // The ＋ and the row are siblings; the more specific target is checked first.
   $("#results").addEventListener("click", (e) => {
+    const add = e.target.closest("[data-add-id]");
+    if (add) {
+      basket.accept({
+        kind: "variable", name: add.dataset.addId, label: add.dataset.addLabel,
+        file: add.dataset.addFile, wave: add.dataset.addWave,
+      });
+      return;
+    }
     const btn = e.target.closest("[data-i]");
     if (btn) showVariable(state.matches[Number(btn.dataset.i)]);
   });

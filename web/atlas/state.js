@@ -10,6 +10,12 @@ export const storeKey = (name) => `atlas:${state.dataset?.key || "unknown"}:${na
 
 export const LEVEL_UNRECORDED = -1;   // dictionary records no measurement level
 
+/* The drag payload's media type. `chat/state.js` declares the same string for
+   its own half of the site — the two must match, and they are cross-referenced
+   rather than imported for the reason dom.js gives: the atlas and the
+   assistant do not reach into each other. */
+export const DRAG_MIME = "application/x-atlas-variable";
+
 export const state = {
   manifest: null,
   dataset: null,     // manifest.dataset — see the note at the top of this file
@@ -26,9 +32,13 @@ export const state = {
   derivedQuery: "",
   derivedCategory: null, // category slug, or null
   derivedSelected: null,
-  picked: new Set(),  // ids ticked for download; survives a reload
+  // What the R bundle will contain, in the order it was collected. Both
+  // kinds live in one list because they end up in one joined output: a
+  // harmonised variable is {kind:"derived", id}, a raw column is
+  // {kind:"raw", name, label, file, wave, column}, where `column` is the
+  // output name and the only part the researcher may edit.
+  bundle: [],
   pipeline: null,     // data/pipeline.json, fetched at first download
-  basket: [],
   view: "metadata",
 };
 
@@ -59,7 +69,7 @@ export const categoryName = (slug) =>
    PRECEDENT to follow. Only the first belongs in an issue's source list.
 
    Everything goes through here — the result rows, the derived list, the
-   scratchpad, and the assistant's own search hits — because four hand-built
+   the basket, and the assistant's own search hits — because four hand-built
    copies of one shape is four places for it to drift. */
 export function payload({ kind = "variable", name, label, file, wave }) {
   return {
@@ -93,3 +103,43 @@ export function highlight(text, term) {
   return esc(t.slice(0, i)) + "<mark>" + esc(t.slice(i, i + term.length)) +
          "</mark>" + esc(t.slice(i + term.length));
 }
+
+/* ── Filing a request ──────────────────────────────────────────────────
+
+   The atlas no longer hosts a request form — the assistant's draft panel is
+   the place a variable request is written, and it verifies every name against
+   the index as it goes, which a plain form never did. What stays here is the
+   one thing both routes need and neither should own: turning a set of values
+   into a URL against the repository's issue template. It lives in this module
+   because it is pure, reads only the config, and touches no DOM — so the
+   basket can offer a one-click request without importing the assistant, and
+   the assistant can build one without importing a view. */
+
+/* Field ids come from the config rather than being spelled here, so renaming
+   one in the issue template is a one-line change in dataset.toml. */
+export function issueUrl(values) {
+  // Tolerated rather than assumed, for the reason categories() gives: this is
+  // reached from the assistant drawer and from a view that renders on every
+  // change, and a manifest without an [issue] block should cost a link, not
+  // the page.
+  const issue = state.dataset?.issue;
+  if (!issue?.repo) return null;
+  const { repo, template, titlePrefix, fields } = issue;
+  const params = new URLSearchParams(template ? { template } : {});
+  if (values.name) {
+    params.set("title", `${titlePrefix}${values.name}`);
+    params.set(fields.name, values.name);
+  }
+  const optional = [
+    [fields.waves, values.waves], [fields.category, values.category],
+    [fields.description, values.description], [fields.sources, values.sources],
+    [fields.notes, values.notes],
+  ];
+  for (const [key, value] of optional) if (value) params.set(key, value);
+  return `https://github.com/${repo}/issues/new?${params}`;
+}
+
+/* Which fields an issue cannot be filed without, from the config — the
+   assistant's draft panel gates on this list. */
+export const requiredFields = () =>
+  state.dataset?.issue?.required || ["name", "waves", "category", "description"];

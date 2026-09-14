@@ -227,6 +227,31 @@ def collect_derived() -> list[dict]:
 # the identifier cleaning or the duplicate resolution to drift out of step.
 PIPELINE = ("R/runner.R", "R/lib/discovery.R", "R/lib/io.R", "R/lib/utils.R")
 
+# Skeletons the bundler fills in, rather than ships. A raw variable has no
+# script in the repository to copy — it is a deposited column, not a
+# derivation — so the bundler writes one per picked column from this. It lives
+# in templates/ beside the other R skeletons rather than inside bundle.js so
+# that generated R is reviewed as R, by whoever reviews the rest of it.
+#
+# Each entry names the placeholders that must survive editing: a rename that
+# silently stopped being substituted would ship `{{id}}` into a researcher's
+# bundle, and R would run it as a literal.
+TEMPLATES = {
+    "templates/passthrough.R": ("id", "label", "file", "var", "wave", "created"),
+    # The bundle's own scaffolding: the file a researcher opens and runs, and
+    # the note in the empty folder their data goes into. Both exist so that
+    # "where is the data" is answered before anything tries to read it.
+    "templates/run.R": ("dataset", "project", "root", "lookup", "env",
+                        "set_root", "files", "identifier", "wave_plural",
+                        "sample_wave", "sample_id"),
+    "templates/data-README.md": ("dataset", "project", "root", "lookup",
+                                 "env", "sample_wave"),
+    # An RStudio project file, so opening the download sets the working
+    # directory — the single most common thing to get wrong. No placeholders:
+    # the name carries the identity, and the name is the bundle folder's.
+    "templates/project.Rproj": (),
+}
+
 
 def collect_pipeline() -> dict[str, str]:
     """The runner and its libraries, by repo path.
@@ -246,11 +271,34 @@ def collect_pipeline() -> dict[str, str]:
     return out
 
 
+def collect_templates() -> dict[str, str]:
+    """The skeletons the bundler fills in, by repo path, placeholders checked."""
+    out = {}
+    for rel, required in TEMPLATES.items():
+        path = REPO / rel
+        if not path.exists():
+            raise ConfigError(
+                f"{rel} is missing, so the atlas could not package raw variables. "
+                f"Update TEMPLATES in build_site.py if it moved."
+            )
+        text = path.read_text("utf-8")
+        absent = [p for p in required if "{{" + p + "}}" not in text]
+        if absent:
+            raise ConfigError(
+                f"{rel} no longer contains the placeholder(s) "
+                f"{', '.join('{{' + p + '}}' for p in absent)}, which web/bundle.js "
+                f"substitutes. Either restore them or update TEMPLATES and the bundler."
+            )
+        out[rel] = text
+    return out
+
+
 def main() -> int:
     try:
         cfg = get_config()
         lookup = read_lookup(cfg)
         pipeline = collect_pipeline()
+        templates = collect_templates()
     except ConfigError as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
@@ -266,8 +314,13 @@ def main() -> int:
     write_json(DATA / "derived.json", derived)
     # Fetched only when someone downloads a bundle, so it stays out of the
     # initial load.
+    # `lookup` joins `root` and `env` here rather than in the browser config
+    # because all three describe the same thing — the shape of the deposits a
+    # download expects to find — and only the bundle ever reads them.
     write_json(DATA / "pipeline.json",
-               {"root": cfg.root.name, "env": cfg.data_env, "files": pipeline})
+               {"root": cfg.root.name, "env": cfg.data_env,
+                "lookup": cfg.lookup_csv,
+                "files": pipeline, "templates": templates})
     write_json(DATA / "manifest.json", {
         # The browser's copy of dataset.toml. One source of truth: nothing in
         # the front end hard-codes a category, a wave or an issue field.
