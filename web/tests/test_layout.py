@@ -184,5 +184,40 @@ class FamiliesAreGrouped(unittest.TestCase):
         self.assertNotIn("collapsedFamilies", BOOT.read_text("utf-8"))
 
 
+class TheBundleColumnList(unittest.TestCase):
+    """The pane that shows what the download will contain.
+
+    It had three grid tracks with the name pinned to 18ch -- narrower than
+    plenty of real ids, so a long one ran over the text beside it -- and a note
+    that said the same sentence on every research-ready row.
+    """
+
+    def test_no_fixed_width_track_for_a_name(self):
+        css = CSS.read_text("utf-8")
+        row = css[css.index(".col-row {"):]
+        row = row[:row.index("}")]
+        self.assertIn("minmax(0, 1fr)", row)
+        self.assertNotIn("ch", row.replace("minmax", ""),
+                         "a fixed character width is back in the column row, so "
+                         "a long variable name can overlap what is beside it")
+
+    def test_the_name_wraps_rather_than_overflowing(self):
+        css = CSS.read_text("utf-8")
+        name = css[css.index(".col-name {"):]
+        self.assertIn("overflow-wrap: anywhere", name[:name.index("}")])
+
+    def test_the_row_says_something_about_the_variable(self):
+        """The note was 'fixed - the script was tested under this name', on
+        every row. That explains an absence; the label says what the column
+        holds, which the pane otherwise never did."""
+        body = BASKET.read_text("utf-8")
+        self.assertNotIn("fixed — the script was tested under this name", body)
+        self.assertIn("specFor(b).label", body)
+
+    def test_a_raw_column_does_not_print_its_name_twice(self):
+        """Until it is renamed the source name IS the column name."""
+        self.assertIn("b.column === b.name", BASKET.read_text("utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

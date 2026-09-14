@@ -422,6 +422,9 @@ function renderDetail() {
     </div></div>` : ""}
 
     <h2 class="section-title">Columns</h2>
+    <p class="note">In the order the runner writes them. A research-ready
+      variable's name is fixed — its script was tested under that name — so only
+      the raw columns are editable.</p>
     <ol class="cols">${identifierCol()}${state.bundle.map((b) => b.kind === "derived"
       ? derivedCol(b, bad) : rawCol(b, bad)).join("")}</ol>
 
@@ -476,33 +479,46 @@ function identifierCol() {
   if (!id) return "";
   return `<li class="col-row is-fixed">
     <span class="col-kind col-kind-id" title="The identifier">·</span>
-    <span class="col-name">${esc(id)}</span>
-    <span class="col-note">always included — the key every variable is joined on</span>
+    <span class="col-body">
+      <span class="col-name">${esc(id)}</span>
+      <span class="col-note">always included — the key every variable is joined on</span>
+    </span>
   </li>`;
 }
 
 function derivedCol(b, bad) {
   const problem = bad.get(keyOf(b));
+  // The label, not a note about why the name cannot be edited. That was the
+  // same sentence on every research-ready row, explaining an absence; this
+  // pane otherwise says nothing at all about what a column contains.
   return `<li class="col-row${problem ? " is-bad" : ""}">
     <span class="col-kind col-kind-derived" title="Research ready — shipped as its own script">R+</span>
-    <span class="col-name">${esc(b.id)}</span>
-    <span class="col-note">fixed — the script was tested under this name</span>
-    ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    <span class="col-body">
+      <span class="col-name">${esc(b.id)}</span>
+      <span class="col-note">${esc(specFor(b).label || "")}</span>
+      ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    </span>
   </li>`;
 }
 
+/* A raw column. The note names the source variable only when it differs from
+   the output name — until you rename it they are the same string, and printing
+   it twice per row is noise. */
 function rawCol(b, bad) {
   const key = keyOf(b);
   const problem = bad.get(key);
   return `<li class="col-row${problem ? " is-bad" : ""}">
     <span class="col-kind col-kind-raw" title="Raw — passed through unchanged">R</span>
-    <input class="col-input" type="text" value="${esc(b.column)}"
-           data-rename="${esc(key)}" spellcheck="false" autocomplete="off"
-           aria-label="Output column name for ${esc(b.name)}"
-           aria-invalid="${problem ? "true" : "false"}">
-    <span class="col-note"><code>${esc(b.name)}</code> from
-      <code>${esc(b.file)}</code> · ${esc(b.wave)}</span>
-    ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    <span class="col-body">
+      <input class="col-input" type="text" value="${esc(b.column)}"
+             data-rename="${esc(key)}" spellcheck="false" autocomplete="off"
+             aria-label="Output column name for ${esc(b.name)}"
+             aria-invalid="${problem ? "true" : "false"}">
+      <span class="col-note">${esc(b.label || "no label")} ·
+        ${b.column === b.name ? "" : `<code>${esc(b.name)}</code> in `}<code>${esc(b.file)}</code>
+        · ${esc(b.wave)}</span>
+      ${problem ? `<span class="col-problem">${esc(problem)}</span>` : ""}
+    </span>
   </li>`;
 }
 
