@@ -335,13 +335,17 @@ function resetSession() {
 
 /* ── Panel plumbing ────────────────────────────────────────────────── */
 
+/* Why the assistant is unavailable, once `start` has found out; "" while it
+   still works. Read by setOpen and by the two entry points the atlas calls. */
+let disabled = "";
+
 function setOpen(open) {
   chat.open = open;
   document.body.classList.toggle("chat-open", open);
   $("#chat-drawer").hidden = !open;
   $("#chat-toggle").setAttribute("aria-expanded", String(open));
   try { localStorage.setItem(key("chat-open"), open ? "1" : ""); } catch { /* fine */ }
-  if (open) {
+  if (open && !disabled) {
     if (chat.connection === "unknown") connect();
     $("#chat-input")?.focus();
   }
@@ -637,12 +641,25 @@ async function start() {
   restore();
   if (!chat.settings.baseUrl) chat.settings.baseUrl = defaultBase();
   // Turn the drawer off cleanly in the two cases where it cannot work, and
-  // say which one it is: no API at all (served by something other than
-  // web/server.py), or an API whose assistant extra was never installed.
+  // say which one it is: no API at all (a static deploy such as GitHub Pages,
+  // or anything served by something other than web/server.py), or an API whose
+  // assistant extra was never installed.
+  //
+  // Off is a state of the drawer, not a dead button. A disabled toggle said
+  // nothing a visitor could read and stopped none of the other ways in - Pin
+  // to assistant opened the drawer through AtlasChat.open(), and since the
+  // close button was never wired there was then no way back out. So the
+  // drawer still opens and still closes; CSS empties it of everything but
+  // the reason, and the entry points that would do nothing are hidden.
   const off = (why) => {
-    const btn = $("#chat-toggle");
-    btn.disabled = true;
-    btn.title = why;
+    disabled = why;
+    document.body.classList.add("chat-off");
+    const note = $("#chat-dead");
+    note.textContent = why;
+    note.hidden = false;
+    $("#chat-toggle").title = why;
+    $("#chat-toggle").addEventListener("click", () => setOpen(!chat.open));
+    $("#chat-close").addEventListener("click", () => setOpen(false));
   };
   try {
     const health = await fetch("/api/health").then((r) => r.json());
@@ -669,8 +686,9 @@ async function start() {
                  "the server: python3 web/server.py");
     }
   } catch {
-    return off("The assistant needs web/server.py. " +
-               "Start it with: python3 web/server.py");
+    return off("The assistant isn't available on this published site — it " +
+               "needs its own local server. Run the atlas with " +
+               "python3 web/server.py to use it.");
   }
   wireUp();
   renderTranscript();
@@ -686,7 +704,7 @@ async function start() {
 
 window.addEventListener("atlas:chat-reset", resetSession);
 
-window.AtlasChat = { start, pin, open: () => setOpen(true), DRAG_MIME };
+window.AtlasChat = { start, pin: (v) => { if (!disabled) pin(v); }, open: () => setOpen(true), DRAG_MIME };
 
 // The atlas finishes booting on its own schedule, and this module is deferred,
 // so whichever lands second starts the drawer.

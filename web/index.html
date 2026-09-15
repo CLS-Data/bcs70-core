@@ -180,6 +180,10 @@
     <button class="chat-x" id="chat-close" type="button" aria-label="Close the assistant">✕</button>
   </header>
 
+  <!-- Why the assistant is off: no /api behind the page (a static deploy such
+       as GitHub Pages), or an API without the assistant extra installed. -->
+  <p class="chat-remote" id="chat-dead" hidden></p>
+
   <p class="chat-remote" id="chat-remote-warn" hidden>
     <strong>Hosted model.</strong> Variable names and dictionary labels are being
     sent off this machine. No study data exists in this site to send.
