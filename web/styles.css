@@ -861,6 +861,15 @@ body.chat-open { padding-right: var(--chat-w); }
 }
 .chat-remote strong { color: var(--ochre); }
 
+/* The assistant off. The drawer still opens and still closes - it just has
+   nothing in it but the reason - so the two ways in (the toggle, and Pin to
+   assistant) behave the same and neither can strand the panel open. Pinning
+   has nowhere to go, so that button is not offered. */
+body.chat-off .chat-drawer > :not(.chat-head):not(#chat-dead),
+body.chat-off .chat-drawer .chat-tabs,
+body.chat-off #chat-reset,
+body.chat-off #pin-chat { display: none; }
+
 /* The checklist. Six steps is small enough to show whole, which is the
    point - you can see how much of the request is still unanswered without
    reading the transcript back. */
