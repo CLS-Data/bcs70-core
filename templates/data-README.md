@@ -5,7 +5,7 @@ you want them **inside** the project.
 
 You need your own licensed copy — nothing in this download contains any study
 data, and none is fetched.
-
+{{setup}}
 ## Option (a) — put the data in here
 
 Copy or move your deposit folders into this folder, so that you end up with:

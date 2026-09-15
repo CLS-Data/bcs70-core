@@ -247,7 +247,7 @@ TEMPLATES = {
                         "set_root", "files", "identifier", "wave_plural",
                         "sample_id"),
     "templates/data-README.md": ("dataset", "project", "root", "lookup",
-                                 "env", "sample_wave"),
+                                 "env", "sample_wave", "setup"),
     # An RStudio project file, so opening the download sets the working
     # directory — the single most common thing to get wrong. No placeholders:
     # the name carries the identity, and the name is the bundle folder's.

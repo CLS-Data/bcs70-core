@@ -60,6 +60,13 @@ data_env = "BCS70_DATA"
 # The column that links a person across every file.
 identifier = "bcsid"
 
+# Where someone gets the folder layout this pipeline expects. A downloaded
+# bundle reads the deposits through that layout and cannot build it for them:
+# the data is licensed and arrives as separate study downloads. Linked from
+# the bundle view and from the bundle's own data/README.md. Leave empty if
+# there is no such guide.
+setup_guide = "https://github.com/CLS-Data/make-directories-bcs70/tree/shuffle-plus"
+
 # Offered as starting points on the assistant's empty screen. Concrete
 # requests someone might plausibly make of this study.
 examples = [
