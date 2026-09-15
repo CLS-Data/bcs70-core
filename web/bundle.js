@@ -484,6 +484,12 @@ export async function build(picked, pipeline, meta) {
     count: `${derived.length + raw.length} variable${derived.length + raw.length === 1 ? "" : "s"}` +
            ` (${derived.length} research ready, ${raw.length} raw)`,
     sample_wave: meta.dataset?.wave?.order?.[0] || "<wave>",
+    // A whole paragraph rather than a bare URL, because a study with no such
+    // guide has to leave no dangling sentence behind. See dataset.toml.
+    setup: meta.dataset?.setupGuide
+      ? `\nTo set up your data, follow the guide in this repository:\n` +
+        `<${meta.dataset.setupGuide}>\n`
+      : "",
     sample_id: derived[0]?.id || raw[0]?.column || "<id>",
   };
 

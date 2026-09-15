@@ -360,6 +360,24 @@ function statusPill(status) {
   return `<span class="pill ${cls}">${esc(String(status || "unknown").replace(/_/g, " "))}</span>`;
 }
 
+/* Setting up the data is the one step of this that happens outside the atlas,
+   and the one the download cannot do for you: the deposits are licensed, they
+   arrive as separate study downloads, and the pipeline reads them through a
+   folder layout somebody has to build first. Said here, beside the download
+   button, and again in the bundle's own data/README.md. The URL is in
+   dataset.toml — another study has a different guide, or none. */
+function setupNote() {
+  const guide = state.dataset?.setupGuide;
+  if (!guide) return "";
+  return `<h2 class="section-title">Setting up your data</h2>
+    <p class="note">Nothing in the download contains study data, and none is
+      fetched — you run it against your own licensed copy. To set up your data,
+      follow the guide in this repository:
+      <a href="${esc(guide)}" target="_blank" rel="noopener">${esc(guide)}</a>.
+      The bundle's <code>data/README.md</code> says the same, and where to point
+      <code>run.R</code> if the deposits already live elsewhere.</p>`;
+}
+
 /* The detail pane: the columns of the CSV this will produce, in the order the
    runner will write them, with the only editable thing on screen — what a raw
    column is called. This is the review step: a collision between two deposits
@@ -439,6 +457,8 @@ function renderDetail() {
     }).join("")}</ul>
     <p class="note">A variable whose source file is missing from your copy stops
       the run with a message naming it.</p>
+
+    ${setupNote()}
 
     <div class="detail-actions">
       <button class="btn btn-primary" id="basket-download">Download R code</button>

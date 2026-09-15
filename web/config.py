@@ -269,6 +269,18 @@ class Config:
     def identifier(self) -> str:
         return self._section("dataset").get("identifier", "id")
 
+    @property
+    def setup_guide(self) -> str:
+        """Where to find the folder layout the pipeline reads.
+
+        A property of the dataset, not of the atlas: the deposits are
+        licensed and arrive as separate study downloads, so nothing here can
+        assemble them. Empty means there is no guide to point at, and both
+        the bundle view and the bundle's README then say only what the layout
+        has to look like.
+        """
+        return self._section("dataset").get("setup_guide", "")
+
     @cached_property
     def examples(self) -> list[str]:
         """Starting points offered on the assistant's empty screen."""
@@ -697,6 +709,7 @@ class Config:
             "tagline": self.tagline,
             "blurb": self.blurb,
             "identifier": self.identifier,
+            "setupGuide": self.setup_guide,
             "wave": {
                 "term": self.wave_term,
                 "plural": self.wave_plural,
